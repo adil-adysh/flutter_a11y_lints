@@ -53,7 +53,16 @@ void main(List<String> args) async {
   json.forEach((name, value) {
     final data = value as Map<String, dynamic>;
 
-    // Extract flags
+    // Skip widgets that failed extraction (have error field)
+    if (data.containsKey('error')) {
+      // ignore: avoid_print
+      print('⚠ Skipping $name: ${data['error']}');
+      return;
+    }
+
+    // Extract flags from runtime semantics
+    // Note: label/hint/value fields are ignored as they reflect test data,
+    // not widget behavior. We only use semantic flags and actions.
     final isButton = data['isButton'] == true;
     final isImage = data['isImage'] == true;
     final isToggled = data['isToggled'] == true || data['isChecked'] == true;
@@ -124,19 +133,24 @@ String _determineRole({
   required bool isHeader,
 }) {
   // Widget name-based overrides for known edge cases where runtime extraction
-  // doesn't accurately reflect the widget's semantic role
+  // doesn't accurately reflect the widget's semantic role.
+  // These are based on Flutter documentation and actual widget behavior.
   const roleOverrides = {
+    // TextField often doesn't expose isTextField flag in simple configurations
     'TextField': 'SemanticRole.input',
     'TextFormField': 'SemanticRole.input',
+    // Radio widgets expose isChecked but should map to toggle role
     'Radio': 'SemanticRole.toggle',
     'RadioListTile': 'SemanticRole.toggle',
+    // ListTile family are semantically list items
+    'ListTile': 'SemanticRole.listItem',
   };
 
   if (roleOverrides.containsKey(widgetName)) {
     return roleOverrides[widgetName]!;
   }
 
-  // Flag-based role determination
+  // Flag-based role determination from runtime semantics
   if (isButton) return 'SemanticRole.button';
   if (isImage) return 'SemanticRole.image';
   if (isToggled) return 'SemanticRole.toggle';
@@ -147,7 +161,8 @@ String _determineRole({
 }
 
 bool _isKnownInteractive(String widgetName) {
-  // Widgets known to be interactive even if runtime extraction doesn't show it
+  // Widgets known to be interactive even if runtime extraction doesn't show it.
+  // This handles complex widgets where interactivity isn't exposed in simple configs.
   const interactiveWidgets = {
     'TextField',
     'TextFormField',
@@ -159,7 +174,8 @@ bool _isKnownInteractive(String widgetName) {
 }
 
 bool _shouldMergeChildren(String widgetName) {
-  // Widgets known to merge children semantics
+  // Widgets that merge children semantics into a single node.
+  // Based on Flutter's semantic behavior and documentation.
   const mergingWidgets = {
     'ListTile',
     'CheckboxListTile',

@@ -35,8 +35,10 @@ void main() {
         // Pump frames to allow widget to build and get semantics
         await tester.pump();
 
-        // Find the widget
-        final finder = find.byType(type);
+        // Find the widget - use byWidgetPredicate for better matching
+        final finder = find.byWidgetPredicate(
+          (widget) => widget.runtimeType.toString().startsWith(name),
+        );
 
         if (finder.evaluate().isEmpty) {
           extractedData[name] = _createEmptySemantics(
@@ -145,8 +147,7 @@ SemanticsNode? _findRelevantSemanticsNode(SemanticsNode? root) {
     final data = current.getSemanticsData();
 
     // Check for interesting flags or actions
-    final hasInterestingFlag =
-        data.hasFlag(SemanticsFlag.isButton) ||
+    final hasInterestingFlag = data.hasFlag(SemanticsFlag.isButton) ||
         data.hasFlag(SemanticsFlag.isImage) ||
         data.hasFlag(SemanticsFlag.isTextField) ||
         data.hasFlag(SemanticsFlag.isLink) ||
