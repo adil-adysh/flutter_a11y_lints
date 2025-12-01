@@ -61,10 +61,13 @@ void main(List<String> args) async {
     final isSlider = data['isSlider'] == true;
     final isHeader = data['isHeader'] == true;
     final hasTap = data['hasTap'] == true || data['hasLongPress'] == true;
+    final hasIncreaseDecrease =
+        data['hasIncrease'] == true || data['hasDecrease'] == true;
     final mergesDescendants = data['mergesDescendants'] == true;
 
-    // Determine role
+    // Determine role - use widget name override for known edge cases
     final role = _determineRole(
+      widgetName: name,
       isButton: isButton,
       isImage: isImage,
       isToggled: isToggled,
@@ -73,8 +76,9 @@ void main(List<String> args) async {
       isHeader: isHeader,
     );
 
-    // Determine properties
-    final isInteractive = hasTap;
+    // Determine properties - include increase/decrease actions as interactive
+    final isInteractive =
+        hasTap || hasIncreaseDecrease || _isKnownInteractive(name);
     final mergesChildren = mergesDescendants || _shouldMergeChildren(name);
     final semanticsManaged = _isSemanticsManaged(name);
     final hasTooltipParam = _hasTooltipParam(name);
@@ -111,6 +115,7 @@ void main(List<String> args) async {
 }
 
 String _determineRole({
+  required String widgetName,
   required bool isButton,
   required bool isImage,
   required bool isToggled,
@@ -118,6 +123,20 @@ String _determineRole({
   required bool isSlider,
   required bool isHeader,
 }) {
+  // Widget name-based overrides for known edge cases where runtime extraction
+  // doesn't accurately reflect the widget's semantic role
+  const roleOverrides = {
+    'TextField': 'SemanticRole.input',
+    'TextFormField': 'SemanticRole.input',
+    'Radio': 'SemanticRole.toggle',
+    'RadioListTile': 'SemanticRole.toggle',
+  };
+
+  if (roleOverrides.containsKey(widgetName)) {
+    return roleOverrides[widgetName]!;
+  }
+
+  // Flag-based role determination
   if (isButton) return 'SemanticRole.button';
   if (isImage) return 'SemanticRole.image';
   if (isToggled) return 'SemanticRole.toggle';
@@ -127,6 +146,18 @@ String _determineRole({
   return 'SemanticRole.group';
 }
 
+bool _isKnownInteractive(String widgetName) {
+  // Widgets known to be interactive even if runtime extraction doesn't show it
+  const interactiveWidgets = {
+    'TextField',
+    'TextFormField',
+    'Slider',
+    'Radio',
+    'RadioListTile',
+  };
+  return interactiveWidgets.contains(widgetName);
+}
+
 bool _shouldMergeChildren(String widgetName) {
   // Widgets known to merge children semantics
   const mergingWidgets = {
@@ -134,7 +165,6 @@ bool _shouldMergeChildren(String widgetName) {
     'CheckboxListTile',
     'SwitchListTile',
     'RadioListTile',
-    'ExpansionTile',
     'Card',
   };
   return mergingWidgets.contains(widgetName);
