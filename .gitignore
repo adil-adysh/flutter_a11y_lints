@@ -1,0 +1,32 @@
+# Dart / Flutter
+.dart_tool/
+.packages
+build/
+pubspec.lock
+doc/api/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test coverage
+coverage/
+*.lcov
+
+# Build outputs
+*.dll
+*.exe
+*.so
+*.dylib
+
+# Temporary files
+*.log
+*.tmp
+*.temp
