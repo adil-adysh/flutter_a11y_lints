@@ -1,0 +1,22 @@
+WARNING|STATIC_WARNING|DEPRECATED_FIELD|D:\\repos\\flutter_a11y_lints\\pubspec.yaml|5|1|7|The 'authors' field is no longer used and can be removed.
+WARNING|STATIC_WARNING|UNNECESSARY_DEV_DEPENDENCY|D:\\repos\\flutter_a11y_lints\\pubspec.yaml|21|3|7|The dev dependency on flutter is unnecessary because there is also a normal dependency on that package.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a01_label_non_text_controls.dart|18|20|13|'ErrorSeverity' is deprecated and shouldn't be used. Use 'DiagnosticSeverity' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a01_label_non_text_controls.dart|24|5|13|'ErrorReporter' is deprecated and shouldn't be used. Use 'DiagnosticReporter' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a02_avoid_redundant_role_words.dart|16|20|13|'ErrorSeverity' is deprecated and shouldn't be used. Use 'DiagnosticSeverity' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a02_avoid_redundant_role_words.dart|31|5|13|'ErrorReporter' is deprecated and shouldn't be used. Use 'DiagnosticReporter' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a03_decorative_images_excluded.dart|17|20|13|'ErrorSeverity' is deprecated and shouldn't be used. Use 'DiagnosticSeverity' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a03_decorative_images_excluded.dart|23|5|13|'ErrorReporter' is deprecated and shouldn't be used. Use 'DiagnosticReporter' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a04_informative_images_labeled.dart|17|20|13|'ErrorSeverity' is deprecated and shouldn't be used. Use 'DiagnosticSeverity' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a04_informative_images_labeled.dart|23|5|13|'ErrorReporter' is deprecated and shouldn't be used. Use 'DiagnosticReporter' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a05_no_redundant_button_semantics.dart|19|20|13|'ErrorSeverity' is deprecated and shouldn't be used. Use 'DiagnosticSeverity' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a05_no_redundant_button_semantics.dart|25|5|13|'ErrorReporter' is deprecated and shouldn't be used. Use 'DiagnosticReporter' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a06_merge_multi_part_single_concept.dart|17|20|13|'ErrorSeverity' is deprecated and shouldn't be used. Use 'DiagnosticSeverity' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a06_merge_multi_part_single_concept.dart|23|5|13|'ErrorReporter' is deprecated and shouldn't be used. Use 'DiagnosticReporter' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a07_replace_semantics_cleanly.dart|19|20|13|'ErrorSeverity' is deprecated and shouldn't be used. Use 'DiagnosticSeverity' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a07_replace_semantics_cleanly.dart|25|5|13|'ErrorReporter' is deprecated and shouldn't be used. Use 'DiagnosticReporter' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a08_block_semantics_only_for_true_modals.dart|17|20|13|'ErrorSeverity' is deprecated and shouldn't be used. Use 'DiagnosticSeverity' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a08_block_semantics_only_for_true_modals.dart|23|5|13|'ErrorReporter' is deprecated and shouldn't be used. Use 'DiagnosticReporter' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a21_use_iconbutton_tooltip.dart|18|20|13|'ErrorSeverity' is deprecated and shouldn't be used. Use 'DiagnosticSeverity' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\rules\\a21_use_iconbutton_tooltip.dart|24|5|13|'ErrorReporter' is deprecated and shouldn't be used. Use 'DiagnosticReporter' instead.
+INFO|HINT|DEPRECATED_MEMBER_USE|D:\\repos\\flutter_a11y_lints\\lib\\src\\utils\\ast_utils.dart|34|31|15|'withNullability' is deprecated and shouldn't be used. Only non-nullable by default mode is supported.
+INFO|LINT|LIBRARY_PRIVATE_TYPES_IN_PUBLIC_API|D:\\repos\\flutter_a11y_lints\\lib\\src\\utils\\widget_context.dart|12|14|13|Invalid use of a private type in a public API.
