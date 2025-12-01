@@ -30,3 +30,4 @@ coverage/
 *.log
 *.tmp
 *.temp
+wget-log
