@@ -61,10 +61,12 @@ All icon-only or custom painted interactive controls must have an accessible lab
 Screen reader users cannot perceive visual-only affordances. Every interactive element needs a text equivalent.
 
 **Detects:**
+
 - `IconButton` without `tooltip` parameter
 - Interactive widgets (InkWell, GestureDetector) wrapping only visual elements (Icon, Image, CustomPaint) without Semantics label
 
 **Violation Example:**
+
 ```dart
 IconButton(
   icon: Icon(Icons.refresh),
@@ -73,6 +75,7 @@ IconButton(
 ```
 
 **Correct Pattern:**
+
 ```dart
 IconButton(
   icon: Icon(Icons.refresh),
@@ -94,9 +97,11 @@ Do not include words like "button", "selected", "toggle" in labels that are alre
 Screen readers announce the role automatically. Including it in the label creates redundant announcements: "Save button, button".
 
 **Detects:**
+
 - `tooltip` or `Semantics.label` containing words: "button", "icon", "image", "link", "checkbox", "radio", "switch", "selected", "checked"
 
 **Violation Example:**
+
 ```dart
 IconButton(
   tooltip: 'Save button', // ❌ Redundant "button"
@@ -106,6 +111,7 @@ IconButton(
 ```
 
 **Correct Pattern:**
+
 ```dart
 IconButton(
   tooltip: 'Save', // ✅ Role announced automatically
@@ -127,15 +133,18 @@ Pure decorative images (backgrounds, visual flourishes) must be excluded from th
 Screen readers should skip non-informative visual elements to avoid clutter and confusion.
 
 **Detects:**
+
 - `Image` widgets without `semanticLabel` and without `excludeFromSemantics: true`
 - Common decorative patterns (e.g., assets named "background", "decoration", "pattern")
 
 **Violation Example:**
+
 ```dart
 Image.asset('assets/background_pattern.png') // ❌ Not excluded
 ```
 
 **Correct Pattern:**
+
 ```dart
 Image.asset(
   'assets/background_pattern.png',
@@ -156,10 +165,12 @@ Meaningful images (product photos, icons conveying information, avatars) must ha
 Screen reader users need text descriptions of visual information to understand context.
 
 **Detects:**
+
 - `Image` widgets with content assets (not decorative patterns) missing `semanticLabel`
 - Heuristics: assets named with content keywords (e.g., "photo", "avatar", "product")
 
 **Violation Example:**
+
 ```dart
 Image.network(
   user.avatarUrl,
@@ -167,6 +178,7 @@ Image.network(
 ```
 
 **Correct Pattern:**
+
 ```dart
 Image.network(
   user.avatarUrl,
@@ -189,10 +201,12 @@ Never wrap Material buttons (IconButton, ElevatedButton, FilledButton, TextButto
 Creates duplicate button announcements: "Save, button, button". The built-in button semantics are sufficient.
 
 **Detects:**
+
 - `Semantics` wrapping Material button widgets
 - `Semantics` with `button: true` property wrapping button-type widgets
 
 **Violation Example:**
+
 ```dart
 Semantics(
   label: 'Delete item',
@@ -205,6 +219,7 @@ Semantics(
 ```
 
 **Correct Pattern:**
+
 ```dart
 IconButton(
   icon: Icon(Icons.delete),
@@ -214,6 +229,7 @@ IconButton(
 ```
 
 **Applies To:**
+
 - IconButton
 - ElevatedButton
 - FilledButton, FilledButton.tonal, FilledButton.icon
@@ -234,10 +250,12 @@ Always use IconButton's built-in `tooltip` parameter instead of wrapping with `T
 IconButton has a built-in tooltip designed for accessibility. Using the Tooltip widget wrapper complicates the semantic tree unnecessarily.
 
 **Detects:**
+
 - `Tooltip` widget wrapping `IconButton`
 - Suggests using `tooltip` parameter instead
 
 **Violation Example:**
+
 ```dart
 Tooltip(
   message: 'Save session',
@@ -249,6 +267,7 @@ Tooltip(
 ```
 
 **Correct Pattern:**
+
 ```dart
 IconButton(
   icon: Icon(Icons.check),
@@ -272,10 +291,12 @@ Use `MergeSemantics` or replacement pattern for composite values/controls that s
 Without merging, screen readers navigate to each element separately, breaking up the logical concept and confusing users.
 
 **Detects:**
+
 - Interactive `Row`/`Column` with multiple text/icon children without `MergeSemantics`
 - Multiple semantic nodes that represent a single control
 
 **Violation Example:**
+
 ```dart
 InkWell(
   onTap: save,
@@ -290,6 +311,7 @@ InkWell(
 ```
 
 **Correct Pattern:**
+
 ```dart
 MergeSemantics(
   child: InkWell(
@@ -317,10 +339,12 @@ When overriding subtree semantics with a custom label, wrap children in `Exclude
 Without exclusion, screen readers announce both the original text and the replacement, creating confusing double announcements.
 
 **Detects:**
+
 - `Semantics` with `label` property containing children that have their own text/semantics
 - Missing `ExcludeSemantics` on children being replaced
 
 **Violation Example:**
+
 ```dart
 Semantics(
   label: 'Mood score 72, up 2 today', // ❌ Children also read
@@ -336,6 +360,7 @@ Semantics(
 ```
 
 **Correct Pattern:**
+
 ```dart
 Semantics(
   label: 'Mood score 72, up 2 today',
@@ -365,10 +390,12 @@ Use `BlockSemantics` only for dialogs, drawers, bottom sheets, and overlays that
 `BlockSemantics` prevents screen readers from accessing background content. Misuse creates accessibility barriers where users cannot navigate the full UI.
 
 **Detects:**
+
 - `BlockSemantics` usage patterns that don't match modal overlays
 - Heuristics for non-modal contexts (e.g., not within showDialog, showModalBottomSheet)
 
 **Violation Example:**
+
 ```dart
 BlockSemantics( // ❌ Snackbar should not block
   child: SnackBar(
@@ -378,6 +405,7 @@ BlockSemantics( // ❌ Snackbar should not block
 ```
 
 **Correct Pattern:**
+
 ```dart
 // ✅ Modals only
 showDialog(
@@ -556,6 +584,7 @@ _announcer.announce('Timer: ${minutes}:${seconds}', context);
 **Concept:** Button labels should include context when the action target isn't obvious from surrounding content. Essential for icon-only buttons in lists or grids.
 
 **Anti-Pattern:**
+
 ```dart
 ListView.builder(
   itemBuilder: (context, index) {
@@ -572,6 +601,7 @@ ListView.builder(
 ```
 
 **Correct Pattern:**
+
 ```dart
 ListView.builder(
   itemBuilder: (context, index) {
@@ -630,6 +660,7 @@ Use this checklist to verify accessibility compliance:
 ### Coding Standards
 
 **Import Pattern** (always hide LintCode to avoid conflicts):
+
 ```dart
 import 'package:analyzer/error/error.dart' hide LintCode;
 import 'package:analyzer/error/listener.dart';
@@ -637,6 +668,7 @@ import 'package:custom_lint_builder/custom_lint_builder.dart';
 ```
 
 **Rule Structure**:
+
 ```dart
 class RuleName extends DartLintRule {
   const RuleName() : super(code: _code);
@@ -674,6 +706,7 @@ class RuleName extends DartLintRule {
 ```
 
 **Key Points:**
+
 - Use `addPostRunCallback` for async operations (never mark registry callbacks as async)
 - Always check `fileUsesFlutter(unit)` before running Flutter-specific checks
 - Use `reporter.atNode(node).report(code)` for error reporting
@@ -728,20 +761,24 @@ When reviewing code for accessibility compliance:
 ## 13. References
 
 ### Flutter Documentation
+
 - [Flutter Accessibility Guide](https://docs.flutter.dev/development/accessibility-and-localization/accessibility)
 - [Semantics API Documentation](https://api.flutter.dev/flutter/widgets/Semantics-class.html)
 - [SemanticsProperties](https://api.flutter.dev/flutter/semantics/SemanticsProperties-class.html)
 
 ### Web Content Accessibility Guidelines (WCAG)
+
 - [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
 - [WCAG 2.1 Level A & AA Success Criteria](https://www.w3.org/WAI/WCAG21/Understanding/)
 
 ### Custom Lint Framework
+
 - [custom_lint Package](https://pub.dev/packages/custom_lint)
 - [custom_lint_builder API](https://pub.dev/documentation/custom_lint_builder/latest/)
 - [analyzer Package](https://pub.dev/packages/analyzer)
 
 ### Screen Reader Testing
+
 - [Android TalkBack Guide](https://support.google.com/accessibility/android/answer/6283677)
 - [iOS VoiceOver Guide](https://support.apple.com/guide/iphone/turn-on-and-practice-voiceover-iph3e2e415f/ios)
 

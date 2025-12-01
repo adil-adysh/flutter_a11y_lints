@@ -1,4 +1,4 @@
-# 📄 Document 3 — System Architecture for `flutter_a11y_lints`
+# System Architecture for `flutter_a11y_lints`
 
 Plugin Structure, Rule Loading, Utilities, Configuration, and Testing Architecture
 
@@ -438,4 +438,3 @@ This document defines the entire architecture of `flutter_a11y_lints`, including
 * Performance expectations
 
 Together with Document 1 (high-confidence rules) and Document 2 (constraints/real-world challenges), this forms the foundational spec for implementation.
-

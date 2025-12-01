@@ -1,4 +1,4 @@
-# Document 2 — Real-World Challenges & Constraints When Implementing Flutter Accessibility Lints
+# Real-World Challenges & Constraints When Implementing Flutter Accessibility Lints
 
 ## flutter_a11y_lints — Design Considerations for Reliable Rule Implementation
 
@@ -281,7 +281,6 @@ A rule is considered noisy if:
 
 ### ✔ Strategies to Maintain Developer Trust
 
- 
 1. **Keep warnings limited to high-confidence cases.**
 2. **Heuristic rules should be INFO, not WARNING.**
 3. **Customizable suppression**:
@@ -290,7 +289,6 @@ A rule is considered noisy if:
    * Configuration through `analysis_options.yaml`
 4. **Helpful diagnostics**:
    * Include actionable fixes in `correctionMessage`.
-
 
 ---
 
@@ -313,7 +311,7 @@ Large companies adopt new lint rules gradually.
     # or
     mode: expanded       # includes heuristics
   ```
- 
+
 * Only high-confidence rules belong to “conservative” mode.
 
 ---

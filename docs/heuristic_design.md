@@ -182,7 +182,6 @@ if (score >= 3 && !signals.hasSemanticsAncestor && !signals.isInSafeComponent) {
 }
 ```
 
-
 ---
 
 ## 10. Example Flow: A23 — Contextual Button Labels
