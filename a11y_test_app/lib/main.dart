@@ -96,21 +96,21 @@ class A11yTestPage extends StatelessWidget {
             const SizedBox(height: 8),
             // VIOLATION: Image in ListTile without excludeFromSemantics
             ListTile(
-              leading: Image.network('https://example.com/icon.png'),
+              leading: Image.asset('assets/icon.png'),
               title: const Text('Item with decorative icon'),
             ),
             // CORRECT: Image with excludeFromSemantics
             ListTile(
-              leading: Image.network(
-                'https://example.com/icon.png',
+              leading: Image.asset(
+                'assets/icon.png',
                 excludeFromSemantics: true,
               ),
               title: const Text('Item with excluded icon'),
             ),
             // CORRECT: Image with semantic label
             ListTile(
-              leading: Image.network(
-                'https://example.com/icon.png',
+              leading: Image.asset(
+                'assets/icon.png',
                 semanticLabel: 'User avatar',
               ),
               title: const Text('Item with labeled icon'),
@@ -128,14 +128,14 @@ class A11yTestPage extends StatelessWidget {
             // VIOLATION: Tappable image without semantic label
             GestureDetector(
               onTap: () {},
-              child: Image.network('https://example.com/product.png'),
+              child: Image.asset('assets/product.png'),
             ),
             const SizedBox(height: 8),
             // CORRECT: Tappable image with semantic label
             GestureDetector(
               onTap: () {},
-              child: Image.network(
-                'https://example.com/product.png',
+              child: Image.asset(
+                'assets/product.png',
                 semanticLabel: 'View product details',
               ),
             ),
