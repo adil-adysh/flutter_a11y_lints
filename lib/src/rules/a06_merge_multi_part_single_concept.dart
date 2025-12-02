@@ -1,68 +1,66 @@
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/error.dart' hide LintCode;
-import 'package:analyzer/error/listener.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
+import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 
-import '../utils/flutter_imports.dart';
-import '../utils/type_utils.dart';
+/// A06: Merge Multi-Part Single Concept
+/// 
+/// Detects interactive widgets with multiple semantic children that should
+/// be announced as a single unit (e.g., icon + text in a button).
+class A06MergeMultiPartSingleConcept {
+  static const code = 'a06_merge_multi_part_single_concept';
+  static const message = 'Interactive control has multiple semantic parts';
+  static const correctionMessage = 
+      'Use MergeSemantics to combine icon and text into a single announcement';
 
-class MergeMultiPartSingleConcept extends DartLintRule {
-  const MergeMultiPartSingleConcept() : super(code: _code);
+  /// Check if a semantic node violates this rule
+  static bool check(SemanticNode node) {
+    // Must be interactive
+    if (!node.isEnabled || !node.hasTap) return false;
 
-  static const _code = LintCode(
-    name: 'flutter_a11y_merge_composite_values',
-    problemMessage:
-        'A multi-part value that represents a single concept should be merged into a single semantic node.',
-    correctionMessage: 'Try wrapping the widget with a MergeSemantics widget.',
-    errorSeverity: ErrorSeverity.WARNING,
-  );
+    // Must have multiple children with labels
+    if (node.children.length < 2) return false;
 
-  @override
-  void run(
-    CustomLintResolver resolver,
-    DiagnosticReporter reporter,
-    CustomLintContext context,
-  ) {
-    context.addPostRunCallback(() async {
-      final unit = await resolver.getResolvedUnitResult();
-      if (!fileUsesFlutter(unit)) return;
-    });
-
-    context.registry.addInstanceCreationExpression((node) {
-      final type = node.staticType;
-      if (type == null) return;
-
-      if (!isType(type, 'flutter', 'Row') && !isType(type, 'flutter', 'Wrap')) {
-        return;
+    // Check if children have their own labels (not merged)
+    var childrenWithLabels = 0;
+    for (final child in node.children) {
+      if (child.label != null && child.label!.isNotEmpty) {
+        childrenWithLabels++;
       }
+    }
 
-      final parent = node.parent;
-      if (parent is InstanceCreationExpression) {
-        final parentType = parent.staticType;
-        if (parentType != null &&
-            isType(parentType, 'flutter', 'MergeSemantics')) {
-          return;
-        }
+    // If we have 2+ children with labels and the parent doesn't merge,
+    // it's likely a violation (icon + text that should be merged)
+    return childrenWithLabels >= 2 && !node.mergesDescendants;
+  }
+
+  /// Get violations for a semantic tree
+  static List<A06Violation> checkTree(SemanticTree tree) {
+    final violations = <A06Violation>[];
+    
+    void visit(SemanticNode node) {
+      if (check(node)) {
+        violations.add(A06Violation(node: node));
       }
-
-      final children = node.argumentList.arguments
-          .where((arg) => arg.staticType?.isDartCoreList ?? false)
-          .expand<Expression>((arg) => arg is ListLiteral
-              ? arg.elements.cast<Expression>()
-              : const <Expression>[])
-          .toList();
-
-      if (children.length > 1) {
-        final hasIcon = children.any((child) =>
-            child.staticType != null &&
-            isType(child.staticType, 'flutter', 'Icon'));
-        final hasText = children.any((child) =>
-            child.staticType != null &&
-            isType(child.staticType, 'flutter', 'Text'));
-        if (hasIcon && hasText) {
-          reporter.atNode(node, _code);
-        }
+      for (final child in node.children) {
+        visit(child);
       }
-    });
+    }
+
+    visit(tree.root);
+    return violations;
+  }
+}
+
+class A06Violation {
+  final SemanticNode node;
+
+  A06Violation({required this.node});
+
+  String get description {
+    final childLabels = node.children
+        .where((c) => c.label != null && c.label!.isNotEmpty)
+        .map((c) => '"${c.label}"')
+        .join(', ');
+    return 'Interactive ${node.widgetType} has ${node.children.length} '
+        'separate semantic parts: $childLabels. Consider using MergeSemantics.';
   }
 }

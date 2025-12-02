@@ -9,19 +9,22 @@ import 'package:path/path.dart' as p;
 
 import 'package:flutter_a11y_lints/src/pipeline/semantic_ir_builder.dart';
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
-import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/utils/flutter_utils.dart';
 import 'package:flutter_a11y_lints/src/utils/method_utils.dart';
+import 'package:flutter_a11y_lints/src/rules/a01_unlabeled_interactive.dart';
+import 'package:flutter_a11y_lints/src/rules/a02_avoid_redundant_role_words.dart';
+import 'package:flutter_a11y_lints/src/rules/a06_merge_multi_part_single_concept.dart';
+import 'package:flutter_a11y_lints/src/rules/a07_replace_semantics_cleanly.dart';
 
 void main(List<String> args) async {
   if (args.isEmpty) {
-    print('Usage: flutter_a11y_analyzer <path_to_analyze>');
+    print('Usage: a11y <path_to_analyze>');
     print(
         '  Analyzes Flutter files for accessibility issues using semantic IR.');
     print('');
     print('Examples:');
-    print('  flutter_a11y_analyzer lib/');
-    print('  flutter_a11y_analyzer lib/main.dart');
+    print('  a11y lib/main.dart');
+    print('  a11y lib/');
     exit(1);
   }
 
@@ -151,27 +154,65 @@ class FlutterA11yAnalyzer {
       final tree = irBuilder.buildForExpression(expression);
       if (tree == null) continue;
 
-      // Run A01 rule: Check for unlabeled interactive controls
-      for (final node in tree.accessibilityFocusNodes) {
-        if (!_isInteractive(node)) continue;
-        if (!_isPrimaryControl(node)) continue;
+      // Run all rules on the semantic tree
+      final a01Violations = A01UnlabeledInteractive.checkTree(tree);
+      final a02Violations = A02AvoidRedundantRoleWords.checkTree(tree);
+      final a06Violations = A06MergeMultiPartSingleConcept.checkTree(tree);
+      final a07Violations = A07ReplaceSemanticsCleanly.checkTree(tree);
 
-        final hasLabel = node.effectiveLabel != null ||
-            node.labelGuarantee != LabelGuarantee.none;
-
-        if (hasLabel) continue;
-
-        // Found a violation!
-        final location = unit.lineInfo.getLocation(node.astNode.offset);
+      // Convert A01 violations to issues
+      for (final violation in a01Violations) {
+        final location = unit.lineInfo.getLocation(violation.node.astNode.offset);
         issues.add(A11yIssue(
           file: unit.path,
           line: location.lineNumber,
           column: location.columnNumber,
           severity: 'warning',
-          code: 'a01_unlabeled_interactive',
-          message:
-              'Interactive ${node.controlKind.name} must have an accessible label',
-          correctionMessage: 'Add a tooltip, Text child, or Semantics label',
+          code: A01UnlabeledInteractive.code,
+          message: A01UnlabeledInteractive.message,
+          correctionMessage: A01UnlabeledInteractive.correctionMessage,
+        ));
+      }
+
+      // Convert A02 violations to issues
+      for (final violation in a02Violations) {
+        final location = unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A02AvoidRedundantRoleWords.code,
+          message: '${A02AvoidRedundantRoleWords.message}: ${violation.redundantWords.join(", ")}',
+          correctionMessage: A02AvoidRedundantRoleWords.correctionMessage,
+        ));
+      }
+
+      // Convert A06 violations to issues
+      for (final violation in a06Violations) {
+        final location = unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A06MergeMultiPartSingleConcept.code,
+          message: A06MergeMultiPartSingleConcept.message,
+          correctionMessage: A06MergeMultiPartSingleConcept.correctionMessage,
+        ));
+      }
+
+      // Convert A07 violations to issues
+      for (final violation in a07Violations) {
+        final location = unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A07ReplaceSemanticsCleanly.code,
+          message: A07ReplaceSemanticsCleanly.message,
+          correctionMessage: A07ReplaceSemanticsCleanly.correctionMessage,
         ));
       }
     }
@@ -179,16 +220,4 @@ class FlutterA11yAnalyzer {
     return issues;
   }
 
-  bool _isInteractive(SemanticNode node) =>
-      (node.hasTap || node.hasIncrease || node.hasDecrease) && node.isEnabled;
-
-  bool _isPrimaryControl(SemanticNode node) {
-    const targetControls = {
-      ControlKind.iconButton,
-      ControlKind.elevatedButton,
-      ControlKind.textButton,
-      ControlKind.floatingActionButton,
-    };
-    return targetControls.contains(node.controlKind);
-  }
 }

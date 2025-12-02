@@ -1,86 +1,72 @@
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/error.dart' hide LintCode;
-import 'package:analyzer/error/listener.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
+import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
+import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
 
-import '../utils/flutter_imports.dart';
-import '../utils/type_utils.dart';
+/// A02: Avoid Redundant Role Words
+/// 
+/// Detects labels that include redundant role words like "button", "icon", etc.
+/// that are already announced by the widget's semantic role.
+class A02AvoidRedundantRoleWords {
+  static const code = 'a02_avoid_redundant_role_words';
+  static const message = 'Label contains redundant role words';
+  static const correctionMessage = 
+      'Remove words like "button", "icon" from label - the role is announced automatically';
 
-class AvoidRedundantRoleWords extends DartLintRule {
-  const AvoidRedundantRoleWords() : super(code: _code);
-
-  static const _code = LintCode(
-    name: 'flutter_a11y_avoid_redundant_role_words',
-    problemMessage: 'Avoid using redundant role words in labels.',
-    correctionMessage: 'The role is already announced by the widget.',
-    errorSeverity: ErrorSeverity.WARNING,
+  static final _redundantWords = RegExp(
+    r'\b(button|btn|icon|image|link|checkbox|radio|switch|selected|checked|toggle)\b',
+    caseSensitive: false,
   );
 
-  static const redundantWords = [
-    'button',
-    'btn',
-    'tab',
-    'selected',
-    'checkbox',
-    'switch',
-  ];
+  /// Check if a semantic node violates this rule
+  static bool check(SemanticNode node) {
+    final label = node.label;
+    if (label == null || label.isEmpty) return false;
 
-  @override
-  void run(
-    CustomLintResolver resolver,
-    DiagnosticReporter reporter,
-    CustomLintContext context,
-  ) {
-    context.addPostRunCallback(() async {
-      final unit = await resolver.getResolvedUnitResult();
-      if (!fileUsesFlutter(unit)) return;
-    });
+    // Only check interactive controls
+    if (!node.isEnabled) return false;
+    if (node.controlKind == ControlKind.none) return false;
 
-    void checkLiteral(StringLiteral literal) {
-      final text = literal.stringValue?.toLowerCase() ?? '';
-      for (final word in redundantWords) {
-        if (text.contains(word)) {
-          reporter.atNode(literal, _code);
-          return;
-        }
+    // Check if label contains redundant words
+    return _redundantWords.hasMatch(label);
+  }
+
+  /// Get violations for a semantic tree
+  static List<A02Violation> checkTree(SemanticTree tree) {
+    final violations = <A02Violation>[];
+    
+    void visit(SemanticNode node) {
+      if (check(node)) {
+        violations.add(A02Violation(
+          node: node,
+          redundantWords: _extractRedundantWords(node.label!),
+        ));
+      }
+      for (final child in node.children) {
+        visit(child);
       }
     }
 
-    context.registry.addInstanceCreationExpression((node) {
-      final type = node.staticType;
-      if (type == null) return;
+    visit(tree.root);
+    return violations;
+  }
 
-      if (isIconButton(type)) {
-        final tooltipArg = node.argumentList.arguments
-            .whereType<NamedExpression>()
-            .where((arg) => arg.name.label.name == 'tooltip')
-            .firstOrNull;
-        if (tooltipArg?.expression case StringLiteral tooltip) {
-          checkLiteral(tooltip);
-        }
-      } else if (isSemantics(type)) {
-        final labelArg = node.argumentList.arguments
-            .whereType<NamedExpression>()
-            .where((arg) => arg.name.label.name == 'label')
-            .firstOrNull;
-        if (labelArg?.expression case StringLiteral label) {
-          checkLiteral(label);
-        }
-      }
-    });
+  static List<String> _extractRedundantWords(String label) {
+    final matches = _redundantWords.allMatches(label);
+    return matches.map((m) => m.group(0)!.toLowerCase()).toSet().toList();
+  }
+}
 
-    context.registry.addSimpleStringLiteral((node) {
-      // Check for Text widgets inside buttons
-      final parent = node.parent;
-      if (parent is ArgumentList) {
-        final grandParent = parent.parent;
-        if (grandParent is InstanceCreationExpression) {
-          final type = grandParent.staticType;
-          if (type != null && isMaterialButton(type)) {
-            checkLiteral(node);
-          }
-        }
-      }
-    });
+class A02Violation {
+  final SemanticNode node;
+  final List<String> redundantWords;
+
+  A02Violation({
+    required this.node,
+    required this.redundantWords,
+  });
+
+  String get description {
+    final words = redundantWords.join(', ');
+    return 'Label "${node.label}" contains redundant role word(s): $words';
   }
 }

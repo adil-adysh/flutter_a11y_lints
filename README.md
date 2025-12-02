@@ -1,6 +1,6 @@
-# Flutter A11y Semantic IR Analyzer
+# Flutter A11y Lints
 
-A standalone accessibility analyzer for Flutter applications using semantic intermediate representation (IR) for deep, contextual accessibility analysis.
+A semantic IR-based accessibility analyzer for Flutter applications that provides deep, contextual accessibility analysis.
 
 ## Overview
 
@@ -12,15 +12,20 @@ Unlike simple AST-based linters, this analyzer builds a **semantic tree** that u
 - **Accurate label detection**: Derives effective labels from Text children, tooltips, and Semantics widgets
 - **Merging semantics**: Correctly handles `MergeSemantics` and semantic exclusion
 - **Enabled state tracking**: Only flags controls that are actually interactive
-- **Zero false positives**: Deep analysis eliminates common heuristic-based false alarms
+- **High confidence**: Deep analysis eliminates common heuristic-based false alarms
 
 ## Installation
 
-### As a standalone tool
+Add to your `dev_dependencies`:
 
-From the repository root:
+```yaml
+dev_dependencies:
+  flutter_a11y_lints: ^0.0.1
+```
+
+Then run:
+
 ```bash
-cd semantic_ir_linter
 dart pub get
 ```
 
@@ -29,39 +34,54 @@ dart pub get
 ### Command Line
 
 Analyze a single file:
+
 ```bash
-dart run bin/flutter_a11y_analyzer.dart lib/main.dart
+dart run flutter_a11y_lints:analyze lib/main.dart
 ```
 
 Analyze a directory:
+
 ```bash
-dart run bin/flutter_a11y_analyzer.dart lib/
+dart run flutter_a11y_lints:analyze lib/
+```
+
+### From Project Root
+
+If you have the package locally:
+
+```bash
+dart run bin/a11y.dart lib/
 ```
 
 ### Output Example
 
-```
+```text
 Flutter A11y Semantic Analyzer
 ==============================
 Analyzing: lib/
 
 Analyzing: main.dart
-Found 2 accessibility issue(s):
+Found 3 accessibility issue(s):
 
 WARNING: Interactive iconButton must have an accessible label
   at lib/main.dart:50:13
   Add a tooltip, Text child, or Semantics label
 
-WARNING: Interactive iconButton must have an accessible label
-  at lib/main.dart:296:22
-  Add a tooltip, Text child, or Semantics label
+WARNING: Label contains redundant role words: button
+  at lib/main.dart:85:15
+  Remove words like "button", "icon" from label - the role is announced automatically
+
+WARNING: Interactive control has multiple semantic parts
+  at lib/main.dart:120:9
+  Use MergeSemantics to combine icon and text into a single announcement
 ```
 
-## Rules
+## Implemented Rules
 
 ### A01: Unlabeled Interactive Controls
 
-**Rule ID**: `a01_unlabeled_interactive`
+**Rule ID**: `a01_unlabeled_interactive`  
+**Severity**: WARNING
 
 Interactive controls must expose an accessible label so screen readers can announce them properly.
 
@@ -104,6 +124,133 @@ Semantics(
 )
 ```
 
+---
+
+### A02: Avoid Redundant Role Words
+
+**Rule ID**: `a02_avoid_redundant_role_words`  
+**Severity**: WARNING
+
+Don't include words like "button", "icon", "selected" in labels that are already announced by the widget's semantic role.
+
+#### ❌ Bad
+
+```dart
+IconButton(
+  tooltip: 'Save button',  // "button" is redundant
+  icon: Icon(Icons.save),
+  onPressed: onSave,
+)
+
+ElevatedButton(
+  onPressed: onSubmit,
+  child: Text('Submit button'),  // "button" is redundant
+)
+```
+
+#### ✅ Good
+
+```dart
+IconButton(
+  tooltip: 'Save',  // Role announced automatically
+  icon: Icon(Icons.save),
+  onPressed: onSave,
+)
+
+ElevatedButton(
+  onPressed: onSubmit,
+  child: Text('Submit'),  // Clean label
+)
+```
+
+**Screen Reader Output**:
+- Bad: "Save button, button" (redundant)
+- Good: "Save, button" (clean)
+
+---
+
+### A06: Merge Multi-Part Single Concept
+
+**Rule ID**: `a06_merge_multi_part_single_concept`  
+**Severity**: WARNING
+
+Use `MergeSemantics` for composite values/controls that should be announced as one unit (e.g., icon + text).
+
+#### ❌ Bad
+
+```dart
+InkWell(
+  onTap: save,
+  child: Row(
+    children: [
+      Icon(Icons.save),  // Announced separately
+      Text('Save'),      // Announced separately
+    ],
+  ),
+)
+// Screen reader: "save icon" → swipe → "Save text"
+```
+
+#### ✅ Good
+
+```dart
+MergeSemantics(
+  child: InkWell(
+    onTap: save,
+    child: Row(
+      children: [
+        Icon(Icons.save),
+        Text('Save'),
+      ],
+    ),
+  ),
+)
+// Screen reader: "Save, button" (single announcement)
+```
+
+---
+
+### A07: Replace Semantics Cleanly
+
+**Rule ID**: `a07_replace_semantics_cleanly`  
+**Severity**: WARNING
+
+When providing a custom semantic label, wrap children in `ExcludeSemantics` to prevent double announcements.
+
+#### ❌ Bad
+
+```dart
+Semantics(
+  label: 'Score: 72 points, up 2',
+  child: Row(
+    children: [
+      Text('72'),           // Also announced
+      Icon(Icons.trending_up),
+      Text('+2'),           // Also announced
+    ],
+  ),
+)
+// Announces: "Score 72 points up 2, 72, trending up, +2" (confusing!)
+```
+
+#### ✅ Good
+
+```dart
+Semantics(
+  label: 'Score: 72 points, up 2',
+  child: ExcludeSemantics(  // Children excluded
+    child: Row(
+      children: [
+        Text('72'),
+        Icon(Icons.trending_up),
+        Text('+2'),
+      ],
+    ),
+  ),
+)
+// Announces: "Score 72 points up 2" (once, clear)
+```
+
 ## Architecture
 
 The analyzer works in several phases:
@@ -141,7 +288,7 @@ Note: Tests require proper Flutter package resolution, so they work best when te
   run: |
     cd semantic_ir_linter
     dart pub get
-    dart run bin/flutter_a11y_analyzer.dart ../your_app/lib/
+    dart run bin/a11y.dart ../your_app/lib/
 ```
 
 ### Pre-commit Hook
@@ -149,7 +296,7 @@ Note: Tests require proper Flutter package resolution, so they work best when te
 ```bash
 #!/bin/bash
 cd semantic_ir_linter
-dart run bin/flutter_a11y_analyzer.dart ../your_app/lib/
+dart run bin/a11y.dart ../your_app/lib/
 if [ $? -ne 0 ]; then
   echo "❌ Accessibility issues found. Please fix before committing."
   exit 1
@@ -173,37 +320,56 @@ The semantic IR analyzer trades real-time IDE feedback for deeper, more accurate
 The package structure:
 
 ```text
-semantic_ir_linter/
+flutter_a11y_lints/
 ├── bin/
-│   └── flutter_a11y_analyzer.dart    # CLI entry point
+│   └── a11y.dart                    # CLI entry point
 ├── lib/
+│   ├── flutter_a11y_lints.dart       # Public API
 │   └── src/
 │       ├── pipeline/                  # Widget → Semantic builders
 │       ├── semantics/                 # Core semantic IR types
+│       ├── rules/                     # Accessibility rules (A01, A02, A06, A07)
 │       └── utils/                     # Helper utilities
 ├── data/
 │   └── known_semantics_v2.6.json     # Widget metadata
 ├── test/
-│   └── analyzer_test.dart            # Unit tests
+│   └── integration_test.dart         # Integration tests
 └── README.md
 ```
 
 ## Future Enhancements
 
-- [ ] More accessibility rules (A02-A08, A21)
+- [x] Core semantic IR pipeline
+- [x] Rules: A01, A02, A06, A07
+- [ ] Additional rules (A03, A04, A05, A08, A21)
 - [ ] JSON/SARIF output formats for tooling integration
 - [ ] Watch mode for continuous analysis
 - [ ] Language server protocol (LSP) for IDE integration
 - [ ] Quick fixes and auto-corrections
 - [ ] Configuration file support
+- [ ] pub.dev executable for `dart run flutter_a11y_lints:analyze`
 
 ## Related Documentation
 
-- [Semantic IR Architecture](../docs/semantic_ir_architecture.md)
-- [KnownSemantics v2.6 Spec](../docs/known_semantics_v2.6.md)
+- [Semantic IR Architecture](docs/semantic_ir_architecture.md)
+- [Accessibility Rules Reference](docs/accessibility_rules_reference.md)
+- [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md)
 - [Flutter Accessibility Guide](https://docs.flutter.dev/development/accessibility-and-localization/accessibility)
+- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
 
 ## License
 
-MIT License - See [../LICENSE](../LICENSE) file for details.
+MIT License - See [LICENSE](LICENSE) file for details.
+
+## Contributing
+
+Contributions welcome! Please:
+
+1. Check existing issues or create a new one
+2. Fork the repository
+3. Create a feature branch
+4. Add tests for new rules
+5. Submit a pull request
+
+See [docs/accessibility_rules_reference.md](docs/accessibility_rules_reference.md) for rule development guidelines.
 

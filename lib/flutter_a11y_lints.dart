@@ -13,7 +13,10 @@ export 'src/pipeline/semantic_ir_builder.dart';
 
 // Rules
 export 'src/rules/a01_unlabeled_interactive.dart';
+export 'src/rules/a02_avoid_redundant_role_words.dart';
+export 'src/rules/a06_merge_multi_part_single_concept.dart';
+export 'src/rules/a07_replace_semantics_cleanly.dart';
 
 // Utilities
-export 'src/utils/type_utils.dart';
+export 'src/utils/flutter_utils.dart';
 export 'src/utils/method_utils.dart';
