@@ -79,7 +79,7 @@ void main() {
       final a02Issues = issues.where(
         (i) => i.code == 'a02_avoid_redundant_role_words',
       );
-      
+
       if (a02Issues.isNotEmpty) {
         // Verify message content
         for (final issue in a02Issues) {
@@ -101,7 +101,7 @@ void main() {
       final a06Issues = issues.where(
         (i) => i.code == 'a06_merge_multi_part_single_concept',
       );
-      
+
       // May or may not have violations depending on test app content
       if (a06Issues.isNotEmpty) {
         for (final issue in a06Issues) {
@@ -123,7 +123,7 @@ void main() {
       final a07Issues = issues.where(
         (i) => i.code == 'a07_replace_semantics_cleanly',
       );
-      
+
       // May or may not have violations depending on test app content
       if (a07Issues.isNotEmpty) {
         for (final issue in a07Issues) {
@@ -201,9 +201,10 @@ void main() {
 
       // Should find multiple types of issues
       expect(issues, isNotEmpty);
-      
+
       // All A01 violations should be for interactive controls
-      final a01Issues = issues.where((i) => i.code == 'a01_unlabeled_interactive');
+      final a01Issues =
+          issues.where((i) => i.code == 'a01_unlabeled_interactive');
       for (final issue in a01Issues) {
         expect(
           issue.message,

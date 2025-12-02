@@ -19,6 +19,8 @@ enum ControlKind {
   none,
   elevatedButton,
   textButton,
+  filledButton,
+  outlinedButton,
   iconButton,
   floatingActionButton,
   listTile,
@@ -142,6 +144,10 @@ ControlKind _parseControlKind(String raw) {
       return ControlKind.elevatedButton;
     case 'textButton':
       return ControlKind.textButton;
+    case 'filledButton':
+      return ControlKind.filledButton;
+    case 'outlinedButton':
+      return ControlKind.outlinedButton;
     case 'iconButton':
       return ControlKind.iconButton;
     case 'floatingActionButton':

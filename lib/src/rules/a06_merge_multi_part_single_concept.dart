@@ -2,13 +2,13 @@ import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 
 /// A06: Merge Multi-Part Single Concept
-/// 
+///
 /// Detects interactive widgets with multiple semantic children that should
 /// be announced as a single unit (e.g., icon + text in a button).
 class A06MergeMultiPartSingleConcept {
   static const code = 'a06_merge_multi_part_single_concept';
   static const message = 'Interactive control has multiple semantic parts';
-  static const correctionMessage = 
+  static const correctionMessage =
       'Use MergeSemantics to combine icon and text into a single announcement';
 
   /// Check if a semantic node violates this rule
@@ -35,7 +35,7 @@ class A06MergeMultiPartSingleConcept {
   /// Get violations for a semantic tree
   static List<A06Violation> checkTree(SemanticTree tree) {
     final violations = <A06Violation>[];
-    
+
     void visit(SemanticNode node) {
       if (check(node)) {
         violations.add(A06Violation(node: node));

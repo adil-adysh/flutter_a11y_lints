@@ -3,13 +3,13 @@ import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
 
 /// A02: Avoid Redundant Role Words
-/// 
+///
 /// Detects labels that include redundant role words like "button", "icon", etc.
 /// that are already announced by the widget's semantic role.
 class A02AvoidRedundantRoleWords {
   static const code = 'a02_avoid_redundant_role_words';
   static const message = 'Label contains redundant role words';
-  static const correctionMessage = 
+  static const correctionMessage =
       'Remove words like "button", "icon" from label - the role is announced automatically';
 
   static final _redundantWords = RegExp(
@@ -33,7 +33,7 @@ class A02AvoidRedundantRoleWords {
   /// Get violations for a semantic tree
   static List<A02Violation> checkTree(SemanticTree tree) {
     final violations = <A02Violation>[];
-    
+
     void visit(SemanticNode node) {
       if (check(node)) {
         violations.add(A02Violation(

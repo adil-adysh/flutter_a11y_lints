@@ -43,6 +43,8 @@ class SemanticNode {
     required this.labelSource,
     required this.explicitChildLabel,
     required this.children,
+    this.branchGroupId,
+    this.branchValue,
   });
 
   final String widgetType;
@@ -73,6 +75,16 @@ class SemanticNode {
   final String? explicitChildLabel;
 
   final List<SemanticNode> children;
+
+  /// Identifies mutually exclusive states originating from the same
+  /// conditional in the widget tree. Nodes that share the same
+  /// [branchGroupId] but different [branchValue] should not both be considered
+  /// simultaneously by heuristics.
+  final int? branchGroupId;
+
+  /// Position within a conditional group (e.g. 0 for the "true" branch,
+  /// 1 for the "false" branch).
+  final int? branchValue;
 
   String? get effectiveLabel {
     if (label != null && label!.isNotEmpty) {

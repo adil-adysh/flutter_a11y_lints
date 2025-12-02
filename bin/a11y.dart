@@ -162,7 +162,8 @@ class FlutterA11yAnalyzer {
 
       // Convert A01 violations to issues
       for (final violation in a01Violations) {
-        final location = unit.lineInfo.getLocation(violation.node.astNode.offset);
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
         issues.add(A11yIssue(
           file: unit.path,
           line: location.lineNumber,
@@ -176,21 +177,24 @@ class FlutterA11yAnalyzer {
 
       // Convert A02 violations to issues
       for (final violation in a02Violations) {
-        final location = unit.lineInfo.getLocation(violation.node.astNode.offset);
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
         issues.add(A11yIssue(
           file: unit.path,
           line: location.lineNumber,
           column: location.columnNumber,
           severity: 'warning',
           code: A02AvoidRedundantRoleWords.code,
-          message: '${A02AvoidRedundantRoleWords.message}: ${violation.redundantWords.join(", ")}',
+          message:
+              '${A02AvoidRedundantRoleWords.message}: ${violation.redundantWords.join(", ")}',
           correctionMessage: A02AvoidRedundantRoleWords.correctionMessage,
         ));
       }
 
       // Convert A06 violations to issues
       for (final violation in a06Violations) {
-        final location = unit.lineInfo.getLocation(violation.node.astNode.offset);
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
         issues.add(A11yIssue(
           file: unit.path,
           line: location.lineNumber,
@@ -204,7 +208,8 @@ class FlutterA11yAnalyzer {
 
       // Convert A07 violations to issues
       for (final violation in a07Violations) {
-        final location = unit.lineInfo.getLocation(violation.node.astNode.offset);
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
         issues.add(A11yIssue(
           file: unit.path,
           line: location.lineNumber,
@@ -219,5 +224,4 @@ class FlutterA11yAnalyzer {
 
     return issues;
   }
-
 }

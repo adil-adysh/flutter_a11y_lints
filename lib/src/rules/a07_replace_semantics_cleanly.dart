@@ -2,13 +2,13 @@ import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 
 /// A07: Replace Semantics Cleanly
-/// 
+///
 /// Detects Semantics widgets with custom labels that don't exclude
 /// children's semantics, causing double announcements.
 class A07ReplaceSemanticsCleanly {
   static const code = 'a07_replace_semantics_cleanly';
   static const message = 'Semantics replacement doesn\'t exclude children';
-  static const correctionMessage = 
+  static const correctionMessage =
       'Wrap children with ExcludeSemantics to prevent double announcements';
 
   /// Check if a semantic node violates this rule
@@ -38,7 +38,7 @@ class A07ReplaceSemanticsCleanly {
   /// Get violations for a semantic tree
   static List<A07Violation> checkTree(SemanticTree tree) {
     final violations = <A07Violation>[];
-    
+
     void visit(SemanticNode node) {
       if (check(node)) {
         violations.add(A07Violation(node: node));
