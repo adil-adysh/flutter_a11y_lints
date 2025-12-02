@@ -5,7 +5,9 @@ library;
 export 'src/semantics/semantic_node.dart';
 export 'src/semantics/semantic_tree.dart';
 export 'src/semantics/semantic_builder.dart';
+export 'src/semantics/semantic_context.dart';
 export 'src/semantics/known_semantics.dart';
+export 'src/semantics/semantic_neighborhood.dart';
 
 // Pipeline components
 export 'src/widget_tree/widget_node.dart';

@@ -13,7 +13,9 @@ enum LabelSource {
   textChild,
   semanticsWidget,
   inputDecoration,
-  other
+  customWidgetParameter,
+  valueToString,
+  other,
 }
 
 /// Simplified semantic IR node for v1 of the pipeline.
@@ -45,6 +47,24 @@ class SemanticNode {
     required this.children,
     this.branchGroupId,
     this.branchValue,
+    this.id,
+    this.parentId,
+    this.siblingIndex = 0,
+    this.depth = 0,
+    this.preOrderIndex,
+    this.focusOrderIndex,
+    this.layoutGroupId,
+    this.listItemGroupId,
+    this.isPrimaryInGroup = false,
+    this.tooltip,
+    this.value,
+    this.semanticIndex,
+    this.isSemanticBoundary = false,
+    this.isCompositeControl = false,
+    this.isPureContainer = false,
+    this.isInMutuallyExclusiveGroup = false,
+    this.hasScroll = false,
+    this.hasDismiss = false,
   });
 
   final String widgetType;
@@ -73,6 +93,8 @@ class SemanticNode {
   final LabelGuarantee labelGuarantee;
   final LabelSource labelSource;
   final String? explicitChildLabel;
+  final String? tooltip;
+  final String? value;
 
   final List<SemanticNode> children;
 
@@ -86,13 +108,149 @@ class SemanticNode {
   /// 1 for the "false" branch).
   final int? branchValue;
 
+  /// Unique identifier assigned when the semantic tree is annotated.
+  final int? id;
+
+  /// Identifier of the parent node after annotation.
+  final int? parentId;
+
+  /// Index within the parent's children list.
+  final int siblingIndex;
+
+  /// Depth within the semantic tree (0 for root).
+  final int depth;
+
+  /// Depth-first order index assigned during tree annotation.
+  final int? preOrderIndex;
+
+  /// Order in which assistive technologies would focus this node.
+  final int? focusOrderIndex;
+
+  final int? layoutGroupId;
+  final int? listItemGroupId;
+  final bool isPrimaryInGroup;
+
+  /// Whether this node establishes a semantic boundary (e.g. Semantics widget).
+  final bool isSemanticBoundary;
+
+  /// Whether this node aggregates text/control semantics from children.
+  final bool isCompositeControl;
+
+  /// Whether this widget behaves as a pure layout container.
+  final bool isPureContainer;
+
+  final bool isInMutuallyExclusiveGroup;
+  final bool hasScroll;
+  final bool hasDismiss;
+  final int? semanticIndex;
+
   String? get effectiveLabel {
+    final pieces = <String>[];
     if (label != null && label!.isNotEmpty) {
-      return label;
+      pieces.add(label!);
+    }
+    if (tooltip != null && tooltip!.isNotEmpty) {
+      pieces.add(tooltip!);
     }
     if (explicitChildLabel != null && explicitChildLabel!.isNotEmpty) {
-      return explicitChildLabel;
+      pieces.add(explicitChildLabel!);
     }
-    return null;
+    if (pieces.isEmpty) {
+      return null;
+    }
+    return pieces.join('\n');
+  }
+
+  SemanticNode copyWith({
+    String? widgetType,
+    AstNode? astNode,
+    Uri? fileUri,
+    int? offset,
+    int? length,
+    SemanticRole? role,
+    ControlKind? controlKind,
+    bool? isFocusable,
+    bool? isEnabled,
+    bool? hasTap,
+    bool? hasLongPress,
+    bool? hasIncrease,
+    bool? hasDecrease,
+    bool? isToggled,
+    bool? isChecked,
+    bool? mergesDescendants,
+    bool? excludesDescendants,
+    bool? blocksBehind,
+    String? label,
+    LabelGuarantee? labelGuarantee,
+    LabelSource? labelSource,
+    String? explicitChildLabel,
+    List<SemanticNode>? children,
+    int? branchGroupId,
+    int? branchValue,
+    int? id,
+    int? parentId,
+    int? siblingIndex,
+    int? depth,
+    int? preOrderIndex,
+    int? focusOrderIndex,
+    int? layoutGroupId,
+    int? listItemGroupId,
+    bool? isPrimaryInGroup,
+    String? tooltip,
+    String? value,
+    int? semanticIndex,
+    bool? isSemanticBoundary,
+    bool? isCompositeControl,
+    bool? isPureContainer,
+    bool? isInMutuallyExclusiveGroup,
+    bool? hasScroll,
+    bool? hasDismiss,
+  }) {
+    return SemanticNode(
+      widgetType: widgetType ?? this.widgetType,
+      astNode: astNode ?? this.astNode,
+      fileUri: fileUri ?? this.fileUri,
+      offset: offset ?? this.offset,
+      length: length ?? this.length,
+      role: role ?? this.role,
+      controlKind: controlKind ?? this.controlKind,
+      isFocusable: isFocusable ?? this.isFocusable,
+      isEnabled: isEnabled ?? this.isEnabled,
+      hasTap: hasTap ?? this.hasTap,
+      hasLongPress: hasLongPress ?? this.hasLongPress,
+      hasIncrease: hasIncrease ?? this.hasIncrease,
+      hasDecrease: hasDecrease ?? this.hasDecrease,
+      isToggled: isToggled ?? this.isToggled,
+      isChecked: isChecked ?? this.isChecked,
+      mergesDescendants: mergesDescendants ?? this.mergesDescendants,
+      excludesDescendants: excludesDescendants ?? this.excludesDescendants,
+      blocksBehind: blocksBehind ?? this.blocksBehind,
+      label: label ?? this.label,
+      labelGuarantee: labelGuarantee ?? this.labelGuarantee,
+      labelSource: labelSource ?? this.labelSource,
+      explicitChildLabel: explicitChildLabel ?? this.explicitChildLabel,
+      children: children ?? this.children,
+      branchGroupId: branchGroupId ?? this.branchGroupId,
+      branchValue: branchValue ?? this.branchValue,
+      id: id ?? this.id,
+      parentId: parentId ?? this.parentId,
+      siblingIndex: siblingIndex ?? this.siblingIndex,
+      depth: depth ?? this.depth,
+      preOrderIndex: preOrderIndex ?? this.preOrderIndex,
+      focusOrderIndex: focusOrderIndex ?? this.focusOrderIndex,
+      layoutGroupId: layoutGroupId ?? this.layoutGroupId,
+      listItemGroupId: listItemGroupId ?? this.listItemGroupId,
+      isPrimaryInGroup: isPrimaryInGroup ?? this.isPrimaryInGroup,
+      tooltip: tooltip ?? this.tooltip,
+      value: value ?? this.value,
+      semanticIndex: semanticIndex ?? this.semanticIndex,
+      isSemanticBoundary: isSemanticBoundary ?? this.isSemanticBoundary,
+      isCompositeControl: isCompositeControl ?? this.isCompositeControl,
+      isPureContainer: isPureContainer ?? this.isPureContainer,
+      isInMutuallyExclusiveGroup:
+          isInMutuallyExclusiveGroup ?? this.isInMutuallyExclusiveGroup,
+      hasScroll: hasScroll ?? this.hasScroll,
+      hasDismiss: hasDismiss ?? this.hasDismiss,
+    );
   }
 }

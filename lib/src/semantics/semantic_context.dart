@@ -1,0 +1,173 @@
+import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/element/type.dart';
+import 'package:analyzer/dart/element/type_provider.dart';
+
+import 'known_semantics.dart';
+import 'semantic_node.dart';
+
+/// Summary of a custom widget's semantic behavior.
+class SemanticSummary {
+  const SemanticSummary({
+    required this.widgetType,
+    required this.role,
+    required this.controlKind,
+    required this.isCompositeControl,
+    required this.isFocusable,
+    required this.hasTap,
+    required this.hasLongPress,
+    required this.hasIncrease,
+    required this.hasDecrease,
+    required this.isToggled,
+    required this.isChecked,
+    required this.mergesDescendants,
+    required this.excludesDescendants,
+    required this.blocksBehind,
+    required this.labelGuarantee,
+    required this.primaryLabelSource,
+    required this.isSemanticallyTransparent,
+  });
+
+  final String widgetType;
+  final SemanticRole role;
+  final ControlKind controlKind;
+
+  final bool isCompositeControl;
+  final bool isFocusable;
+  final bool hasTap;
+  final bool hasLongPress;
+  final bool hasIncrease;
+  final bool hasDecrease;
+  final bool isToggled;
+  final bool isChecked;
+
+  final bool mergesDescendants;
+  final bool excludesDescendants;
+  final bool blocksBehind;
+
+  final LabelGuarantee labelGuarantee;
+  final LabelSource primaryLabelSource;
+
+  final bool isSemanticallyTransparent;
+
+  factory SemanticSummary.unknown(String widgetType) => SemanticSummary(
+        widgetType: widgetType,
+        role: SemanticRole.unknown,
+        controlKind: ControlKind.none,
+        isCompositeControl: false,
+        isFocusable: false,
+        hasTap: false,
+        hasLongPress: false,
+        hasIncrease: false,
+        hasDecrease: false,
+        isToggled: false,
+        isChecked: false,
+        mergesDescendants: false,
+        excludesDescendants: false,
+        blocksBehind: false,
+        labelGuarantee: LabelGuarantee.none,
+        primaryLabelSource: LabelSource.none,
+        isSemanticallyTransparent: false,
+      );
+}
+
+/// Global context shared across semantic builds.
+class GlobalSemanticContext {
+  GlobalSemanticContext({
+    required this.knownSemantics,
+    required this.typeProvider,
+  });
+
+  final KnownSemanticsRepository knownSemantics;
+  final TypeProvider typeProvider;
+
+  final Map<String, SemanticSummary> _summaryCache = {};
+  final Set<String> _summaryInProgress = {};
+
+  SemanticSummary? getOrComputeSummary(InterfaceType? widgetType) {
+    final element = widgetType?.element;
+    if (element == null) return null;
+    final name = element.name;
+    if (name == null) return null;
+
+    final cached = _summaryCache[name];
+    if (cached != null) return cached;
+
+    if (_summaryInProgress.contains(name)) {
+      return SemanticSummary.unknown(name);
+    }
+
+    _summaryInProgress.add(name);
+    try {
+      final summary = SemanticSummary.unknown(name);
+      _summaryCache[name] = summary;
+      return summary;
+    } finally {
+      _summaryInProgress.remove(name);
+    }
+  }
+
+  String? evalString(Expression? expression) {
+    if (expression == null) return null;
+    if (expression is SimpleStringLiteral) {
+      return expression.value;
+    }
+    if (expression is AdjacentStrings) {
+      final buffer = StringBuffer();
+      for (final string in expression.strings) {
+        final value = evalString(string);
+        if (value == null) return null;
+        buffer.write(value);
+      }
+      return buffer.toString();
+    }
+    if (expression is StringInterpolation) {
+      final buffer = StringBuffer();
+      for (final element in expression.elements) {
+        if (element is InterpolationString) {
+          buffer.write(element.value);
+        } else {
+          return null;
+        }
+      }
+      return buffer.toString();
+    }
+    return null;
+  }
+
+  bool? evalBool(Expression? expression) {
+    if (expression is BooleanLiteral) {
+      return expression.value;
+    }
+    return null;
+  }
+
+  int? evalInt(Expression? expression) {
+    if (expression is IntegerLiteral) {
+      return expression.value;
+    }
+    return null;
+  }
+}
+
+/// Build-scoped context that tracks transient semantic state.
+class BuildSemanticContext {
+  BuildSemanticContext({
+    required this.global,
+    required this.enableHeuristics,
+  });
+
+  final GlobalSemanticContext global;
+  final bool enableHeuristics;
+
+  int excludeDepth = 0;
+  int blockDepth = 0;
+
+  bool get isWithinExcludedSubtree => excludeDepth > 0;
+  bool get isWithinBlockedOverlay => blockDepth > 0;
+
+  KnownSemanticsRepository get knownSemantics => global.knownSemantics;
+
+  String? evalString(Expression? expression) => global.evalString(expression);
+  bool? evalBool(Expression? expression) => global.evalBool(expression);
+  int? evalInt(Expression? expression) => global.evalInt(expression);
+}

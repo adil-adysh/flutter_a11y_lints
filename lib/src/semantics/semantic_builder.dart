@@ -4,24 +4,37 @@ import 'package:analyzer/dart/element/type.dart';
 
 import '../widget_tree/widget_node.dart';
 import 'known_semantics.dart';
+import 'semantic_context.dart';
 import 'semantic_node.dart';
 
 class SemanticBuilder {
   SemanticBuilder({
     required this.unit,
-    required this.knownSemantics,
+    required this.globalContext,
   }) : fileUri = Uri.file(unit.path);
 
   final ResolvedUnitResult unit;
-  final KnownSemanticsRepository knownSemantics;
+  final GlobalSemanticContext globalContext;
   final Uri fileUri;
 
-  SemanticNode? build(WidgetNode? widget) {
+  SemanticNode? build(
+    WidgetNode? widget, {
+    bool enableHeuristics = false,
+  }) {
+    if (widget == null) return null;
+    final ctx = BuildSemanticContext(
+      global: globalContext,
+      enableHeuristics: enableHeuristics,
+    );
+    return _buildNode(widget, ctx);
+  }
+
+  SemanticNode? _buildNode(WidgetNode? widget, BuildSemanticContext ctx) {
     if (widget == null) return null;
 
     if (widget.nodeType == WidgetNodeType.conditionalBranch) {
       for (final branch in widget.branchChildren) {
-        final built = build(branch);
+        final built = _buildNode(branch, ctx);
         if (built != null) {
           return built;
         }
@@ -29,8 +42,28 @@ class SemanticBuilder {
       return null;
     }
 
-    final known = knownSemantics[widget.widgetType] ?? _defaultSemantics;
-    final builtChildren = _buildChildren(widget);
+    switch (widget.widgetType) {
+      case 'Semantics':
+        return _buildSemanticsWrapper(widget, ctx);
+      case 'MergeSemantics':
+        return _buildMergeSemantics(widget, ctx);
+      case 'ExcludeSemantics':
+        return _buildExcludeSemantics(widget, ctx);
+      case 'BlockSemantics':
+        return _buildBlockSemantics(widget, ctx);
+      case 'IndexedSemantics':
+        return _buildIndexedSemantics(widget, ctx);
+      default:
+        return _buildStandardNode(widget, ctx);
+    }
+  }
+
+  SemanticNode? _buildStandardNode(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
+    final known = ctx.knownSemantics[widget.widgetType] ?? _defaultSemantics;
+    final builtChildren = _buildChildren(widget, ctx);
 
     final labelInfo = _deriveLabelInfo(widget);
     final label = labelInfo?.value;
@@ -116,11 +149,251 @@ class SemanticBuilder {
     );
   }
 
-  _BuiltChildren _buildChildren(WidgetNode widget) {
+  SemanticNode? _buildSemanticsWrapper(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
+    final builtChildren = _buildChildren(widget, ctx);
+    final nodes = builtChildren.nodes;
+    final baseChild = nodes.isNotEmpty ? nodes.first : null;
+    final labelInfo = _labelFromExpression(
+      widget.props['label'],
+      source: LabelSource.semanticsWidget,
+    );
+    final tooltip = ctx.evalString(widget.props['tooltip']);
+    final value = ctx.evalString(widget.props['value']);
+    final mergesDescendants =
+        (ctx.evalBool(widget.props['container']) ?? false) || labelInfo != null;
+    final mergedChildLabels = _mergeChildLabels(nodes);
+
+    SemanticRole? roleOverride;
+    if (ctx.evalBool(widget.props['button']) == true) {
+      roleOverride = SemanticRole.button;
+    } else if (ctx.evalBool(widget.props['header']) == true) {
+      roleOverride = SemanticRole.header;
+    }
+
+    return _wrapWithInheritedSemantics(
+      widget: widget,
+      children: nodes,
+      baseChild: baseChild,
+      mergesDescendants: mergesDescendants,
+      isSemanticBoundary: true,
+      labelOverride: labelInfo?.value,
+      labelGuaranteeOverride: labelInfo?.guarantee,
+      labelSourceOverride: labelInfo?.source,
+      explicitChildLabelOverride: mergedChildLabels.text,
+      explicitChildLabelGuarantee: mergedChildLabels.guarantee,
+      tooltipOverride: tooltip,
+      valueOverride: value,
+      isFocusableOverride: ctx.evalBool(widget.props['focusable']),
+      isEnabledOverride: ctx.evalBool(widget.props['enabled']),
+      isToggledOverride: ctx.evalBool(widget.props['toggled']),
+      isCheckedOverride: ctx.evalBool(widget.props['checked']),
+      roleOverride: roleOverride,
+    );
+  }
+
+  SemanticNode? _buildMergeSemantics(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
+    final builtChildren = _buildChildren(widget, ctx);
+    if (builtChildren.nodes.isEmpty) {
+      return null;
+    }
+    final merged = _mergeChildLabels(builtChildren.nodes);
+    return _wrapWithInheritedSemantics(
+      widget: widget,
+      children: builtChildren.nodes,
+      baseChild: builtChildren.nodes.first,
+      mergesDescendants: true,
+      isSemanticBoundary: true,
+      explicitChildLabelOverride: merged.text,
+      explicitChildLabelGuarantee: merged.guarantee,
+    );
+  }
+
+  SemanticNode? _buildExcludeSemantics(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
+    ctx.excludeDepth++;
+    final builtChildren = _buildChildren(widget, ctx);
+    ctx.excludeDepth--;
+    if (builtChildren.nodes.isEmpty) {
+      return null;
+    }
+    return _wrapWithInheritedSemantics(
+      widget: widget,
+      children: builtChildren.nodes,
+      baseChild: null,
+      excludesDescendants: true,
+      isSemanticBoundary: true,
+      isFocusableOverride: false,
+      isEnabledOverride: false,
+      hasTapOverride: false,
+      hasLongPressOverride: false,
+      hasIncreaseOverride: false,
+      hasDecreaseOverride: false,
+    );
+  }
+
+  SemanticNode? _buildBlockSemantics(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
+    ctx.blockDepth++;
+    final builtChildren = _buildChildren(widget, ctx);
+    ctx.blockDepth--;
+    if (builtChildren.nodes.isEmpty) {
+      return null;
+    }
+    return _wrapWithInheritedSemantics(
+      widget: widget,
+      children: builtChildren.nodes,
+      baseChild: builtChildren.nodes.first,
+      blocksBehind: true,
+      isSemanticBoundary: true,
+    );
+  }
+
+  SemanticNode? _buildIndexedSemantics(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
+    final builtChildren = _buildChildren(widget, ctx);
+    if (builtChildren.nodes.isEmpty) {
+      return null;
+    }
+    final index = ctx.evalInt(widget.props['index']);
+    return _wrapWithInheritedSemantics(
+      widget: widget,
+      children: builtChildren.nodes,
+      baseChild: builtChildren.nodes.first,
+      semanticIndex: index,
+      isSemanticBoundary: true,
+    );
+  }
+
+  SemanticNode _wrapWithInheritedSemantics({
+    required WidgetNode widget,
+    required List<SemanticNode> children,
+    required SemanticNode? baseChild,
+    bool mergesDescendants = false,
+    bool excludesDescendants = false,
+    bool blocksBehind = false,
+    bool isSemanticBoundary = false,
+    String? labelOverride,
+    LabelGuarantee? labelGuaranteeOverride,
+    LabelSource? labelSourceOverride,
+    String? explicitChildLabelOverride,
+    LabelGuarantee? explicitChildLabelGuarantee,
+    String? tooltipOverride,
+    String? valueOverride,
+    int? semanticIndex,
+    bool? isFocusableOverride,
+    bool? isEnabledOverride,
+    bool? hasTapOverride,
+    bool? hasLongPressOverride,
+    bool? hasIncreaseOverride,
+    bool? hasDecreaseOverride,
+    bool? isToggledOverride,
+    bool? isCheckedOverride,
+    bool? isCompositeControlOverride,
+    bool? isPureContainerOverride,
+    bool? isInMutuallyExclusiveGroupOverride,
+    bool? hasScrollOverride,
+    bool? hasDismissOverride,
+    ControlKind? controlKindOverride,
+    SemanticRole? roleOverride,
+  }) {
+    final base = baseChild;
+    final role = roleOverride ?? base?.role ?? SemanticRole.group;
+    final controlKind =
+        controlKindOverride ?? base?.controlKind ?? ControlKind.none;
+    final isFocusable = isFocusableOverride ?? base?.isFocusable ?? false;
+    final isEnabled = isEnabledOverride ?? base?.isEnabled ?? true;
+    final hasTap = hasTapOverride ?? base?.hasTap ?? false;
+    final hasLongPress = hasLongPressOverride ?? base?.hasLongPress ?? false;
+    final hasIncrease = hasIncreaseOverride ?? base?.hasIncrease ?? false;
+    final hasDecrease = hasDecreaseOverride ?? base?.hasDecrease ?? false;
+    final isToggled = isToggledOverride ?? base?.isToggled ?? false;
+    final isChecked = isCheckedOverride ?? base?.isChecked ?? false;
+    final isCompositeControl =
+        isCompositeControlOverride ?? base?.isCompositeControl ?? false;
+    final isPureContainer =
+        isPureContainerOverride ?? base?.isPureContainer ?? false;
+    final isInMutuallyExclusiveGroup = isInMutuallyExclusiveGroupOverride ??
+        base?.isInMutuallyExclusiveGroup ??
+        false;
+    final hasScroll = hasScrollOverride ?? base?.hasScroll ?? false;
+    final hasDismiss = hasDismissOverride ?? base?.hasDismiss ?? false;
+
+    var labelGuarantee =
+        labelGuaranteeOverride ?? base?.labelGuarantee ?? LabelGuarantee.none;
+    var labelSource =
+        labelSourceOverride ?? base?.labelSource ?? LabelSource.none;
+
+    if (explicitChildLabelOverride != null &&
+        explicitChildLabelGuarantee != null) {
+      labelGuarantee = _mergeGuarantees(
+        labelGuarantee,
+        explicitChildLabelGuarantee,
+      );
+      if (labelSource == LabelSource.none) {
+        labelSource = LabelSource.textChild;
+      }
+    }
+
+    return SemanticNode(
+      widgetType: widget.widgetType,
+      astNode: widget.astNode,
+      fileUri: fileUri,
+      offset: widget.astNode.offset,
+      length: widget.astNode.length,
+      role: role,
+      controlKind: controlKind,
+      isFocusable: isFocusable,
+      isEnabled: isEnabled,
+      hasTap: hasTap,
+      hasLongPress: hasLongPress,
+      hasIncrease: hasIncrease,
+      hasDecrease: hasDecrease,
+      isToggled: isToggled,
+      isChecked: isChecked,
+      mergesDescendants: mergesDescendants,
+      excludesDescendants: excludesDescendants,
+      blocksBehind: blocksBehind,
+      label: labelOverride ?? base?.label,
+      labelGuarantee: labelGuarantee,
+      labelSource: labelSource,
+      explicitChildLabel:
+          explicitChildLabelOverride ?? base?.explicitChildLabel,
+      children: children,
+      branchGroupId: widget.branchGroupId,
+      branchValue: widget.branchValue,
+      tooltip: tooltipOverride ?? base?.tooltip,
+      value: valueOverride ?? base?.value,
+      semanticIndex: semanticIndex ?? base?.semanticIndex,
+      isSemanticBoundary: isSemanticBoundary,
+      isCompositeControl: isCompositeControl,
+      isPureContainer: isPureContainer,
+      isInMutuallyExclusiveGroup: isInMutuallyExclusiveGroup,
+      hasScroll: hasScroll,
+      hasDismiss: hasDismiss,
+    );
+  }
+
+  _BuiltChildren _buildChildren(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
     final nodes = <SemanticNode>[];
     final slotNodes = <String, SemanticNode>{};
-    final slotOrder = knownSemantics[widget.widgetType]?.slotTraversalOrder ??
-        widget.slots.keys.toList();
+    final slotOrder =
+        ctx.knownSemantics[widget.widgetType]?.slotTraversalOrder ??
+            widget.slots.keys.toList();
 
     for (final slotName in slotOrder) {
       final childWidget = widget.slots[slotName];
@@ -129,12 +402,13 @@ class SemanticBuilder {
         childWidget,
         nodes,
         slotNodes,
+        ctx,
         slotName: slotName,
       );
     }
 
     for (final child in widget.children) {
-      _appendBuiltNodes(child, nodes, slotNodes);
+      _appendBuiltNodes(child, nodes, slotNodes, ctx);
     }
 
     return _BuiltChildren(nodes: nodes, slotNodes: slotNodes);
@@ -143,17 +417,24 @@ class SemanticBuilder {
   void _appendBuiltNodes(
     WidgetNode child,
     List<SemanticNode> aggregate,
-    Map<String, SemanticNode> slotNodes, {
+    Map<String, SemanticNode> slotNodes,
+    BuildSemanticContext ctx, {
     String? slotName,
   }) {
     if (child.nodeType == WidgetNodeType.conditionalBranch) {
       for (final branch in child.branchChildren) {
-        _appendBuiltNodes(branch, aggregate, slotNodes, slotName: slotName);
+        _appendBuiltNodes(
+          branch,
+          aggregate,
+          slotNodes,
+          ctx,
+          slotName: slotName,
+        );
       }
       return;
     }
 
-    final built = build(child);
+    final built = _buildNode(child, ctx);
     if (built != null) {
       aggregate.add(built);
       if (slotName != null && !slotNodes.containsKey(slotName)) {
@@ -283,12 +564,20 @@ class SemanticBuilder {
     }
 
     var guarantee = existingGuarantee;
-    for (final child in children) {
-      final childLabel = child.effectiveLabel;
+    void collectLabels(SemanticNode node) {
+      final childLabel = node.effectiveLabel;
       if (childLabel != null && childLabel.isNotEmpty) {
         parts.add(childLabel);
+        guarantee = _mergeGuarantees(guarantee, node.labelGuarantee);
+        return;
       }
-      guarantee = _mergeGuarantees(guarantee, child.labelGuarantee);
+      for (final grandChild in node.children) {
+        collectLabels(grandChild);
+      }
+    }
+
+    for (final child in children) {
+      collectLabels(child);
     }
 
     final text = parts.isEmpty ? null : parts.join(' ').trim();

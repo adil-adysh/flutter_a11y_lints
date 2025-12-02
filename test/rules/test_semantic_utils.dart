@@ -86,6 +86,18 @@ SemanticNode makeSemanticNode({
   List<SemanticNode> children = const [],
   int? branchGroupId,
   int? branchValue,
+  int? layoutGroupId,
+  int? listItemGroupId,
+  bool isPrimaryInGroup = false,
+  String? tooltip,
+  String? value,
+  int? semanticIndex,
+  bool isSemanticBoundary = false,
+  bool isCompositeControl = false,
+  bool isPureContainer = false,
+  bool isInMutuallyExclusiveGroup = false,
+  bool hasScroll = false,
+  bool hasDismiss = false,
 }) {
   final nodeAst = astNode ?? _dummyAstNode;
   return SemanticNode(
@@ -114,6 +126,18 @@ SemanticNode makeSemanticNode({
     children: children,
     branchGroupId: branchGroupId,
     branchValue: branchValue,
+    layoutGroupId: layoutGroupId,
+    listItemGroupId: listItemGroupId,
+    isPrimaryInGroup: isPrimaryInGroup,
+    tooltip: tooltip,
+    value: value,
+    semanticIndex: semanticIndex,
+    isSemanticBoundary: isSemanticBoundary,
+    isCompositeControl: isCompositeControl,
+    isPureContainer: isPureContainer,
+    isInMutuallyExclusiveGroup: isInMutuallyExclusiveGroup,
+    hasScroll: hasScroll,
+    hasDismiss: hasDismiss,
   );
 }
 
@@ -195,8 +219,32 @@ class Semantics extends Widget {
   const Semantics({
     String? label,
     bool? button,
+    bool? header,
+    bool? toggled,
+    bool? checked,
+    bool? focusable,
+    bool? enabled,
+    bool? container,
+    String? tooltip,
+    String? value,
     required Widget child,
   });
+}
+
+class MergeSemantics extends Widget {
+  const MergeSemantics({required Widget child});
+}
+
+class ExcludeSemantics extends Widget {
+  const ExcludeSemantics({required Widget child});
+}
+
+class BlockSemantics extends Widget {
+  const BlockSemantics({required Widget child});
+}
+
+class IndexedSemantics extends Widget {
+  const IndexedSemantics({required Widget child, int? index});
 }
 
 class ExcludeSemantics extends Widget {
