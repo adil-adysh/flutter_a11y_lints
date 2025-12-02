@@ -32,14 +32,15 @@ void main() {
       final issues = await analyzer.analyze(testAppPath);
 
       // The test app intentionally has violations for testing
-      expect(issues, isNotEmpty, reason: 'Test app should have accessibility issues');
-      
+      expect(issues, isNotEmpty,
+          reason: 'Test app should have accessibility issues');
+
       // Should find IconButtons without tooltips
       final iconButtonIssues = issues.where(
         (i) => i.message.contains('iconButton'),
       );
       expect(iconButtonIssues, isNotEmpty);
-      
+
       // All issues should have proper metadata
       for (final issue in issues) {
         expect(issue.file, isNotEmpty);
@@ -79,11 +80,11 @@ void main() {
       for (final issue in issues) {
         // File path should exist
         expect(File(issue.file).existsSync(), isTrue);
-        
+
         // Line and column should be positive
         expect(issue.line, greaterThan(0));
         expect(issue.column, greaterThan(0));
-        
+
         // Should point to main.dart
         expect(issue.file, contains('main.dart'));
       }
@@ -133,7 +134,7 @@ void main() {
   group('Analyzer API', () {
     test('handles non-existent paths gracefully', () async {
       final analyzer = FlutterA11yAnalyzer();
-      
+
       // Should not throw, just return empty results
       expect(
         () => analyzer.analyze('/non/existent/path.dart'),

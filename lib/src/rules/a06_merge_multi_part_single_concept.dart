@@ -20,7 +20,7 @@ class MergeMultiPartSingleConcept extends DartLintRule {
   @override
   void run(
     CustomLintResolver resolver,
-    ErrorReporter reporter,
+    DiagnosticReporter reporter,
     CustomLintContext context,
   ) {
     context.addPostRunCallback(() async {
@@ -28,7 +28,8 @@ class MergeMultiPartSingleConcept extends DartLintRule {
       if (!fileUsesFlutter(unit)) return;
     });
 
-    context.registry.addInstanceCreationExpression((node) {      final type = node.staticType;
+    context.registry.addInstanceCreationExpression((node) {
+      final type = node.staticType;
       if (type == null) return;
 
       if (!isType(type, 'flutter', 'Row') && !isType(type, 'flutter', 'Wrap')) {
@@ -38,22 +39,26 @@ class MergeMultiPartSingleConcept extends DartLintRule {
       final parent = node.parent;
       if (parent is InstanceCreationExpression) {
         final parentType = parent.staticType;
-        if (parentType != null && isType(parentType, 'flutter', 'MergeSemantics')) {
+        if (parentType != null &&
+            isType(parentType, 'flutter', 'MergeSemantics')) {
           return;
         }
       }
 
       final children = node.argumentList.arguments
           .where((arg) => arg.staticType?.isDartCoreList ?? false)
-          .expand<Expression>((arg) =>
-              arg is ListLiteral ? arg.elements.cast<Expression>() : const <Expression>[])
+          .expand<Expression>((arg) => arg is ListLiteral
+              ? arg.elements.cast<Expression>()
+              : const <Expression>[])
           .toList();
 
       if (children.length > 1) {
         final hasIcon = children.any((child) =>
-            child.staticType != null && isType(child.staticType, 'flutter', 'Icon'));
+            child.staticType != null &&
+            isType(child.staticType, 'flutter', 'Icon'));
         final hasText = children.any((child) =>
-            child.staticType != null && isType(child.staticType, 'flutter', 'Text'));
+            child.staticType != null &&
+            isType(child.staticType, 'flutter', 'Text'));
         if (hasIcon && hasText) {
           reporter.atNode(node, _code);
         }
@@ -61,9 +66,3 @@ class MergeMultiPartSingleConcept extends DartLintRule {
     });
   }
 }
-
-
-
-
-
-

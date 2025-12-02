@@ -16,7 +16,8 @@ import 'package:semantic_ir_linter/src/utils/method_utils.dart';
 void main(List<String> args) async {
   if (args.isEmpty) {
     print('Usage: flutter_a11y_analyzer <path_to_analyze>');
-    print('  Analyzes Flutter files for accessibility issues using semantic IR.');
+    print(
+        '  Analyzes Flutter files for accessibility issues using semantic IR.');
     print('');
     print('Examples:');
     print('  flutter_a11y_analyzer lib/');
@@ -46,7 +47,7 @@ void main(List<String> args) async {
   }
 
   print('Found ${results.length} accessibility issue(s):\n');
-  
+
   for (final result in results) {
     print('${result.severity.toUpperCase()}: ${result.message}');
     print('  at ${result.file}:${result.line}:${result.column}');
@@ -86,11 +87,11 @@ class FlutterA11yAnalyzer {
   Future<List<A11yIssue>> analyze(String path) async {
     final issues = <A11yIssue>[];
     final resourceProvider = PhysicalResourceProvider.INSTANCE;
-    
+
     // Determine the root directory for analysis - must be absolute and normalized
     final targetFile = File(path);
     final targetDir = Directory(path);
-    
+
     final analysisRoot = targetFile.existsSync()
         ? p.normalize(targetFile.parent.absolute.path)
         : p.normalize(targetDir.absolute.path);
@@ -115,9 +116,9 @@ class FlutterA11yAnalyzer {
     for (final filePath in files) {
       final context = collection.contextFor(filePath);
       final unitResult = await context.currentSession.getResolvedUnit(filePath);
-      
+
       if (unitResult is! ResolvedUnitResult) continue;
-      
+
       // Skip non-Flutter files
       if (!fileUsesFlutter(unitResult)) continue;
 
@@ -132,11 +133,12 @@ class FlutterA11yAnalyzer {
 
   List<A11yIssue> _analyzeFile(ResolvedUnitResult unit) {
     final issues = <A11yIssue>[];
-    final irBuilder = SemanticIrBuilder(unit: unit, knownSemantics: _knownSemantics);
+    final irBuilder =
+        SemanticIrBuilder(unit: unit, knownSemantics: _knownSemantics);
 
     // Find all build methods in the file
     final buildMethods = findBuildMethods(unit.unit);
-    
+
     if (buildMethods.isEmpty) {
       // No build methods found
       return issues;
@@ -154,9 +156,9 @@ class FlutterA11yAnalyzer {
         if (!_isInteractive(node)) continue;
         if (!_isPrimaryControl(node)) continue;
 
-        final hasLabel = node.effectiveLabel != null || 
-                        node.labelGuarantee != LabelGuarantee.none;
-        
+        final hasLabel = node.effectiveLabel != null ||
+            node.labelGuarantee != LabelGuarantee.none;
+
         if (hasLabel) continue;
 
         // Found a violation!
@@ -167,7 +169,8 @@ class FlutterA11yAnalyzer {
           column: location.columnNumber,
           severity: 'warning',
           code: 'a01_unlabeled_interactive',
-          message: 'Interactive ${node.controlKind.name} must have an accessible label',
+          message:
+              'Interactive ${node.controlKind.name} must have an accessible label',
           correctionMessage: 'Add a tooltip, Text child, or Semantics label',
         ));
       }

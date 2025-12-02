@@ -14,6 +14,8 @@ dependencies:
     sdk: flutter
   analyzer: ^8.4.0
   custom_lint_builder: ^0.8.1
+  semantic_ir_linter:
+    path: semantic_ir_linter
 
 dev_dependencies:
   flutter:

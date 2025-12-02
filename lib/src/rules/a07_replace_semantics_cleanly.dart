@@ -15,14 +15,15 @@ class ReplaceSemanticsCleanly extends DartLintRule {
     name: 'flutter_a11y_clean_semantics_replacement',
     problemMessage:
         'When a parent Semantics widget provides a label, the children should be excluded from semantics.',
-    correctionMessage: 'Try wrapping the child with an ExcludeSemantics widget.',
+    correctionMessage:
+        'Try wrapping the child with an ExcludeSemantics widget.',
     errorSeverity: ErrorSeverity.WARNING,
   );
 
   @override
   void run(
     CustomLintResolver resolver,
-    ErrorReporter reporter,
+    DiagnosticReporter reporter,
     CustomLintContext context,
   ) {
     context.addPostRunCallback(() async {
@@ -30,7 +31,8 @@ class ReplaceSemanticsCleanly extends DartLintRule {
       if (!fileUsesFlutter(unit)) return;
     });
 
-    context.registry.addInstanceCreationExpression((node) {      final type = node.staticType;
+    context.registry.addInstanceCreationExpression((node) {
+      final type = node.staticType;
       if (type == null || !isSemantics(type)) return;
 
       final label = getStringLiteralArg(node, 'label');
@@ -69,8 +71,3 @@ class _ChildVisitor extends RecursiveAstVisitor<void> {
     super.visitInstanceCreationExpression(node);
   }
 }
-
-
-
-
-

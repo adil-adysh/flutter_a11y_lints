@@ -22,9 +22,8 @@ class SemanticBuilder {
     final builtChildren = _buildChildren(widget);
 
     var label = _deriveLabel(widget);
-    var labelGuarantee = label == null
-        ? LabelGuarantee.none
-        : LabelGuarantee.hasStaticLabel;
+    var labelGuarantee =
+        label == null ? LabelGuarantee.none : LabelGuarantee.hasStaticLabel;
     var labelSource = _labelSourceForWidget(widget.widgetType, label);
     String? explicitChildLabel;
 
@@ -79,8 +78,8 @@ class SemanticBuilder {
   _BuiltChildren _buildChildren(WidgetNode widget) {
     final nodes = <SemanticNode>[];
     final slotNodes = <String, SemanticNode>{};
-    final slotOrder =
-        knownSemantics[widget.widgetType]?.slotTraversalOrder ?? widget.slots.keys.toList();
+    final slotOrder = knownSemantics[widget.widgetType]?.slotTraversalOrder ??
+        widget.slots.keys.toList();
 
     for (final slotName in slotOrder) {
       final childWidget = widget.slots[slotName];

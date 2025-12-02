@@ -17,7 +17,7 @@ PluginBase createPlugin() => _A11yLints();
 class _A11yLints extends PluginBase {
   @override
   List<LintRule> getLintRules(CustomLintConfigs configs) => [
-        const LabelNonTextControls(),
+        const LabelNonTextControls(), // Uses heuristic analysis (works with custom_lint)
         const AvoidRedundantRoleWords(),
         const DecorativeImagesExcluded(),
         const InformativeImagesLabeled(),

@@ -101,7 +101,8 @@ Map<String, KnownSemantics> _loadKnownSemantics(
         excludesDescendants: data['excludesDescendants'] as bool,
         blocksBehind: data['blocksBehind'] as bool,
         isPureContainer: data['isPureContainer'] as bool,
-        slotTraversalOrder: List<String>.from(data['slotTraversalOrder'] as List),
+        slotTraversalOrder:
+            List<String>.from(data['slotTraversalOrder'] as List),
       );
     }
 

@@ -20,7 +20,7 @@ class DecorativeImagesExcluded extends DartLintRule {
   @override
   void run(
     CustomLintResolver resolver,
-    ErrorReporter reporter,
+    DiagnosticReporter reporter,
     CustomLintContext context,
   ) {
     context.addPostRunCallback(() async {
@@ -28,7 +28,8 @@ class DecorativeImagesExcluded extends DartLintRule {
       if (!fileUsesFlutter(unit)) return;
     });
 
-    context.registry.addInstanceCreationExpression((node) {      final type = node.staticType;
+    context.registry.addInstanceCreationExpression((node) {
+      final type = node.staticType;
       if (type == null || !isImage(type)) return;
 
       final semanticLabel = getStringLiteralArg(node, 'semanticLabel');
@@ -50,9 +51,3 @@ class DecorativeImagesExcluded extends DartLintRule {
     });
   }
 }
-
-
-
-
-
-

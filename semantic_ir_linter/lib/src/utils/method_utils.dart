@@ -25,7 +25,7 @@ List<MethodDeclaration> findBuildMethods(CompilationUnit unit) {
 
 class _BuildMethodCollector extends RecursiveAstVisitor<void> {
   _BuildMethodCollector(this.methods);
-  
+
   final List<MethodDeclaration> methods;
 
   @override

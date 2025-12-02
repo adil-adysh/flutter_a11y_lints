@@ -7,7 +7,14 @@ import 'known_semantics.dart';
 enum LabelGuarantee { none, hasLabelButDynamic, hasStaticLabel }
 
 /// Origin of a label when one is known.
-enum LabelSource { none, tooltip, textChild, semanticsWidget, inputDecoration, other }
+enum LabelSource {
+  none,
+  tooltip,
+  textChild,
+  semanticsWidget,
+  inputDecoration,
+  other
+}
 
 /// Simplified semantic IR node for v1 of the pipeline.
 @immutable

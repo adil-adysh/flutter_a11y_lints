@@ -21,9 +21,9 @@ class SimpleIconButtonTestRule extends DartLintRule {
     context.registry.addInstanceCreationExpression((node) {
       final type = node.staticType;
       if (type == null) return;
-      
+
       final typeName = type.getDisplayString();
-      
+
       // Just report every IconButton
       if (typeName.contains('IconButton')) {
         reporter.atNode(node, _code);

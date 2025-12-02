@@ -22,7 +22,7 @@ class NoRedundantButtonSemantics extends DartLintRule {
   @override
   void run(
     CustomLintResolver resolver,
-    ErrorReporter reporter,
+    DiagnosticReporter reporter,
     CustomLintContext context,
   ) {
     context.addPostRunCallback(() async {
@@ -30,7 +30,8 @@ class NoRedundantButtonSemantics extends DartLintRule {
       if (!fileUsesFlutter(unit)) return;
     });
 
-    context.registry.addInstanceCreationExpression((node) {      final type = node.staticType;
+    context.registry.addInstanceCreationExpression((node) {
+      final type = node.staticType;
       if (type == null || !isSemantics(type)) return;
 
       final isButton = getNamedArg(node, 'button');
@@ -49,9 +50,3 @@ class NoRedundantButtonSemantics extends DartLintRule {
     });
   }
 }
-
-
-
-
-
-

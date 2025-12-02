@@ -21,7 +21,7 @@ class LabelNonTextControls extends DartLintRule {
   @override
   void run(
     CustomLintResolver resolver,
-    ErrorReporter reporter,
+    DiagnosticReporter reporter,
     CustomLintContext context,
   ) {
     context.addPostRunCallback(() async {
@@ -43,7 +43,8 @@ class LabelNonTextControls extends DartLintRule {
 
       if (hasTextChild(node)) return;
 
-      if (isIconButton(type) || isType(type, 'flutter', 'FloatingActionButton')) {
+      if (isIconButton(type) ||
+          isType(type, 'flutter', 'FloatingActionButton')) {
         final tooltip = getStringLiteralArg(node, 'tooltip');
         if (tooltip == null || tooltip.isEmpty) {
           reporter.atNode(node, _code);
@@ -52,17 +53,10 @@ class LabelNonTextControls extends DartLintRule {
       }
 
       final parent = node.parent;
-      if (parent is! InstanceCreationExpression || !isSemantics(parent.staticType)) {
+      if (parent is! InstanceCreationExpression ||
+          !isSemantics(parent.staticType)) {
         reporter.atNode(node, _code);
       }
     });
   }
 }
-
-
-
-
-
-
-
-

@@ -20,7 +20,7 @@ class InformativeImagesLabeled extends DartLintRule {
   @override
   void run(
     CustomLintResolver resolver,
-    ErrorReporter reporter,
+    DiagnosticReporter reporter,
     CustomLintContext context,
   ) {
     context.addPostRunCallback(() async {
@@ -28,7 +28,8 @@ class InformativeImagesLabeled extends DartLintRule {
       if (!fileUsesFlutter(unit)) return;
     });
 
-    context.registry.addInstanceCreationExpression((node) {      final type = node.staticType;
+    context.registry.addInstanceCreationExpression((node) {
+      final type = node.staticType;
       if (type == null || !isImage(type)) return;
 
       final parent = node.parent;
@@ -57,9 +58,3 @@ class InformativeImagesLabeled extends DartLintRule {
     });
   }
 }
-
-
-
-
-
-

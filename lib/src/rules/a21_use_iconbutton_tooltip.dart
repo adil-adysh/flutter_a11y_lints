@@ -21,7 +21,7 @@ class UseIconButtonTooltipParameter extends DartLintRule {
   @override
   void run(
     CustomLintResolver resolver,
-    ErrorReporter reporter,
+    DiagnosticReporter reporter,
     CustomLintContext context,
   ) {
     context.addPostRunCallback(() async {
@@ -29,14 +29,15 @@ class UseIconButtonTooltipParameter extends DartLintRule {
       if (!fileUsesFlutter(unit)) return;
     });
 
-    context.registry.addInstanceCreationExpression((node) {      final type = node.staticType;
+    context.registry.addInstanceCreationExpression((node) {
+      final type = node.staticType;
       if (type == null || !isType(type, 'flutter', 'Tooltip')) return;
 
       final childArg = node.argumentList.arguments
           .whereType<NamedExpression>()
           .where((arg) => arg.name.label.name == 'child')
           .firstOrNull;
-      
+
       if (childArg?.expression case InstanceCreationExpression child) {
         final childType = child.staticType;
         if (childType != null && isIconButton(childType)) {
@@ -46,8 +47,3 @@ class UseIconButtonTooltipParameter extends DartLintRule {
     });
   }
 }
-
-
-
-
-

@@ -1,3 +1,4 @@
-library flutter_a11y_lints;
+/// Flutter accessibility lints - custom lint rules for Flutter accessibility
+library;
 
-export 'src/plugin.dart';
+export 'src/plugin.dart' show createPlugin;

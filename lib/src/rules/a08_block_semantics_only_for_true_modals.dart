@@ -13,14 +13,15 @@ class BlockSemanticsOnlyForTrueModals extends DartLintRule {
     name: 'flutter_a11y_block_semantics_only_for_modals',
     problemMessage:
         'BlockSemantics should only be used for blocking background content for modals/overlays.',
-    correctionMessage: 'Consider removing BlockSemantics if this is not a modal.',
+    correctionMessage:
+        'Consider removing BlockSemantics if this is not a modal.',
     errorSeverity: ErrorSeverity.WARNING,
   );
 
   @override
   void run(
     CustomLintResolver resolver,
-    ErrorReporter reporter,
+    DiagnosticReporter reporter,
     CustomLintContext context,
   ) {
     context.addPostRunCallback(() async {
@@ -28,7 +29,8 @@ class BlockSemanticsOnlyForTrueModals extends DartLintRule {
       if (!fileUsesFlutter(unit)) return;
     });
 
-    context.registry.addInstanceCreationExpression((node) {      final type = node.staticType;
+    context.registry.addInstanceCreationExpression((node) {
+      final type = node.staticType;
       if (type == null || !isType(type, 'flutter', 'BlockSemantics')) return;
 
       var parent = node.parent;
@@ -55,8 +57,3 @@ class BlockSemanticsOnlyForTrueModals extends DartLintRule {
     });
   }
 }
-
-
-
-
-

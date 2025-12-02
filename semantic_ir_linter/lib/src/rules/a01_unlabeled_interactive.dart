@@ -39,14 +39,14 @@ class UnlabeledInteractiveControlsRule extends DartLintRule {
     context.addPostRunCallback(() async {
       final unit = await resolver.getResolvedUnitResult();
       if (!fileUsesFlutter(unit)) return;
-      
+
       final repo = KnownSemanticsRepository();
       final irBuilder = SemanticIrBuilder(unit: unit, knownSemantics: repo);
-      
+
       // Find all build methods
       final buildMethods = <MethodDeclaration>[];
       unit.unit.visitChildren(_BuildMethodCollector(buildMethods));
-      
+
       for (final method in buildMethods) {
         final expression = extractBuildBodyExpression(method);
         if (expression == null) continue;
@@ -61,12 +61,13 @@ class UnlabeledInteractiveControlsRule extends DartLintRule {
     for (final node in tree.accessibilityFocusNodes) {
       if (!_isInteractive(node)) continue;
       if (!_isPrimaryControl(node)) continue;
-      final hasLabel =
-          node.effectiveLabel != null || node.labelGuarantee != LabelGuarantee.none;
-      
+      final hasLabel = node.effectiveLabel != null ||
+          node.labelGuarantee != LabelGuarantee.none;
+
       if (hasLabel) continue;
 
-      print('[A01] REPORTING ERROR for ${node.controlKind} at ${node.astNode.offset}');
+      print(
+          '[A01] REPORTING ERROR for ${node.controlKind} at ${node.astNode.offset}');
       reporter.reportErrorForOffset(
         _code,
         node.astNode.offset,
@@ -78,7 +79,8 @@ class UnlabeledInteractiveControlsRule extends DartLintRule {
   bool _isInteractive(SemanticNode node) =>
       (node.hasTap || node.hasIncrease || node.hasDecrease) && node.isEnabled;
 
-  bool _isPrimaryControl(SemanticNode node) => _targetControls.contains(node.controlKind);
+  bool _isPrimaryControl(SemanticNode node) =>
+      _targetControls.contains(node.controlKind);
 }
 
 const _targetControls = {
@@ -90,7 +92,7 @@ const _targetControls = {
 
 class _BuildMethodCollector extends RecursiveAstVisitor<void> {
   _BuildMethodCollector(this.methods);
-  
+
   final List<MethodDeclaration> methods;
 
   @override
