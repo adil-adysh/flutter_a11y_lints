@@ -1,5 +1,5 @@
 name: flutter_a11y_lints
-description: A collection of lint rules to enforce accessibility best practices in Flutter applications.
+description: Semantic IR-based accessibility analyzer for Flutter applications.
 version: 0.0.1
 homepage: https://github.com/adil-adysh/flutter_a11y_lints
 repository: https://github.com/adil-adysh/flutter_a11y_lints
@@ -10,16 +10,11 @@ environment:
   sdk: '>=3.0.0 <4.0.0'
 
 dependencies:
-  flutter:
-    sdk: flutter
   analyzer: ^8.4.0
-  custom_lint_builder: ^0.8.1
-  semantic_ir_linter:
-    path: semantic_ir_linter
+  collection: ^1.18.0
+  meta: ^1.11.0
 
 dev_dependencies:
-  flutter:
-    sdk: flutter
-  custom_lint_core: ^0.8.1
   lints: ^3.0.0
+  path: ^1.8.3
   test: ^1.26.3

@@ -7,11 +7,11 @@ import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/file_system/physical_file_system.dart';
 import 'package:path/path.dart' as p;
 
-import 'package:semantic_ir_linter/src/pipeline/semantic_ir_builder.dart';
-import 'package:semantic_ir_linter/src/semantics/known_semantics.dart';
-import 'package:semantic_ir_linter/src/semantics/semantic_node.dart';
-import 'package:semantic_ir_linter/src/utils/flutter_utils.dart';
-import 'package:semantic_ir_linter/src/utils/method_utils.dart';
+import 'package:flutter_a11y_lints/src/pipeline/semantic_ir_builder.dart';
+import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
+import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
+import 'package:flutter_a11y_lints/src/utils/flutter_utils.dart';
+import 'package:flutter_a11y_lints/src/utils/method_utils.dart';
 
 void main(List<String> args) async {
   if (args.isEmpty) {
