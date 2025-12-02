@@ -1,0 +1,6 @@
+# Exclude test app from published package
+a11y_test_app/
+
+# Exclude development files
+analyze.json
+.github/
