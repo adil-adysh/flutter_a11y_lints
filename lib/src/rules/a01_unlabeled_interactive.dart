@@ -25,8 +25,7 @@ class A01UnlabeledInteractive {
     if (!_isPrimaryControl(node)) return false;
 
     // Must not have a label
-    if (node.labelGuarantee != LabelGuarantee.none &&
-        node.effectiveLabel != null) {
+    if (_nodeHasLabel(node)) {
       return false;
     }
 
@@ -53,13 +52,15 @@ class A01UnlabeledInteractive {
     return primaryControls.contains(node.controlKind);
   }
 
+  static bool _nodeHasLabel(SemanticNode node) =>
+      node.labelGuarantee != LabelGuarantee.none;
+
   static bool _ancestorProvidesLabel(SemanticTree tree, SemanticNode node) {
     var current = node;
     while (current.parentId != null) {
       final parent = tree.byId[current.parentId!];
       if (parent == null) break;
-      final hasExplicitLabel = parent.labelGuarantee != LabelGuarantee.none &&
-          parent.effectiveLabel != null;
+      final hasExplicitLabel = _nodeHasLabel(parent);
       final semanticsWrapper = parent.widgetType == 'Semantics';
       if (semanticsWrapper && hasExplicitLabel) {
         return true;

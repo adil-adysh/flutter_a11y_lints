@@ -119,6 +119,58 @@ void main() {
 
       expect(tree.root.labelGuarantee, isNot(LabelGuarantee.none));
     });
+
+    test('IconButton tooltip provided via function does not trigger A01',
+        () async {
+      final tree = await _buildTree(
+        '''
+        IconButton(
+          icon: const Icon('info'),
+          tooltip: buildTooltip('reminder'),
+          onPressed: () {},
+        )
+        ''',
+        extraDeclarations: '''
+String buildTooltip(String entity) => 'Create ' + entity;
+''',
+      );
+
+      expect(A01UnlabeledInteractive.checkTree(tree), isEmpty);
+    });
+
+    test('FilledButton.icon with localized label is accepted', () async {
+      final tree = await _buildTree(
+        '''
+        FilledButton.icon(
+          onPressed: () {},
+          icon: const Icon('add'),
+          label: Text(buildLabel()),
+        )
+        ''',
+        extraDeclarations: '''
+String buildLabel() => 'Add reminder';
+''',
+      );
+
+      expect(A01UnlabeledInteractive.checkTree(tree), isEmpty);
+    });
+
+    test(
+        'Semantics wrappers that only add state inherit tooltip labels from children',
+        () async {
+      final tree = await _buildTree('''
+        Semantics(
+          toggled: true,
+          child: IconButton(
+            icon: const Icon('timeline'),
+            tooltip: 'Timeline grouping',
+            onPressed: () {},
+          ),
+        )
+      ''');
+
+      expect(A01UnlabeledInteractive.checkTree(tree), isEmpty);
+    });
   });
 }
 
@@ -228,9 +280,23 @@ class TextButton extends Widget {
   });
 }
 
+class FilledButton extends Widget {
+  const FilledButton({
+    required Widget child,
+    VoidCallback? onPressed,
+  });
+
+  const FilledButton.icon({
+    required Widget icon,
+    required Widget label,
+    VoidCallback? onPressed,
+  });
+}
+
 class Semantics extends Widget {
   const Semantics({
     String? label,
+    bool? toggled,
     bool? button,
     required Widget child,
   });
