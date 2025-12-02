@@ -150,6 +150,7 @@ final AstNode _dummyAstNode = () {
 
 const _widgetStubs = '''
 typedef VoidCallback = void Function();
+typedef ValueChanged<T> = void Function(T value);
 
 class Widget {}
 
@@ -166,12 +167,33 @@ class SizedBox extends Widget {
   const SizedBox({double? width, double? height});
 }
 
+class Image extends Widget {
+  const Image.asset(
+    String name, {
+    bool? excludeFromSemantics,
+    String? semanticLabel,
+  });
+
+  const Image.network(
+    String src, {
+    String? semanticLabel,
+  });
+}
+
 class Row extends Widget {
   const Row({required List<Widget> children});
 }
 
 class Column extends Widget {
   const Column({required List<Widget> children});
+}
+
+class CircleAvatar extends Widget {
+  const CircleAvatar({
+    Object? backgroundImage,
+    String? semanticsLabel,
+    Widget? child,
+  });
 }
 
 class IconButton extends Widget {
@@ -215,6 +237,48 @@ class FloatingActionButton extends Widget {
   });
 }
 
+class Tooltip extends Widget {
+  const Tooltip({
+    required String message,
+    required Widget child,
+  });
+}
+
+class ListTile extends Widget {
+  const ListTile({
+    Widget? leading,
+    Widget? title,
+    Widget? subtitle,
+    Widget? trailing,
+    VoidCallback? onTap,
+  });
+}
+
+class CheckboxListTile extends Widget {
+  const CheckboxListTile({
+    required Widget title,
+    required bool value,
+    ValueChanged<bool?>? onChanged,
+  });
+}
+
+class SwitchListTile extends Widget {
+  const SwitchListTile({
+    required Widget title,
+    required bool value,
+    ValueChanged<bool?>? onChanged,
+  });
+}
+
+class RadioListTile<T> extends Widget {
+  const RadioListTile({
+    required T value,
+    required T groupValue,
+    required Widget title,
+    ValueChanged<T>? onChanged,
+  });
+}
+
 class Semantics extends Widget {
   const Semantics({
     String? label,
@@ -247,15 +311,15 @@ class IndexedSemantics extends Widget {
   const IndexedSemantics({required Widget child, int? index});
 }
 
-class ExcludeSemantics extends Widget {
-  const ExcludeSemantics({
-    required Widget child,
-  });
+class Offstage extends Widget {
+  const Offstage({bool offstage = true, required Widget child});
 }
 
-class MergeSemantics extends Widget {
-  const MergeSemantics({
-    required Widget child,
-  });
+class Visibility extends Widget {
+  const Visibility({bool visible = true, required Widget child});
+}
+
+class NetworkImage {
+  const NetworkImage(String src);
 }
 ''';

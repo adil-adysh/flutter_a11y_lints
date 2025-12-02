@@ -15,7 +15,9 @@ class A07ReplaceSemanticsCleanly {
   static bool check(SemanticNode node) {
     // Must have a custom label
     if (node.labelSource != LabelSource.semanticsWidget) return false;
-    if (node.label == null || node.label!.isEmpty) return false;
+    if (node.effectiveLabel == null || node.effectiveLabel!.isEmpty) {
+      return false;
+    }
 
     // Must have children with their own labels
     if (node.children.isEmpty) return false;
@@ -26,7 +28,7 @@ class A07ReplaceSemanticsCleanly {
     // Check if children have labels
     var childrenWithLabels = 0;
     for (final child in node.children) {
-      if (child.label != null && child.label!.isNotEmpty) {
+      if (_hasLabel(child)) {
         childrenWithLabels++;
       }
     }
@@ -38,18 +40,19 @@ class A07ReplaceSemanticsCleanly {
   /// Get violations for a semantic tree
   static List<A07Violation> checkTree(SemanticTree tree) {
     final violations = <A07Violation>[];
-
-    void visit(SemanticNode node) {
+    for (final node in tree.physicalNodes) {
       if (check(node)) {
         violations.add(A07Violation(node: node));
       }
-      for (final child in node.children) {
-        visit(child);
-      }
     }
-
-    visit(tree.root);
     return violations;
+  }
+
+  static bool _hasLabel(SemanticNode node) {
+    if (node.effectiveLabel != null && node.effectiveLabel!.isNotEmpty) {
+      return true;
+    }
+    return node.labelGuarantee != LabelGuarantee.none;
   }
 }
 
@@ -60,11 +63,11 @@ class A07Violation {
 
   String get description {
     final childLabels = node.children
-        .where((c) => c.label != null && c.label!.isNotEmpty)
-        .map((c) => '"${c.label}"')
+        .where((c) => c.effectiveLabel != null && c.effectiveLabel!.isNotEmpty)
+        .map((c) => '"${c.effectiveLabel}"')
         .take(3)
         .join(', ');
-    return 'Semantics with custom label "${node.label}" doesn\'t exclude '
+    return 'Semantics with custom label "${node.effectiveLabel}" doesn\'t exclude '
         'children ($childLabels...), causing double announcements';
   }
 }

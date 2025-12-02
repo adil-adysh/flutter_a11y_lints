@@ -14,38 +14,41 @@ class A06MergeMultiPartSingleConcept {
   /// Check if a semantic node violates this rule
   static bool check(SemanticNode node) {
     // Must be interactive
-    if (!node.isEnabled || !node.hasTap) return false;
+    final isInteractive = node.isEnabled &&
+        (node.hasTap ||
+            node.hasLongPress ||
+            node.hasIncrease ||
+            node.hasDecrease);
+    if (!isInteractive) return false;
 
-    // Must have multiple children with labels
     if (node.children.length < 2) return false;
+    if (node.mergesDescendants) return false;
 
-    // Check if children have their own labels (not merged)
     var childrenWithLabels = 0;
     for (final child in node.children) {
-      if (child.label != null && child.label!.isNotEmpty) {
+      if (_hasLabel(child)) {
         childrenWithLabels++;
       }
     }
 
-    // If we have 2+ children with labels and the parent doesn't merge,
-    // it's likely a violation (icon + text that should be merged)
-    return childrenWithLabels >= 2 && !node.mergesDescendants;
+    return childrenWithLabels >= 2;
+  }
+
+  static bool _hasLabel(SemanticNode node) {
+    if (node.effectiveLabel != null && node.effectiveLabel!.isNotEmpty) {
+      return true;
+    }
+    return node.labelGuarantee != LabelGuarantee.none;
   }
 
   /// Get violations for a semantic tree
   static List<A06Violation> checkTree(SemanticTree tree) {
     final violations = <A06Violation>[];
-
-    void visit(SemanticNode node) {
+    for (final node in tree.accessibilityFocusNodes) {
       if (check(node)) {
         violations.add(A06Violation(node: node));
       }
-      for (final child in node.children) {
-        visit(child);
-      }
     }
-
-    visit(tree.root);
     return violations;
   }
 }
@@ -57,8 +60,8 @@ class A06Violation {
 
   String get description {
     final childLabels = node.children
-        .where((c) => c.label != null && c.label!.isNotEmpty)
-        .map((c) => '"${c.label}"')
+        .where((c) => c.effectiveLabel != null && c.effectiveLabel!.isNotEmpty)
+        .map((c) => '"${c.effectiveLabel}"')
         .join(', ');
     return 'Interactive ${node.widgetType} has ${node.children.length} '
         'separate semantic parts: $childLabels. Consider using MergeSemantics.';

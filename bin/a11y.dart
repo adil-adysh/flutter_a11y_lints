@@ -13,8 +13,14 @@ import 'package:flutter_a11y_lints/src/utils/flutter_utils.dart';
 import 'package:flutter_a11y_lints/src/utils/method_utils.dart';
 import 'package:flutter_a11y_lints/src/rules/a01_unlabeled_interactive.dart';
 import 'package:flutter_a11y_lints/src/rules/a02_avoid_redundant_role_words.dart';
+import 'package:flutter_a11y_lints/src/rules/a03_decorative_images_excluded.dart';
+import 'package:flutter_a11y_lints/src/rules/a04_informative_images_labeled.dart';
+import 'package:flutter_a11y_lints/src/rules/a05_no_redundant_button_semantics.dart';
 import 'package:flutter_a11y_lints/src/rules/a06_merge_multi_part_single_concept.dart';
 import 'package:flutter_a11y_lints/src/rules/a07_replace_semantics_cleanly.dart';
+import 'package:flutter_a11y_lints/src/rules/a18_avoid_hidden_focus_traps.dart';
+import 'package:flutter_a11y_lints/src/rules/a21_use_iconbutton_tooltip.dart';
+import 'package:flutter_a11y_lints/src/rules/a22_respect_widget_semantic_boundaries.dart';
 
 void main(List<String> args) async {
   if (args.isEmpty) {
@@ -157,8 +163,14 @@ class FlutterA11yAnalyzer {
       // Run all rules on the semantic tree
       final a01Violations = A01UnlabeledInteractive.checkTree(tree);
       final a02Violations = A02AvoidRedundantRoleWords.checkTree(tree);
+      final a03Violations = A03DecorativeImagesExcluded.checkTree(tree);
+      final a04Violations = A04InformativeImagesLabeled.checkTree(tree);
+      final a05Violations = A05NoRedundantButtonSemantics.checkTree(tree);
       final a06Violations = A06MergeMultiPartSingleConcept.checkTree(tree);
       final a07Violations = A07ReplaceSemanticsCleanly.checkTree(tree);
+      final a18Violations = A18AvoidHiddenFocusTraps.checkTree(tree);
+      final a21Violations = A21UseIconButtonTooltip.checkTree(tree);
+      final a22Violations = A22RespectWidgetSemanticBoundaries.checkTree(tree);
 
       // Convert A01 violations to issues
       for (final violation in a01Violations) {
@@ -191,6 +203,53 @@ class FlutterA11yAnalyzer {
         ));
       }
 
+      // Convert A03 violations to issues
+      for (final violation in a03Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A03DecorativeImagesExcluded.code,
+          message:
+              '${A03DecorativeImagesExcluded.message}: ${violation.assetPath}',
+          correctionMessage: A03DecorativeImagesExcluded.correctionMessage,
+        ));
+      }
+
+      // Convert A04 violations to issues
+      for (final violation in a04Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A04InformativeImagesLabeled.code,
+          message:
+              '${A04InformativeImagesLabeled.message}: ${violation.context}',
+          correctionMessage: A04InformativeImagesLabeled.correctionMessage,
+        ));
+      }
+
+      // Convert A05 violations to issues
+      for (final violation in a05Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A05NoRedundantButtonSemantics.code,
+          message: A05NoRedundantButtonSemantics.message,
+          correctionMessage: A05NoRedundantButtonSemantics.correctionMessage,
+        ));
+      }
+
       // Convert A06 violations to issues
       for (final violation in a06Violations) {
         final location =
@@ -218,6 +277,52 @@ class FlutterA11yAnalyzer {
           code: A07ReplaceSemanticsCleanly.code,
           message: A07ReplaceSemanticsCleanly.message,
           correctionMessage: A07ReplaceSemanticsCleanly.correctionMessage,
+        ));
+      }
+
+      // Convert A21 violations to issues
+      for (final violation in a21Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A21UseIconButtonTooltip.code,
+          message: A21UseIconButtonTooltip.message,
+          correctionMessage: A21UseIconButtonTooltip.correctionMessage,
+        ));
+      }
+
+      // Convert A22 violations to issues
+      for (final violation in a22Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A22RespectWidgetSemanticBoundaries.code,
+          message: A22RespectWidgetSemanticBoundaries.message,
+          correctionMessage:
+              A22RespectWidgetSemanticBoundaries.correctionMessage,
+        ));
+      }
+
+      // Convert A18 violations to issues
+      for (final violation in a18Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A18AvoidHiddenFocusTraps.code,
+          message: A18AvoidHiddenFocusTraps.message,
+          correctionMessage: A18AvoidHiddenFocusTraps.correctionMessage,
         ));
       }
     }

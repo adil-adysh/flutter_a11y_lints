@@ -10,7 +10,15 @@ class A02AvoidRedundantRoleWords {
   static const code = 'a02_avoid_redundant_role_words';
   static const message = 'Label contains redundant role words';
   static const correctionMessage =
-      'Remove words like "button", "icon" from label - the role is announced automatically';
+      'Remove words like "button", "icon" from tooltip or Semantics labels; the role is announced automatically.';
+
+  static const _inspectSources = {
+    LabelSource.tooltip,
+    LabelSource.semanticsWidget,
+    LabelSource.customWidgetParameter,
+    LabelSource.inputDecoration,
+    LabelSource.other,
+  };
 
   static final _redundantWords = RegExp(
     r'\b(button|btn|icon|image|link|checkbox|radio|switch|selected|checked|toggle)\b',
@@ -19,14 +27,9 @@ class A02AvoidRedundantRoleWords {
 
   /// Check if a semantic node violates this rule
   static bool check(SemanticNode node) {
-    final label = node.label;
+    if (!_isEligibleNode(node)) return false;
+    final label = _labelText(node);
     if (label == null || label.isEmpty) return false;
-
-    // Only check interactive controls
-    if (!node.isEnabled) return false;
-    if (node.controlKind == ControlKind.none) return false;
-
-    // Check if label contains redundant words
     return _redundantWords.hasMatch(label);
   }
 
@@ -34,19 +37,24 @@ class A02AvoidRedundantRoleWords {
   static List<A02Violation> checkTree(SemanticTree tree) {
     final violations = <A02Violation>[];
 
-    void visit(SemanticNode node) {
-      if (check(node)) {
-        violations.add(A02Violation(
-          node: node,
-          redundantWords: _extractRedundantWords(node.label!),
-        ));
+    for (final node in tree.accessibilityFocusNodes) {
+      if (!_isEligibleNode(node)) {
+        continue;
       }
-      for (final child in node.children) {
-        visit(child);
+      final label = _labelText(node);
+      if (label == null || label.isEmpty) {
+        continue;
       }
+      final redundantWords = _extractRedundantWords(label);
+      if (redundantWords.isEmpty) {
+        continue;
+      }
+      violations.add(A02Violation(
+        node: node,
+        label: label,
+        redundantWords: redundantWords,
+      ));
     }
-
-    visit(tree.root);
     return violations;
   }
 
@@ -54,19 +62,51 @@ class A02AvoidRedundantRoleWords {
     final matches = _redundantWords.allMatches(label);
     return matches.map((m) => m.group(0)!.toLowerCase()).toSet().toList();
   }
+
+  static bool _isEligibleNode(SemanticNode node) {
+    if (!node.isEnabled) return false;
+    if (!_isInteractive(node)) return false;
+    if (!_inspectSources.contains(node.labelSource)) return false;
+    if (node.labelGuarantee == LabelGuarantee.none) return false;
+    return true;
+  }
+
+  static bool _isInteractive(SemanticNode node) {
+    if (node.controlKind != ControlKind.none) return true;
+    return node.hasTap ||
+        node.hasLongPress ||
+        node.hasIncrease ||
+        node.hasDecrease;
+  }
+
+  static String? _labelText(SemanticNode node) {
+    switch (node.labelSource) {
+      case LabelSource.tooltip:
+        return node.tooltip ?? node.label;
+      case LabelSource.semanticsWidget:
+      case LabelSource.customWidgetParameter:
+      case LabelSource.inputDecoration:
+      case LabelSource.other:
+        return node.label ?? node.effectiveLabel;
+      default:
+        return null;
+    }
+  }
 }
 
 class A02Violation {
   final SemanticNode node;
   final List<String> redundantWords;
+  final String label;
 
   A02Violation({
     required this.node,
+    required this.label,
     required this.redundantWords,
   });
 
   String get description {
     final words = redundantWords.join(', ');
-    return 'Label "${node.label}" contains redundant role word(s): $words';
+    return 'Label "$label" contains redundant role word(s): $words';
   }
 }

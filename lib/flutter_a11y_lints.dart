@@ -16,8 +16,14 @@ export 'src/pipeline/semantic_ir_builder.dart';
 // Rules
 export 'src/rules/a01_unlabeled_interactive.dart';
 export 'src/rules/a02_avoid_redundant_role_words.dart';
+export 'src/rules/a03_decorative_images_excluded.dart';
+export 'src/rules/a04_informative_images_labeled.dart';
+export 'src/rules/a05_no_redundant_button_semantics.dart';
 export 'src/rules/a06_merge_multi_part_single_concept.dart';
 export 'src/rules/a07_replace_semantics_cleanly.dart';
+export 'src/rules/a21_use_iconbutton_tooltip.dart';
+export 'src/rules/a22_respect_widget_semantic_boundaries.dart';
+export 'src/rules/a18_avoid_hidden_focus_traps.dart';
 
 // Utilities
 export 'src/utils/flutter_utils.dart';

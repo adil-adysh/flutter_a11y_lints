@@ -15,8 +15,8 @@ class A01UnlabeledInteractive {
 
   /// Check if a semantic node violates this rule
   static bool check(
+    SemanticTree tree,
     SemanticNode node,
-    List<SemanticNode> ancestors,
   ) {
     // Must be interactive and enabled
     if (!_isInteractive(node)) return false;
@@ -25,12 +25,13 @@ class A01UnlabeledInteractive {
     if (!_isPrimaryControl(node)) return false;
 
     // Must not have a label
-    if (node.labelGuarantee != LabelGuarantee.none) {
+    if (node.labelGuarantee != LabelGuarantee.none &&
+        node.effectiveLabel != null) {
       return false;
     }
 
     // Allow Semantics parents with explicit labels to satisfy requirement
-    if (_ancestorProvidesLabel(ancestors)) {
+    if (_ancestorProvidesLabel(tree, node)) {
       return false;
     }
 
@@ -52,13 +53,18 @@ class A01UnlabeledInteractive {
     return primaryControls.contains(node.controlKind);
   }
 
-  static bool _ancestorProvidesLabel(List<SemanticNode> ancestors) {
-    for (final ancestor in ancestors.reversed) {
-      final labeledSemantics = ancestor.widgetType == 'Semantics' &&
-          ancestor.labelGuarantee != LabelGuarantee.none;
-      if (labeledSemantics) {
+  static bool _ancestorProvidesLabel(SemanticTree tree, SemanticNode node) {
+    var current = node;
+    while (current.parentId != null) {
+      final parent = tree.byId[current.parentId!];
+      if (parent == null) break;
+      final hasExplicitLabel = parent.labelGuarantee != LabelGuarantee.none &&
+          parent.effectiveLabel != null;
+      final semanticsWrapper = parent.widgetType == 'Semantics';
+      if (semanticsWrapper && hasExplicitLabel) {
         return true;
       }
+      current = parent;
     }
     return false;
   }
@@ -66,19 +72,11 @@ class A01UnlabeledInteractive {
   /// Get violations for a semantic tree
   static List<A01Violation> checkTree(SemanticTree tree) {
     final violations = <A01Violation>[];
-
-    void visit(SemanticNode node, List<SemanticNode> ancestors) {
-      if (check(node, ancestors)) {
+    for (final node in tree.accessibilityFocusNodes) {
+      if (check(tree, node)) {
         violations.add(A01Violation(node: node));
       }
-      ancestors.add(node);
-      for (final child in node.children) {
-        visit(child, ancestors);
-      }
-      ancestors.removeLast();
     }
-
-    visit(tree.root, <SemanticNode>[]);
     return violations;
   }
 }
