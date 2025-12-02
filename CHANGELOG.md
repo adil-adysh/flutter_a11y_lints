@@ -28,3 +28,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Fast**: Analyzes typical Flutter projects in seconds
 
 [0.1.0]: https://github.com/adil-adysh/flutter_a11y_lints/releases/tag/v0.1.0
+
+## [0.2.1] - 2025-12-02
+
+### Changed
+- Upgrade compatibility for Dart 3.9.x resolver ecosystem
+- Bump dependencies: analyzer ^9.0.0, meta ^1.17.0, path ^1.9.0
+- Dev deps: lints ^6.0.0, test ^1.27.0
+- SDK constraint: '>=3.5.0 <4.0.0'
+
+### Fixed
+- Reduce dependency solver conflicts when used alongside modern Flutter apps
+- Expose `a11y` executable for global activation (`dart pub global activate flutter_a11y_lints`)
+
+[0.2.1]: https://github.com/adil-adysh/flutter_a11y_lints/releases/tag/v0.2.1
