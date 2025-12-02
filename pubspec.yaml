@@ -1,6 +1,6 @@
 name: flutter_a11y_lints
 description: Semantic IR-based accessibility analyzer for Flutter applications.
-version: 0.0.1
+version: 0.1.0
 homepage: https://github.com/adil-adysh/flutter_a11y_lints
 repository: https://github.com/adil-adysh/flutter_a11y_lints
 issue_tracker: https://github.com/adil-adysh/flutter_a11y_lints/issues
