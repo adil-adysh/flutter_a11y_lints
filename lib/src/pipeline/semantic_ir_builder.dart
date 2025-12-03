@@ -1,5 +1,6 @@
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+import 'package:analyzer/dart/element/type.dart';
 
 import '../semantics/semantic_builder.dart';
 import '../semantics/semantic_context.dart';
@@ -14,6 +15,21 @@ class SemanticIrBuilder {
   }) : _globalContext = GlobalSemanticContext(
           knownSemantics: knownSemantics,
           typeProvider: unit.typeProvider,
+          // Provide a resolver that can map an `InterfaceType` back to the
+          // `ResolvedUnitResult` that defines the type. This lets the
+          // `GlobalSemanticContext` fetch and analyze the widget's
+          // `build()` implementation when available.
+          resolver: (InterfaceType? t) async {
+            try {
+              final element = t?.element;
+              final path = (element as dynamic)?.source?.fullName as String?;
+              if (path == null) return null;
+              final resolved = await unit.session.getResolvedUnit(path);
+              return resolved as ResolvedUnitResult;
+            } catch (_) {
+              return null;
+            }
+          },
         );
 
   // Note: `SemanticIrBuilder` is a thin orchestration layer used by the
