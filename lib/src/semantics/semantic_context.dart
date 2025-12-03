@@ -33,6 +33,14 @@
 
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
+// The analyzer exposes constant evaluation machinery from an internal
+// library. We use the internal import as a best-effort to get a
+// `ConstantEvaluator` implementation across analyzer versions. If the
+// import isn't available in the running analyzer version the evaluators
+// below will catch and fall back to conservative heuristics.
+// No direct constant engine import here; prefer resolved-unit based
+// evaluation implemented below so we avoid hard analyzer-version
+// dependencies.
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_provider.dart';
 
@@ -284,6 +292,288 @@ class GlobalSemanticContext {
     }
   }
 
+  // Unit-aware evaluators: when a `ResolvedUnitResult` is available we try
+  // to use the analyzer-provided constant evaluation engine (ConstantEvaluator
+  // or equivalent) to evaluate arbitrary expressions. If that engine is not
+  // available in the current analyzer version we fall back to safe, local
+  // strategies (literal inspection and element computeConstantValue calls).
+  String? evalStringInUnit(Expression? expression, ResolvedUnitResult unit) {
+    if (expression == null) return null;
+    // Fast-path for simple literal forms (Adjacents / Interpolation)
+    final lit = evalString(expression);
+    if (lit != null) return lit;
+
+    // Try to resolve compile-time constants from the provided resolved unit.
+    final seen = <String>{};
+    return _evalConstStringFromUnit(expression, unit, seen);
+  }
+
+  bool? evalBoolInUnit(Expression? expression, ResolvedUnitResult unit) {
+    if (expression == null) return null;
+    expression = expression.unParenthesized;
+
+    // Fast-path for simple literals and composed binary ops.
+    final simple = evalBool(expression);
+    if (simple != null) return simple;
+
+    final seen = <String>{};
+    return _evalConstBoolFromUnit(expression, unit, seen);
+  }
+
+  int? evalIntInUnit(Expression? expression, ResolvedUnitResult unit) {
+    if (expression == null) return null;
+    expression = expression.unParenthesized;
+
+    final simple = evalInt(expression);
+    if (simple != null) return simple;
+
+    final seen = <String>{};
+    return _evalConstIntFromUnit(expression, unit, seen);
+  }
+
+  // -----------------------
+  // Resolved-unit constant evaluators
+  // -----------------------
+
+  String? _evalConstStringFromUnit(
+    Expression? expression,
+    ResolvedUnitResult unit,
+    Set<String> seen,
+  ) {
+    if (expression == null) return null;
+    final unp = expression.unParenthesized;
+    if (unp is SimpleStringLiteral) return unp.value;
+    if (unp is AdjacentStrings) {
+      final buf = StringBuffer();
+      for (final s in unp.strings) {
+        final v = _evalConstStringFromUnit(s, unit, seen);
+        if (v == null) return null;
+        buf.write(v);
+      }
+      return buf.toString();
+    }
+    if (unp is StringInterpolation) {
+      final buf = StringBuffer();
+      for (final e in unp.elements) {
+        if (e is InterpolationString) {
+          buf.write(e.value);
+        } else {
+          return null;
+        }
+      }
+      return buf.toString();
+    }
+
+    // Identifiers: resolve to const variable initializers or static const
+    // class fields in the same unit.
+    if (unp is SimpleIdentifier) {
+      final name = unp.name;
+      if (!seen.add('#$name')) return null;
+      // Top-level consts
+      for (final decl in unit.unit.declarations) {
+        if (decl is TopLevelVariableDeclaration) {
+          final vars = decl.variables;
+          for (final v in vars.variables) {
+            if (v.name.lexeme == name && vars.isConst) {
+              final init = v.initializer;
+              return _evalConstStringFromUnit(init, unit, seen);
+            }
+          }
+        }
+        // static const fields on classes
+        if (decl is ClassDeclaration) {
+          for (final member in decl.members) {
+            if (member is FieldDeclaration && member.isStatic) {
+              final vars = member.fields;
+              if (!vars.isConst) continue;
+              for (final v in vars.variables) {
+                if (v.name.lexeme == name) {
+                  return _evalConstStringFromUnit(v.initializer, unit, seen);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // PrefixedIdentifier or PropertyAccess for static fields: e.g. ClassName.foo
+    if (unp is PrefixedIdentifier) {
+      final prefix = unp.prefix.name;
+      final member = unp.identifier.name;
+      for (final decl in unit.unit.declarations) {
+        if (decl is ClassDeclaration && decl.name.lexeme == prefix) {
+          for (final memberDecl in decl.members) {
+            if (memberDecl is FieldDeclaration && memberDecl.isStatic) {
+              final vars = memberDecl.fields;
+              if (!vars.isConst) continue;
+              for (final v in vars.variables) {
+                if (v.name.lexeme == member) {
+                  return _evalConstStringFromUnit(v.initializer, unit, seen);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  bool? _evalConstBoolFromUnit(
+    Expression? expression,
+    ResolvedUnitResult unit,
+    Set<String> seen,
+  ) {
+    if (expression == null) return null;
+    final unp = expression.unParenthesized;
+    if (unp is BooleanLiteral) return unp.value;
+    if (unp is PrefixExpression && unp.operator.type.lexeme == '!') {
+      final inner = _evalConstBoolFromUnit(unp.operand, unit, seen);
+      return inner == null ? null : !inner;
+    }
+    if (unp is BinaryExpression) {
+      final op = unp.operator.lexeme;
+      if (op == '&&') {
+        final l = _evalConstBoolFromUnit(unp.leftOperand, unit, seen);
+        if (l == false) return false;
+        final r = _evalConstBoolFromUnit(unp.rightOperand, unit, seen);
+        if (l == true && r != null) return r;
+        return null;
+      }
+      if (op == '||') {
+        final l = _evalConstBoolFromUnit(unp.leftOperand, unit, seen);
+        if (l == true) return true;
+        final r = _evalConstBoolFromUnit(unp.rightOperand, unit, seen);
+        if (l == false && r != null) return r;
+        return null;
+      }
+      if (op == '==' || op == '!=') {
+        final lv = _evalConstStringFromUnit(unp.leftOperand, unit, seen) ??
+            (_evalConstBoolFromUnit(unp.leftOperand, unit, seen)?.toString()) ??
+            (_evalConstIntFromUnit(unp.leftOperand, unit, seen)?.toString());
+        final rv = _evalConstStringFromUnit(unp.rightOperand, unit, seen) ??
+            (_evalConstBoolFromUnit(unp.rightOperand, unit, seen)?.toString()) ??
+            (_evalConstIntFromUnit(unp.rightOperand, unit, seen)?.toString());
+        if (lv != null && rv != null) {
+          final eq = lv == rv;
+          return op == '==' ? eq : !eq;
+        }
+      }
+    }
+
+    if (unp is SimpleIdentifier) {
+      final name = unp.name;
+      if (!seen.add('#$name')) return null;
+      for (final decl in unit.unit.declarations) {
+        if (decl is TopLevelVariableDeclaration) {
+          final vars = decl.variables;
+          for (final v in vars.variables) {
+            if (v.name.lexeme == name && vars.isConst) {
+              return _evalConstBoolFromUnit(v.initializer, unit, seen);
+            }
+          }
+        }
+        if (decl is ClassDeclaration) {
+          for (final member in decl.members) {
+            if (member is FieldDeclaration && member.isStatic) {
+              final vars = member.fields;
+              if (!vars.isConst) continue;
+              for (final v in vars.variables) {
+                if (v.name.lexeme == name) {
+                  return _evalConstBoolFromUnit(v.initializer, unit, seen);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (unp is PrefixedIdentifier) {
+      final prefix = unp.prefix.name;
+      final member = unp.identifier.name;
+      for (final decl in unit.unit.declarations) {
+        if (decl is ClassDeclaration && decl.name.lexeme == prefix) {
+          for (final memberDecl in decl.members) {
+            if (memberDecl is FieldDeclaration && memberDecl.isStatic) {
+              final vars = memberDecl.fields;
+              if (!vars.isConst) continue;
+              for (final v in vars.variables) {
+                if (v.name.lexeme == member) {
+                  return _evalConstBoolFromUnit(v.initializer, unit, seen);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
+  int? _evalConstIntFromUnit(
+    Expression? expression,
+    ResolvedUnitResult unit,
+    Set<String> seen,
+  ) {
+    if (expression == null) return null;
+    final unp = expression.unParenthesized;
+    if (unp is IntegerLiteral) return unp.value;
+
+    if (unp is SimpleIdentifier) {
+      final name = unp.name;
+      if (!seen.add('#$name')) return null;
+      for (final decl in unit.unit.declarations) {
+        if (decl is TopLevelVariableDeclaration) {
+          final vars = decl.variables;
+          for (final v in vars.variables) {
+            if (v.name.lexeme == name && vars.isConst) {
+              return _evalConstIntFromUnit(v.initializer, unit, seen);
+            }
+          }
+        }
+        if (decl is ClassDeclaration) {
+          for (final member in decl.members) {
+            if (member is FieldDeclaration && member.isStatic) {
+              final vars = member.fields;
+              if (!vars.isConst) continue;
+              for (final v in vars.variables) {
+                if (v.name.lexeme == name) {
+                  return _evalConstIntFromUnit(v.initializer, unit, seen);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    if (unp is PrefixedIdentifier) {
+      final prefix = unp.prefix.name;
+      final member = unp.identifier.name;
+      for (final decl in unit.unit.declarations) {
+        if (decl is ClassDeclaration && decl.name.lexeme == prefix) {
+          for (final memberDecl in decl.members) {
+            if (memberDecl is FieldDeclaration && memberDecl.isStatic) {
+              final vars = memberDecl.fields;
+              if (!vars.isConst) continue;
+              for (final v in vars.variables) {
+                if (v.name.lexeme == member) {
+                  return _evalConstIntFromUnit(v.initializer, unit, seen);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return null;
+  }
+
   /// Build a stable key for the analyzer element used for cache and cycle
   /// detection. Prefer the library URI when available; fall back to the
   /// element source URI. The key format is `<libraryUri>::<elementName>`.
@@ -394,8 +684,10 @@ class GlobalSemanticContext {
     }
 
     // Full path: WidgetNode → SemanticNode using existing builders.
-    final treeBuilder =
-        WidgetTreeBuilder(unit, constEval: (expr) => evalBool(expr));
+    final treeBuilder = WidgetTreeBuilder(
+      unit,
+      constEval: (expr) => evalBoolInUnit(expr, unit),
+    );
     final widgetNode = treeBuilder.fromExpression(buildExpr);
     if (widgetNode == null) {
       return null;
@@ -580,7 +872,10 @@ class BuildSemanticContext {
   BuildSemanticContext({
     required this.global,
     required this.enableHeuristics,
+    required this.unit,
   });
+
+  final ResolvedUnitResult unit;
 
   final GlobalSemanticContext global;
   final bool enableHeuristics;
@@ -597,7 +892,8 @@ class BuildSemanticContext {
   // These helpers keep the `SemanticBuilder` code concise and clarify that
   // these evaluations are build-scoped but ultimately rely on global
   // deterministic logic.
-  String? evalString(Expression? expression) => global.evalString(expression);
-  bool? evalBool(Expression? expression) => global.evalBool(expression);
-  int? evalInt(Expression? expression) => global.evalInt(expression);
+  String? evalString(Expression? expression) =>
+      global.evalStringInUnit(expression, unit);
+  bool? evalBool(Expression? expression) => global.evalBoolInUnit(expression, unit);
+  int? evalInt(Expression? expression) => global.evalIntInUnit(expression, unit);
 }

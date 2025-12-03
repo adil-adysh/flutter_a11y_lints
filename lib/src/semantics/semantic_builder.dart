@@ -53,6 +53,7 @@ class SemanticBuilder {
     final ctx = BuildSemanticContext(
       global: globalContext,
       enableHeuristics: enableHeuristics,
+      unit: unit,
     );
     return _buildNode(widget, ctx);
   }

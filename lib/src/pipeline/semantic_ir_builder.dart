@@ -49,7 +49,10 @@ class SemanticIrBuilder {
   final GlobalSemanticContext _globalContext;
 
   SemanticTree? buildForExpression(Expression? expression) {
-    final widgetNode = WidgetTreeBuilder(unit).fromExpression(expression);
+    final widgetNode = WidgetTreeBuilder(
+      unit,
+      constEval: (expr) => _globalContext.evalBoolInUnit(expr, unit),
+    ).fromExpression(expression);
     if (widgetNode == null) return null;
     final semanticNode = SemanticBuilder(
       unit: unit,
