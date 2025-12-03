@@ -24,6 +24,12 @@ export 'src/rules/a07_replace_semantics_cleanly.dart';
 export 'src/rules/a21_use_iconbutton_tooltip.dart';
 export 'src/rules/a22_respect_widget_semantic_boundaries.dart';
 export 'src/rules/a18_avoid_hidden_focus_traps.dart';
+export 'src/rules/a09_numeric_values_require_units.dart';
+export 'src/rules/a11_minimum_tap_target_size.dart';
+export 'src/rules/a13_single_role_composite_control.dart';
+export 'src/rules/a15_map_custom_gestures_to_on_tap.dart';
+export 'src/rules/a16_toggle_state_via_semantics_flag.dart';
+export 'src/rules/a24_exclude_visual_only_indicators.dart';
 
 // Utilities
 export 'src/utils/flutter_utils.dart';

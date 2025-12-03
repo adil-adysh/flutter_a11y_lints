@@ -31,6 +31,12 @@ import 'package:flutter_a11y_lints/src/rules/a07_replace_semantics_cleanly.dart'
 import 'package:flutter_a11y_lints/src/rules/a18_avoid_hidden_focus_traps.dart';
 import 'package:flutter_a11y_lints/src/rules/a21_use_iconbutton_tooltip.dart';
 import 'package:flutter_a11y_lints/src/rules/a22_respect_widget_semantic_boundaries.dart';
+import 'package:flutter_a11y_lints/src/rules/a09_numeric_values_require_units.dart';
+import 'package:flutter_a11y_lints/src/rules/a11_minimum_tap_target_size.dart';
+import 'package:flutter_a11y_lints/src/rules/a13_single_role_composite_control.dart';
+import 'package:flutter_a11y_lints/src/rules/a15_map_custom_gestures_to_on_tap.dart';
+import 'package:flutter_a11y_lints/src/rules/a16_toggle_state_via_semantics_flag.dart';
+import 'package:flutter_a11y_lints/src/rules/a24_exclude_visual_only_indicators.dart';
 
 void main(List<String> args) async {
   if (args.isEmpty) {
@@ -181,6 +187,12 @@ class FlutterA11yAnalyzer {
       final a18Violations = A18AvoidHiddenFocusTraps.checkTree(tree);
       final a21Violations = A21UseIconButtonTooltip.checkTree(tree);
       final a22Violations = A22RespectWidgetSemanticBoundaries.checkTree(tree);
+      final a09Violations = A09NumericValuesRequireUnits.checkTree(tree);
+      final a11Violations = A11MinimumTapTargetSize.checkTree(tree);
+      final a13Violations = A13SingleRoleCompositeControl.checkTree(tree);
+      final a15Violations = A15MapCustomGesturesToOnTap.checkTree(tree);
+      final a16Violations = A16ToggleStateViaSemanticsFlag.checkTree(tree);
+      final a24Violations = A24ExcludeVisualOnlyIndicators.checkTree(tree);
 
       // Convert A01 violations to issues
       for (final violation in a01Violations) {
@@ -318,6 +330,97 @@ class FlutterA11yAnalyzer {
           message: A22RespectWidgetSemanticBoundaries.message,
           correctionMessage:
               A22RespectWidgetSemanticBoundaries.correctionMessage,
+        ));
+      }
+
+      // Convert A09 violations to issues
+      for (final violation in a09Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A09NumericValuesRequireUnits.code,
+          message: A09NumericValuesRequireUnits.message,
+          correctionMessage: A09NumericValuesRequireUnits.correctionMessage,
+        ));
+      }
+
+      // Convert A11 violations to issues
+      for (final violation in a11Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A11MinimumTapTargetSize.code,
+          message:
+              '${A11MinimumTapTargetSize.message}: ${violation.width}x${violation.height}',
+          correctionMessage: A11MinimumTapTargetSize.correctionMessage,
+        ));
+      }
+
+      // Convert A13 violations to issues
+      for (final violation in a13Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A13SingleRoleCompositeControl.code,
+          message: A13SingleRoleCompositeControl.message,
+          correctionMessage: A13SingleRoleCompositeControl.correctionMessage,
+        ));
+      }
+
+      // Convert A15 violations to issues
+      for (final violation in a15Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A15MapCustomGesturesToOnTap.code,
+          message: A15MapCustomGesturesToOnTap.message,
+          correctionMessage: A15MapCustomGesturesToOnTap.correctionMessage,
+        ));
+      }
+
+      // Convert A16 violations to issues
+      for (final violation in a16Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A16ToggleStateViaSemanticsFlag.code,
+          message: A16ToggleStateViaSemanticsFlag.message,
+          correctionMessage: A16ToggleStateViaSemanticsFlag.correctionMessage,
+        ));
+      }
+
+      // Convert A24 violations to issues
+      for (final violation in a24Violations) {
+        final location =
+            unit.lineInfo.getLocation(violation.node.astNode.offset);
+        issues.add(A11yIssue(
+          file: unit.path,
+          line: location.lineNumber,
+          column: location.columnNumber,
+          severity: 'warning',
+          code: A24ExcludeVisualOnlyIndicators.code,
+          message: A24ExcludeVisualOnlyIndicators.message,
+          correctionMessage: A24ExcludeVisualOnlyIndicators.correctionMessage,
         ));
       }
 
