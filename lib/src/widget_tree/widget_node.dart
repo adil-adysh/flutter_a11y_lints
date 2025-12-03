@@ -40,3 +40,17 @@ class WidgetNode {
   /// collection empty.
   final List<WidgetNode> branchChildren;
 }
+
+/// `WidgetNode` is a compact representation of a widget instantiation used by
+/// the widget→semantic pipeline. It preserves:
+/// - the originating `AstNode` (for file/offset location information),
+/// - constructor positional and named args (stored as `positionalArgs` and
+///   `props`),
+/// - named slot children (e.g., `child`, `title`, `leading`) in `slots`, and
+/// - positional collection children in `children`.
+///
+/// Control-flow constructs (conditional branches) are represented using
+/// `WidgetNodeType.conditionalBranch` and the `branchChildren` list; when a
+/// branch cannot be constant-folded the builder assigns `branchGroupId` and
+/// per-branch `branchValue` so that the semantics builder can carry that
+/// mutual-exclusion information into the final `SemanticNode` tree.

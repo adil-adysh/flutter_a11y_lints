@@ -11,11 +11,27 @@ class WidgetTreeBuilder {
   final ResolvedUnitResult unit;
   int _nextBranchGroupId = 0;
 
+  /// WidgetTreeBuilder
+  ///
+  /// Responsible for converting an expression (typically the body returned by
+  /// a `build()` method) into a `WidgetNode` tree. This builder preserves
+  /// control-flow structure: when encountering `if`/`?:`/collection `if`
+  /// elements that cannot be constant-evaluated, it assigns a `branchGroupId`
+  /// and per-branch `branchValue` so downstream phases can tell which nodes
+  /// are mutually exclusive. Preserving branch information is crucial to
+  /// prevent heuristics from combining information that never co-occurs at
+  /// runtime (e.g., using a sibling Text from an alternate branch as a label).
+
   WidgetNode? fromExpression(
     Expression? expression, {
     int? branchGroupId,
     int? branchValue,
   }) {
+    // Entry point to convert an `Expression` into a `WidgetNode`.
+    // We strip parentheses, handle cascades by delegating to the target, and
+    // dispatch instance creation expressions and conditional expressions to
+    // specialized builders. Returns `null` when the expression does not
+    // represent a widget construction the builder recognizes.
     if (expression == null) return null;
     expression = expression.unParenthesized;
 
@@ -51,6 +67,9 @@ class WidgetTreeBuilder {
     int? branchGroupId,
     int? branchValue,
   }) {
+    // Build a `WidgetNode` for a constructor call. Extract positional args,
+    // named props, recognize known slot names, and collect `children` when
+    // the `children` named argument is present.
     final widgetType = _widgetTypeName(expression);
     if (widgetType == null) return null;
 
@@ -106,6 +125,8 @@ class WidgetTreeBuilder {
     int? branchGroupId,
     int? branchValue,
   }) {
+    // Collect children from a value that can either be a `ListLiteral` (the
+    // common `children: [ ... ]` case) or a single widget expression.
     if (expression is ListLiteral) {
       for (final element in expression.elements) {
         _collectElement(
@@ -134,6 +155,13 @@ class WidgetTreeBuilder {
     int? branchGroupId,
     int? branchValue,
   }) {
+    // Handle collection elements inside list literals. We support:
+    // - plain Expression elements (widgets)
+    // - `IfElement` (conditional collection element) with constant folding
+    //   when possible; otherwise assign a `branchGroupId` and distinct
+    //   `branchValue`s for then/else branches
+    // - `ForElement` by descending into its body
+    // - `SpreadElement` by collecting children from the spread expression
     if (element is Expression) {
       final childNode = fromExpression(
         element,
@@ -161,6 +189,8 @@ class WidgetTreeBuilder {
         return;
       }
 
+      // Non-const conditional: assign a group id so mutually-exclusive
+      // branches can be identified by downstream heuristics.
       final conditionalGroupId = _nextBranchGroupId++;
       _collectElement(
         element.thenElement,
@@ -205,6 +235,9 @@ class WidgetTreeBuilder {
     int? branchGroupId,
     int? branchValue,
   }) {
+    // Convert a conditional expression (`cond ? then : else`) into either a
+    // single chosen node (if the condition const-evaluates) or a
+    // `WidgetNode` representing a conditional branch with two `branchChildren`.
     final resolved = _tryEvalBool(expression.condition);
     if (resolved != null) {
       final chosen =
@@ -255,6 +288,8 @@ class WidgetTreeBuilder {
   }
 
   bool? _tryEvalBool(Expression condition) {
+    // Try to constant-evaluate a boolean expression. Only handles literal
+    // booleans at the moment; this keeps the builder conservative.
     condition = condition.unParenthesized;
     if (condition is BooleanLiteral) {
       return condition.value;
@@ -263,6 +298,9 @@ class WidgetTreeBuilder {
   }
 
   String? _widgetTypeName(InstanceCreationExpression expression) {
+    // Resolve the constructor's type name. Prefer `staticType` when available
+    // (resolved AST), otherwise fall back to the source text. This provides a
+    // stable widgetType string used by KnownSemantics lookups.
     final type = expression.staticType ?? expression.constructorName.type.type;
     if (type is InterfaceType) {
       return type.element.name;

@@ -2,6 +2,13 @@ import 'semantic_node.dart';
 import 'semantic_tree.dart';
 
 /// Utility helpers for reasoning about nearby semantic nodes.
+///
+/// `SemanticNeighborhood` is a convenience wrapper around `SemanticTree` to
+/// provide common queries used by heuristic rules (nearby siblings, previous
+/// and next in reading order, layout groups, etc.). Important: callers must
+/// consider `areMutuallyExclusive` when using nearby nodes — widgets produced
+/// by different branches of the same conditional may look adjacent in the
+/// IR but cannot co-occur at runtime.
 class SemanticNeighborhood {
   SemanticNeighborhood(this.tree);
 
@@ -84,7 +91,11 @@ class SemanticNeighborhood {
       }
     }
   }
-
+  /// Returns true when `a` and `b` are known to originate from different
+  /// branches of the same conditional (`if`/`else` or `?:`) and therefore
+  /// cannot both be present at runtime. This is important to avoid heuristics
+  /// that look for 'nearby' labels accidentally using text that only appears
+  /// in an alternate branch.
   bool areMutuallyExclusive(SemanticNode a, SemanticNode b) {
     if (a.branchGroupId == null || b.branchGroupId == null) return false;
     if (a.branchGroupId != b.branchGroupId) return false;

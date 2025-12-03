@@ -69,42 +69,68 @@ class SemanticSummary {
         isSemanticallyTransparent: false,
       );
 }
+  /// Global context shared across semantic builds.
+  ///
+  /// This holds immutable/global resources used during semantic synthesis:
+  /// - `knownSemantics`: metadata for built-in widgets
+  /// - `typeProvider`: analyzer type helpers used to resolve class elements
+  ///
+  /// It also implements a small memoization/cycle-guarding cache for
+  /// `SemanticSummary` instances computed for custom widgets. The summary cache
+  /// prevents re-analyzing the same widget class repeatedly and protects against
+  /// recursive widget references by degrading to `SemanticSummary.unknown` when
+  /// a cycle is detected.
+  class GlobalSemanticContext {
+    GlobalSemanticContext({
+      required this.knownSemantics,
+      required this.typeProvider,
+    });
 
-/// Global context shared across semantic builds.
-class GlobalSemanticContext {
-  GlobalSemanticContext({
-    required this.knownSemantics,
-    required this.typeProvider,
-  });
+    final KnownSemanticsRepository knownSemantics;
+    final TypeProvider typeProvider;
 
-  final KnownSemanticsRepository knownSemantics;
-  final TypeProvider typeProvider;
+    // Cache of computed summaries for custom widget classes. Keyed by class
+    // name, not by full element identity; this is sufficient for the offline
+    // analysis use-case and keeps the cache simple.
+    final Map<String, SemanticSummary> _summaryCache = {};
+    // Guard set used to detect recursive computation (e.g., WidgetA -> WidgetB -> WidgetA).
+    final Set<String> _summaryInProgress = {};
 
-  final Map<String, SemanticSummary> _summaryCache = {};
-  final Set<String> _summaryInProgress = {};
+    /// Return a cached `SemanticSummary` for the given `InterfaceType`, or
+    /// compute it if missing. If a cycle is detected while computing a summary,
+    /// we return `SemanticSummary.unknown` to avoid infinite recursion.
+    ///
+    /// NOTE: The body currently returns an `unknown` summary as a placeholder.
+    /// Implementers should resolve `widgetType.element`, find its `build()`
+    /// method, build a minimal `WidgetNode` tree and run the local semantic
+    /// builder to derive a compact `SemanticSummary` (role, controlKind,
+    /// label guarantees, merges/excludes behavior, isSemanticallyTransparent).
+    SemanticSummary? getOrComputeSummary(InterfaceType? widgetType) {
+      final element = widgetType?.element;
+      if (element == null) return null;
+      final name = element.name;
+      if (name == null) return null;
 
-  SemanticSummary? getOrComputeSummary(InterfaceType? widgetType) {
-    final element = widgetType?.element;
-    if (element == null) return null;
-    final name = element.name;
-    if (name == null) return null;
+      final cached = _summaryCache[name];
+      if (cached != null) return cached;
 
-    final cached = _summaryCache[name];
-    if (cached != null) return cached;
+      if (_summaryInProgress.contains(name)) {
+        // Recursive widget graphs: degrade to unknown summary to avoid cycles.
+        return SemanticSummary.unknown(name);
+      }
 
-    if (_summaryInProgress.contains(name)) {
-      return SemanticSummary.unknown(name);
+      _summaryInProgress.add(name);
+      try {
+        // TODO: implement proper summary computation by finding the class's
+        // build() method, constructing its WidgetNode tree, and summarizing
+        // the resulting semantics. For now we conservatively return `unknown`.
+        final summary = SemanticSummary.unknown(name);
+        _summaryCache[name] = summary;
+        return summary;
+      } finally {
+        _summaryInProgress.remove(name);
+      }
     }
-
-    _summaryInProgress.add(name);
-    try {
-      final summary = SemanticSummary.unknown(name);
-      _summaryCache[name] = summary;
-      return summary;
-    } finally {
-      _summaryInProgress.remove(name);
-    }
-  }
 
   String? evalString(Expression? expression) {
     if (expression == null) return null;

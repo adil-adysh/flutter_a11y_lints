@@ -36,3 +36,13 @@ class _BuildMethodCollector extends RecursiveAstVisitor<void> {
     super.visitMethodDeclaration(node);
   }
 }
+
+// Utilities in this module are intentionally minimal and focused: they are
+// helpers used by the analysis pipeline to locate `build()` methods and to
+// extract the expression returned by a `build()` implementation (either an
+// arrow body or the first `return` in a block). The pipeline assumes these
+// helpers operate on resolved AST nodes and do not perform resolution.
+
+// `extractBuildBodyExpression` should be conservative: if it cannot find a
+// single top-level returned expression, it returns `null` and the caller may
+// skip semantic analysis for that method.

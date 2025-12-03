@@ -3,10 +3,18 @@ import 'package:meta/meta.dart';
 
 import 'known_semantics.dart';
 
-/// Label guarantee determines how confident we are that a label exists.
+/// How confident the builder is that a node has a usable label.
+///
+/// - `none` means there is no discovered label source.
+/// - `hasLabelButDynamic` indicates the widget exposes a label-like
+///   parameter but its value is not a statically-known string (e.g. an
+///   expression or variable). Assistive tech may still announce it at runtime.
+/// - `hasStaticLabel` means a compile-time string was found (best confidence).
 enum LabelGuarantee { none, hasLabelButDynamic, hasStaticLabel }
 
-/// Origin of a label when one is known.
+/// Origin of a discovered label. Rules may use this to prefer certain label
+/// sources (e.g., prefer explicit Semantics.label over a tooltip when
+/// resolving conflicts).
 enum LabelSource {
   none,
   tooltip,
@@ -18,7 +26,13 @@ enum LabelSource {
   other,
 }
 
-/// Simplified semantic IR node for v1 of the pipeline.
+/// Simplified semantic IR node used by rules and the tree annotator.
+///
+/// `SemanticNode` intentionally stores both raw discovery data (e.g. the
+/// originating `AstNode`, `offset`, `length`) and derived semantics (role,
+/// controlKind, label, labelGuarantee, explicitChildLabel). This design lets
+/// rules make high-confidence checks without rereading the AST or invoking the
+/// analyzer.
 @immutable
 class SemanticNode {
   const SemanticNode({

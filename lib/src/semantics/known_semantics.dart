@@ -1,6 +1,12 @@
 import 'known_semantics_data.dart';
 
-/// Semantic roles supported by the v1 semantic IR.
+/// This file defines the normalized metadata used by the semantic builder to
+/// understand built-in Flutter widget semantics. The `KnownSemantics` table is
+/// intended to be generated from a JSON catalogue (`data/known_semantics_v2.6.json`)
+/// and contains per-widget static behavior useful for building the IR.
+///
+/// `SemanticRole` provides a coarse-grained role for accessibility
+/// reasoning (button/image/textField/etc.).
 enum SemanticRole {
   button,
   image,
@@ -14,7 +20,9 @@ enum SemanticRole {
   unknown,
 }
 
-/// High-level control kinds used for extra context in rules.
+/// `ControlKind` is a more specific classification that helps rules distinguish
+/// between types of controls that share a role (e.g., `IconButton` vs.
+/// `ElevatedButton` both map to `button` role but have different expectations).
 enum ControlKind {
   none,
   elevatedButton,
@@ -30,7 +38,9 @@ enum ControlKind {
   textFieldControl,
 }
 
-/// Normalized semantics metadata for a known Flutter widget.
+/// Static metadata for a widget type. This is read-only and should reflect
+/// widget-level behavior that does not depend on instance args (except where
+/// explicitly noted in slotTraversalOrder).
 class KnownSemantics {
   const KnownSemantics({
     required this.role,

@@ -7,6 +7,30 @@ import 'known_semantics.dart';
 import 'semantic_context.dart';
 import 'semantic_node.dart';
 
+/// SemanticBuilder
+///
+/// Responsible for converting a `WidgetNode` tree (an AST-derived,
+/// control-flow-aware representation of widget instantiations) into a
+/// `SemanticNode` tree — a static approximation of Flutter's runtime
+/// `Semantics` tree. The builder must be deterministic and run synchronously
+/// using only information available from resolved AST nodes and simple
+/// constant-evaluation helpers exposed by `BuildSemanticContext`.
+///
+/// Important notes for contributors:
+/// - Special semantics widgets (Semantics/MergeSemantics/ExcludeSemantics/
+///   BlockSemantics/IndexedSemantics) are handled first since they alter
+///   descendant visibility, labels, or focusability.
+/// - `KnownSemantics` provides per-widget metadata (role, controlKind,
+///   interaction flags, slot traversal order) and is the single source of
+///   truth for built-in widgets' static behaviour.
+/// - `branchGroupId` and `branchValue` are copied from `WidgetNode` into
+///   `SemanticNode`. This preserves knowledge of mutually-exclusive branches
+///   (e.g., widgets produced by `if`/`else` constructs) so heuristics can
+///   ignore siblings that cannot co-occur at runtime.
+/// - The builder populates `explicitChildLabel`, `labelGuarantee`, and
+///   `labelSource` so rules can make high-confidence decisions about whether
+///   a node is accessible-label-complete.
+
 class SemanticBuilder {
   SemanticBuilder({
     required this.unit,
@@ -21,6 +45,10 @@ class SemanticBuilder {
     WidgetNode? widget, {
     bool enableHeuristics = false,
   }) {
+    /// Entry point: convert a `WidgetNode` (root of a build expression) into
+    /// a `SemanticNode` tree. Returns `null` when the input is null or cannot
+    /// be converted. `enableHeuristics` may be used to enable conservative
+    /// heuristic labeling during the build.
     if (widget == null) return null;
     final ctx = BuildSemanticContext(
       global: globalContext,
@@ -29,10 +57,16 @@ class SemanticBuilder {
     return _buildNode(widget, ctx);
   }
 
+  /// Internal dispatch: handle conditional branch nodes and route special
+  /// semantics widgets to their dedicated builders. Returns a `SemanticNode`
+  /// or `null` if the widget produces no semantic node.
   SemanticNode? _buildNode(WidgetNode? widget, BuildSemanticContext ctx) {
     if (widget == null) return null;
 
     if (widget.nodeType == WidgetNodeType.conditionalBranch) {
+      // For a `conditionalBranch` node the builder attempts to build each
+      // mutually-exclusive branch and returns the first non-null result. This
+      // mirrors the runtime behavior where only one branch is active.
       for (final branch in widget.branchChildren) {
         final built = _buildNode(branch, ctx);
         if (built != null) {
@@ -62,6 +96,13 @@ class SemanticBuilder {
     WidgetNode widget,
     BuildSemanticContext ctx,
   ) {
+    // Build a semantic node for a standard (non-wrapper) widget.
+    // Steps:
+    // 1. Lookup KnownSemantics metadata for this widget type
+    // 2. Build semantic children according to slotTraversalOrder + children list
+    // 3. Derive a label from widget props, tooltips, text children, etc.
+    // 4. Merge child labels when the widget merges descendants
+    // 5. Return a `SemanticNode` containing combined semantics for rules.
     final known = ctx.knownSemantics[widget.widgetType] ?? _defaultSemantics;
     final builtChildren = _buildChildren(widget, ctx);
 
@@ -144,6 +185,9 @@ class SemanticBuilder {
       labelSource: labelSource,
       explicitChildLabel: explicitChildLabel,
       children: builtChildren.nodes,
+      // Preserve branch metadata so later heuristics can determine
+      // mutual-exclusion between nodes originating from different
+      // conditional branches.
       branchGroupId: widget.branchGroupId,
       branchValue: widget.branchValue,
     );
@@ -153,6 +197,9 @@ class SemanticBuilder {
     WidgetNode widget,
     BuildSemanticContext ctx,
   ) {
+    // Handle `Semantics(...)` widgets which may override role/label and
+    // can mark a semantic boundary. This wrapper may set `mergesDescendants`
+    // when `container: true` or when a `label` is provided.
     final builtChildren = _buildChildren(widget, ctx);
     final nodes = builtChildren.nodes;
     final baseChild = nodes.isNotEmpty ? nodes.first : null;
@@ -198,6 +245,9 @@ class SemanticBuilder {
     WidgetNode widget,
     BuildSemanticContext ctx,
   ) {
+    // `MergeSemantics` aggregates descendant labels and actions into a single
+    // parent node. Children remain in the physical tree but are not separate
+    // accessibility focus targets.
     final builtChildren = _buildChildren(widget, ctx);
     if (builtChildren.nodes.isEmpty) {
       return null;
@@ -218,6 +268,9 @@ class SemanticBuilder {
     WidgetNode widget,
     BuildSemanticContext ctx,
   ) {
+    // `ExcludeSemantics` temporarily marks built descendants as excluded from
+    // accessibility. We track `excludeDepth` in the context in case of nested
+    // exclusions.
     ctx.excludeDepth++;
     final builtChildren = _buildChildren(widget, ctx);
     ctx.excludeDepth--;
@@ -243,6 +296,9 @@ class SemanticBuilder {
     WidgetNode widget,
     BuildSemanticContext ctx,
   ) {
+    // `BlockSemantics` marks an overlay that blocks semantics behind it. We
+    // track `blockDepth` so that focus-order assignment can skip nodes that are
+    // conceptually behind a blocking overlay.
     ctx.blockDepth++;
     final builtChildren = _buildChildren(widget, ctx);
     ctx.blockDepth--;
@@ -262,6 +318,9 @@ class SemanticBuilder {
     WidgetNode widget,
     BuildSemanticContext ctx,
   ) {
+    // `IndexedSemantics` attaches an index to the semantic node when the
+    // `index` argument is a compile-time integer. This supports list indexing
+    // and list-item grouping heuristics.
     final builtChildren = _buildChildren(widget, ctx);
     if (builtChildren.nodes.isEmpty) {
       return null;
@@ -309,6 +368,10 @@ class SemanticBuilder {
     SemanticRole? roleOverride,
   }) {
     final base = baseChild;
+    // Compose semantic properties by overriding base child values with
+    // explicitly-provided values from the wrapper. This allows `Semantics`
+    // widgets to selectively override child semantics (label, role, toggled
+    // state, etc.) while otherwise inheriting from their primary child.
     final role = roleOverride ?? base?.role ?? SemanticRole.group;
     final controlKind =
         controlKindOverride ?? base?.controlKind ?? ControlKind.none;
@@ -371,6 +434,8 @@ class SemanticBuilder {
       explicitChildLabel:
           explicitChildLabelOverride ?? base?.explicitChildLabel,
       children: children,
+      // Copy branch information from the originating WidgetNode so that the
+      // mutual-exclusion semantics are preserved through the semantic tree.
       branchGroupId: widget.branchGroupId,
       branchValue: widget.branchValue,
       tooltip: tooltipOverride ?? base?.tooltip,
@@ -389,6 +454,11 @@ class SemanticBuilder {
     WidgetNode widget,
     BuildSemanticContext ctx,
   ) {
+    // Build and return the semantic children for `widget`.
+    // We follow `slotTraversalOrder` from KnownSemantics (if available) to
+    // ensure deterministic ordering of named slots (e.g. ListTile's leading,
+    // title, subtitle, trailing) before falling back to the `slots.keys`
+    // order. Positional `children` come after slots.
     final nodes = <SemanticNode>[];
     final slotNodes = <String, SemanticNode>{};
     final slotOrder =
@@ -421,7 +491,12 @@ class SemanticBuilder {
     BuildSemanticContext ctx, {
     String? slotName,
   }) {
+    // Append nodes built from `child` into `aggregate`, and record the first
+    // built node for the `slotName` (if provided) in `slotNodes`.
     if (child.nodeType == WidgetNodeType.conditionalBranch) {
+      // Unfold conditional branches: we append results from each branch so
+      // that downstream merging logic (and branchId propagation) can see all
+      // mutually-exclusive alternatives.
       for (final branch in child.branchChildren) {
         _appendBuiltNodes(
           branch,
@@ -444,6 +519,10 @@ class SemanticBuilder {
   }
 
   bool _computeIsEnabled(WidgetNode widget, KnownSemantics known) {
+    // Determine whether the control should be considered enabled. Prefer the
+    // widget-level default from `KnownSemantics` but override when a
+    // callback-like argument is present; a `null` literal explicitly disables
+    // the callback.
     var enabled = known.isEnabledByDefault;
     final callbacks = [
       widget.props['onPressed'],
@@ -464,6 +543,10 @@ class SemanticBuilder {
   }
 
   _LabelInfo? _deriveLabelInfo(WidgetNode widget) {
+    // Look for label sources that are local to this widget instance.
+    // This is intentionally conservative and only considers common patterns
+    // (Text child, tooltip on IconButton/FAB, Icon.semanticLabel, and
+    // Semantics.label overrides).
     if (widget.widgetType == 'Text' && widget.positionalArgs.isNotEmpty) {
       return _labelFromExpression(
         widget.positionalArgs.first,
@@ -507,6 +590,9 @@ class SemanticBuilder {
   }
 
   _LabelInfo? _deriveFallbackChildLabel(WidgetNode widget) {
+    // Try extracting a text label from common prop names when no explicit
+    // label was found. This is a conservative fallback and should not be
+    // relied upon for high-confidence rules unless the guarantee is static.
     const candidates = ['child', 'label'];
     for (final prop in candidates) {
       final info = _extractTextLabel(widget.props[prop]);
@@ -518,6 +604,9 @@ class SemanticBuilder {
   }
 
   _LabelInfo? _extractTextLabel(Expression? expression) {
+    // Try to extract a textual label from an expression by recognizing
+    // `Text(...)` constructors and conditional expressions composed of
+    // such constructors.
     if (expression == null) return null;
     if (expression is ConditionalExpression) {
       final thenInfo = _extractTextLabel(expression.thenExpression);
@@ -545,6 +634,8 @@ class SemanticBuilder {
   }
 
   _LabelInfo? _combineLabelInfo(_LabelInfo? a, _LabelInfo? b) {
+    // Combine two label infos (e.g., from conditional branches) by choosing
+    // the stronger guarantee and a non-null value when available.
     if (a == null) return b;
     if (b == null) return a;
     final guarantee = _mergeGuarantees(a.guarantee, b.guarantee);
@@ -558,6 +649,10 @@ class SemanticBuilder {
     String? existingText,
     LabelGuarantee existingGuarantee = LabelGuarantee.none,
   }) {
+    // Aggregate textual labels from descendant nodes into a single merged
+    // label string. The guarantee reflects the strongest guarantee among
+    // contributing nodes. This is used when a parent widget implicitly or
+    // explicitly merges descendant semantics (e.g., ListTile, ElevatedButton).
     final parts = <String>[];
     if (existingText != null && existingText.isNotEmpty) {
       parts.add(existingText);
@@ -588,6 +683,8 @@ class SemanticBuilder {
     LabelGuarantee current,
     LabelGuarantee incoming,
   ) {
+    // Combine two guarantees: the higher enum index represents a stronger
+    // guarantee (none < hasLabelButDynamic < hasStaticLabel).
     return incoming.index > current.index ? incoming : current;
   }
 
@@ -595,6 +692,8 @@ class SemanticBuilder {
     Expression? expression, {
     required LabelSource source,
   }) {
+    // Convert an expression into a `_LabelInfo` describing whether the
+    // expression is a compile-time string or a dynamic string-like value.
     if (expression == null || expression is NullLiteral) return null;
     final literal = _literalString(expression);
     if (literal != null) {
@@ -615,6 +714,10 @@ class SemanticBuilder {
   }
 
   String? _literalString(Expression? expression) {
+    // Return a string when `expression` is a compile-time string literal
+    // (including adjacent strings and pure interpolations with only
+    // `InterpolationString` parts). Return null for non-constant or
+    // interpolated expressions that include values.
     if (expression is SimpleStringLiteral) {
       return expression.value;
     }
@@ -642,6 +745,9 @@ class SemanticBuilder {
   }
 
   bool _isStringExpression(Expression expression) {
+    // Heuristic test for whether an expression is string-like. When `staticType`
+    // is available we use it; otherwise we conservatively inspect the syntax
+    // node shapes (literals / interpolations) and return true.
     final type = expression.staticType;
     if (type is InterfaceType) {
       return type.isDartCoreString;
@@ -655,6 +761,9 @@ class SemanticBuilder {
   }
 
   String? _instanceTypeName(InstanceCreationExpression expression) {
+    // Resolve the type name for an `InstanceCreationExpression`. Prefer the
+    // analyzer-provided `staticType` when available; otherwise fall back to
+    // the source text of the constructor's type name.
     final type = expression.staticType ?? expression.constructorName.type.type;
     if (type is InterfaceType) {
       return type.element.name;
