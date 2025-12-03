@@ -17,9 +17,12 @@ void main() {
       final firstRowChildren = rootChildren[0].children;
       final secondRowChildren = rootChildren[1].children;
 
-      expect(firstRowChildren.map((c) => c.layoutGroupId).toSet().length, equals(1));
-      expect(secondRowChildren.map((c) => c.layoutGroupId).toSet().length, equals(1));
-      expect(firstRowChildren.first.layoutGroupId, isNot(secondRowChildren.first.layoutGroupId));
+      expect(firstRowChildren.map((c) => c.layoutGroupId).toSet().length,
+          equals(1));
+      expect(secondRowChildren.map((c) => c.layoutGroupId).toSet().length,
+          equals(1));
+      expect(firstRowChildren.first.layoutGroupId,
+          isNot(secondRowChildren.first.layoutGroupId));
     });
 
     test('Mixed runs only group contiguous list-like children', () async {

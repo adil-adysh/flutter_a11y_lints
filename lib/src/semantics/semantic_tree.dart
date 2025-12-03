@@ -149,7 +149,8 @@ class SemanticTree {
         'ScrollView',
       };
 
-        if ((layoutContainers.contains(node.widgetType) || node.isPureContainer) &&
+      if ((layoutContainers.contains(node.widgetType) ||
+              node.isPureContainer) &&
           processedChildren.length > 1) {
         final layoutId = nextLayoutGroupId++;
         updatedChildren = processedChildren
