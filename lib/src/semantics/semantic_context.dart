@@ -150,6 +150,9 @@ class GlobalSemanticContext {
       resolver;
 
   /// Cache of computed summaries for widget classes, keyed by class name.
+  /// Cache of computed summaries for widget classes, keyed by a stable
+  /// element identifier (`libraryUri::className`) to avoid collisions when
+  /// different libraries declare classes with the same short name.
   final Map<String, SemanticSummary> _summaryCache = {};
 
   /// Guard set used to detect recursive computation (WidgetA → WidgetB → WidgetA).
@@ -178,15 +181,17 @@ class GlobalSemanticContext {
     final name = element.name;
     if (name == null) return null;
 
-    final cached = _summaryCache[name];
+    final key = _elementKey(element);
+
+    final cached = _summaryCache[key];
     if (cached != null) return cached;
 
-    if (_summaryInProgress.contains(name)) {
+    if (_summaryInProgress.contains(key)) {
       // Recursive widget graphs: degrade to unknown summary to avoid cycles.
       return SemanticSummary.unknown(name);
     }
 
-    _summaryInProgress.add(name);
+    _summaryInProgress.add(key);
     try {
       // 1. Known framework widget: derive summary directly from KnownSemantics.
       final known = knownSemantics[name];
@@ -211,7 +216,7 @@ class GlobalSemanticContext {
           // Pure containers are semantically transparent.
           isSemanticallyTransparent: known.isPureContainer,
         );
-        _summaryCache[name] = summary;
+        _summaryCache[key] = summary;
         return summary;
       }
 
@@ -232,7 +237,7 @@ class GlobalSemanticContext {
               className: name,
             );
             if (summary != null) {
-              _summaryCache[name] = summary;
+              _summaryCache[key] = summary;
               return summary;
             }
           }
@@ -266,17 +271,34 @@ class GlobalSemanticContext {
           // Assume custom widgets are pass-through until proven otherwise.
           isSemanticallyTransparent: true,
         );
-        _summaryCache[name] = summary;
+        _summaryCache[key] = summary;
         return summary;
       }
 
       // 4. Final fallback: unknown summary when behaviour can't be inferred.
       final unknown = SemanticSummary.unknown(name);
-      _summaryCache[name] = unknown;
+      _summaryCache[key] = unknown;
       return unknown;
     } finally {
-      _summaryInProgress.remove(name);
+      _summaryInProgress.remove(key);
     }
+  }
+
+  /// Build a stable key for the analyzer element used for cache and cycle
+  /// detection. Prefer the library URI when available; fall back to the
+  /// element source URI. The key format is `<libraryUri>::<elementName>`.
+  String _elementKey(dynamic element) {
+    try {
+      final libUri = element.library?.source?.uri?.toString();
+      if (libUri != null) return '$libUri::${element.name}';
+    } catch (_) {
+      // Some analyzer element implementations don't expose `source` directly;
+      // fall through to a conservative fallback below.
+    }
+
+    // Conservative fallback: include the element name and its hashCode to
+    // reduce collision risk when library URI isn't available.
+    return 'unknown::${element.name}::${element.hashCode}';
   }
 
   /// Compute a summary from a resolved unit by inspecting the widget's build().
