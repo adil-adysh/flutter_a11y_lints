@@ -199,6 +199,18 @@ class Column extends Widget {
   const Column({required List<Widget> children});
 }
 
+class Flex extends Widget {
+  const Flex({required List<Widget> children});
+}
+
+class ListView extends Widget {
+  const ListView({required List<Widget> children});
+}
+
+class SingleChildScrollView extends Widget {
+  const SingleChildScrollView({required Widget child});
+}
+
 class CircleAvatar extends Widget {
   const CircleAvatar({
     Object? backgroundImage,

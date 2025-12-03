@@ -122,9 +122,74 @@ class GlobalSemanticContext {
 
     _summaryInProgress.add(name);
     try {
-      // TODO: implement proper summary computation by finding the class's
-      // build() method, constructing its WidgetNode tree, and summarizing
-      // the resulting semantics. For now we conservatively return `unknown`.
+      // First, if this widget is a known built-in widget, derive its summary
+      // from the KnownSemantics table. This gives a high-fidelity summary for
+      // Flutter framework widgets without needing to analyze source.
+      final known = knownSemantics[name];
+      if (known != null) {
+        final summary = SemanticSummary(
+          widgetType: name,
+          role: known.role,
+          controlKind: known.controlKind,
+          isCompositeControl: !known.isPureContainer,
+          isFocusable: known.isFocusable,
+          hasTap: known.hasTap,
+          hasLongPress: known.hasLongPress,
+          hasIncrease: known.hasIncrease,
+          hasDecrease: known.hasDecrease,
+          isToggled: known.isToggled,
+          isChecked: known.isChecked,
+          mergesDescendants: known.mergesDescendants,
+          excludesDescendants: known.excludesDescendants,
+          blocksBehind: known.blocksBehind,
+          labelGuarantee: LabelGuarantee.none,
+          primaryLabelSource: LabelSource.none,
+          // Consider pure containers semantically transparent.
+          isSemanticallyTransparent: known.isPureContainer,
+        );
+        _summaryCache[name] = summary;
+        return summary;
+      }
+
+      // Conservative heuristics for custom widgets: if the class extends
+      // Flutter's StatelessWidget or StatefulWidget, treat it as a
+      // semantically-transparent container by default (so rules may inspect
+      // children). We detect this by examining the declared supertypes' names
+      // — this is conservative but useful when source AST is not available.
+      final supertypeNames = <String>{};
+      for (final st in element.allSupertypes) {
+        final en = st.element.name;
+        if (en != null) supertypeNames.add(en);
+      }
+
+      if (supertypeNames.contains('StatelessWidget') ||
+          supertypeNames.contains('StatefulWidget')) {
+        final summary = SemanticSummary(
+          widgetType: name,
+          role: SemanticRole.unknown,
+          controlKind: ControlKind.none,
+          isCompositeControl: false,
+          isFocusable: false,
+          hasTap: false,
+          hasLongPress: false,
+          hasIncrease: false,
+          hasDecrease: false,
+          isToggled: false,
+          isChecked: false,
+          mergesDescendants: false,
+          excludesDescendants: false,
+          blocksBehind: false,
+          labelGuarantee: LabelGuarantee.none,
+          primaryLabelSource: LabelSource.none,
+          // Assume custom widgets are semantically transparent until we
+          // analyze their build() bodies.
+          isSemanticallyTransparent: true,
+        );
+        _summaryCache[name] = summary;
+        return summary;
+      }
+
+      // Fallback: unknown summary when we cannot infer behaviours cheaply.
       final summary = SemanticSummary.unknown(name);
       _summaryCache[name] = summary;
       return summary;
