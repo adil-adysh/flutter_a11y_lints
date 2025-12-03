@@ -6,10 +6,16 @@ import 'widget_node.dart';
 
 /// Builds [WidgetNode] trees directly from resolved AST nodes.
 class WidgetTreeBuilder {
-  WidgetTreeBuilder(this.unit);
+  /// `constEval` is an optional callback used to attempt constant folding of
+  /// boolean expressions encountered when building collection `if`/`?:`
+  /// elements. When provided, it should return `true`, `false`, or `null`
+  /// when the expression cannot be resolved at analysis time.
+  WidgetTreeBuilder(this.unit, {bool? Function(Expression?)? constEval})
+      : _constEval = constEval;
 
   final ResolvedUnitResult unit;
   int _nextBranchGroupId = 0;
+  final bool? Function(Expression?)? _constEval;
 
   /// WidgetTreeBuilder
   ///
@@ -291,9 +297,42 @@ class WidgetTreeBuilder {
     // Try to constant-evaluate a boolean expression. Only handles literal
     // booleans at the moment; this keeps the builder conservative.
     condition = condition.unParenthesized;
+    // Prefer the provided `_constEval` callback when available so callers can
+    // provide a richer constant evaluator.
+    if (_constEval != null) {
+      try {
+        return _constEval(condition);
+      } catch (_) {
+        // fall through to conservative checks
+      }
+    }
+
     if (condition is BooleanLiteral) {
       return condition.value;
     }
+
+    // If the condition is a simple identifier referencing a top-level const
+    // variable in the same resolved unit, attempt to read the initializer.
+    // This helps fold constructs like `const showFirst = true;`.
+    if (condition is SimpleIdentifier) {
+      final name = condition.name;
+      try {
+        for (final decl in unit.unit.declarations) {
+          if (decl is TopLevelVariableDeclaration) {
+            final vars = decl.variables.variables;
+            for (final v in vars) {
+              if (v.name.lexeme == name) {
+                final init = v.initializer;
+                if (init != null) return _tryEvalBool(init);
+              }
+            }
+          }
+        }
+      } catch (_) {
+        // ignore resolution failures
+      }
+    }
+
     return null;
   }
 

@@ -394,7 +394,8 @@ class GlobalSemanticContext {
     }
 
     // Full path: WidgetNode → SemanticNode using existing builders.
-    final treeBuilder = WidgetTreeBuilder(unit);
+    final treeBuilder =
+        WidgetTreeBuilder(unit, constEval: (expr) => evalBool(expr));
     final widgetNode = treeBuilder.fromExpression(buildExpr);
     if (widgetNode == null) {
       return null;
@@ -486,15 +487,86 @@ class GlobalSemanticContext {
   }
 
   bool? evalBool(Expression? expression) {
-    if (expression is BooleanLiteral) {
-      return expression.value;
+    if (expression == null) return null;
+    expression = expression.unParenthesized;
+
+    if (expression is BooleanLiteral) return expression.value;
+
+    if (expression is PrefixExpression &&
+        expression.operator.type.lexeme == '!') {
+      final inner = evalBool(expression.operand);
+      return inner == null ? null : !inner;
     }
+
+    if (expression is BinaryExpression) {
+      final op = expression.operator.lexeme;
+      if (op == '&&') {
+        final left = evalBool(expression.leftOperand);
+        if (left == false) return false;
+        final right = evalBool(expression.rightOperand);
+        if (left == true && right != null) return right;
+        return null;
+      }
+      if (op == '||') {
+        final left = evalBool(expression.leftOperand);
+        if (left == true) return true;
+        final right = evalBool(expression.rightOperand);
+        if (left == false && right != null) return right;
+        return null;
+      }
+      if (op == '==' || op == '!=') {
+        // Try to evaluate equality when both sides reduce to simple literals
+        final l = expression.leftOperand;
+        final r = expression.rightOperand;
+        final lv =
+            evalString(l) ?? evalBool(l)?.toString() ?? evalInt(l)?.toString();
+        final rv =
+            evalString(r) ?? evalBool(r)?.toString() ?? evalInt(r)?.toString();
+        if (lv != null && rv != null) {
+          final eq = lv == rv;
+          return op == '==' ? eq : !eq;
+        }
+      }
+    }
+
+    // Identifiers or property accesses: try to read a constant value from
+    // the resolved element when available. Use dynamic invocation to avoid
+    // hard dependency on specific Element impls.
+    try {
+      final el = (expression as dynamic).staticElement;
+      if (el != null) {
+        // Some analyzer implementations expose `computeConstantValue()` that
+        // returns a DartObject-like instance with `toBoolValue()`.
+        final constVal = (el as dynamic).computeConstantValue?.call();
+        if (constVal != null) {
+          // Try common accessors
+          final asBool = constVal.toBoolValue?.call();
+          if (asBool is bool) return asBool;
+        }
+      }
+    } catch (_) {
+      // ignore and fall through
+    }
+
     return null;
   }
 
   int? evalInt(Expression? expression) {
-    if (expression is IntegerLiteral) {
-      return expression.value;
+    if (expression == null) return null;
+    expression = expression.unParenthesized;
+    if (expression is IntegerLiteral) return expression.value;
+
+    try {
+      final el = (expression as dynamic).staticElement;
+      if (el != null) {
+        final constVal = (el as dynamic).computeConstantValue?.call();
+        if (constVal != null) {
+          final asInt = constVal.toIntValue?.call();
+          if (asInt is int) return asInt;
+        }
+      }
+    } catch (_) {
+      // ignore
     }
     return null;
   }
