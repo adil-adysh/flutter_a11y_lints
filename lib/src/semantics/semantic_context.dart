@@ -454,7 +454,8 @@ class GlobalSemanticContext {
             (_evalConstBoolFromUnit(unp.leftOperand, unit, seen)?.toString()) ??
             (_evalConstIntFromUnit(unp.leftOperand, unit, seen)?.toString());
         final rv = _evalConstStringFromUnit(unp.rightOperand, unit, seen) ??
-            (_evalConstBoolFromUnit(unp.rightOperand, unit, seen)?.toString()) ??
+            (_evalConstBoolFromUnit(unp.rightOperand, unit, seen)
+                ?.toString()) ??
             (_evalConstIntFromUnit(unp.rightOperand, unit, seen)?.toString());
         if (lv != null && rv != null) {
           final eq = lv == rv;
@@ -894,6 +895,8 @@ class BuildSemanticContext {
   // deterministic logic.
   String? evalString(Expression? expression) =>
       global.evalStringInUnit(expression, unit);
-  bool? evalBool(Expression? expression) => global.evalBoolInUnit(expression, unit);
-  int? evalInt(Expression? expression) => global.evalIntInUnit(expression, unit);
+  bool? evalBool(Expression? expression) =>
+      global.evalBoolInUnit(expression, unit);
+  int? evalInt(Expression? expression) =>
+      global.evalIntInUnit(expression, unit);
 }
