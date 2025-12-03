@@ -1,5 +1,4 @@
 #!/usr/bin/env dart
-
 // CLI entrypoint for the Flutter A11y Semantic Analyzer.
 //
 // This executable discovers Dart files or directories, resolves them with
