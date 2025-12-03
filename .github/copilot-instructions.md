@@ -1,178 +1,104 @@
 # GitHub Copilot Instructions for flutter_a11y_lints
 
-## Project Overview
+## TL;DR for Copilot
 
-This is a **Flutter accessibility lints plugin** built using the `custom_lint` framework. It provides automated accessibility checks for Flutter applications to help developers build more inclusive apps.
+- This repo is a **standalone semantic IR analyzer**, not a `custom_lint` plugin. Entry points are `bin/a11y.dart` (CLI) and `lib/flutter_a11y_lints.dart` (library export).
+- Core pipeline: build `WidgetNode` trees → convert to `SemanticNode` IR → run rule sweeps that return violation objects.
+- Rules live under `lib/src/rules/`. Each rule exposes static metadata, pure helper methods, and a `checkTree(SemanticTree tree)` that returns typed violations.
+- Tests are hand-written in `test/rules/*.dart` plus semantic tree utilities in `test/semantics/`. Running `dart test` from repo root is the canonical verification path.
+- Structured documentation for reasoning lives in `doc/docs/*.md`. Reach for those before re-deriving architecture.
 
-## Project Purpose
+## Architecture Snapshot
 
-- Enforce Flutter accessibility best practices through custom lint rules
-- Detect common accessibility anti-patterns in Flutter widget trees
-- Guide developers toward accessible UI implementations
-- Support WCAG (Web Content Accessibility Guidelines) compliance
+| Layer | Implementation hints |
+| --- | --- |
+| CLI runner | `bin/a11y.dart` wires analyzer contexts, filters Flutter units via `fileUsesFlutter`, builds trees per build method, runs every rule, and prints friendly diagnostics. Keep CLI output human-readable, not IDE-formatted. |
+| Widget tree | `lib/src/widget_tree/widget_tree_builder.dart` walks resolved AST (supports conditionals, spreads, loops). Use `WidgetNode.branchGroupId` to avoid double counting mutually exclusive branches. |
+| Semantic IR | `lib/src/semantics/semantic_builder.dart`, `semantic_node.dart`, `semantic_tree.dart`. The builder consults `KnownSemanticsRepository` (data JSON under `data/known_semantics_v2.6.json`). Nodes expose accessibility traits (role, controlKind, labels, gestures, boundaries). |
+| Rules | Each rule inspects the semantic tree to enforce a WCAG-inspired heuristic. They should not touch analyzer directly—only semantic IR. |
 
-## Technology Stack
+Keep the IR deterministic: no async, no analyzer queries inside rules. All heavy lifting belongs to the builders.
 
-- **Language**: Dart
-- **Framework**: custom_lint_builder (^0.8.1)
-- **Analyzer**: analyzer package (^8.4.0)
-- **Test Framework**: test (^1.26.3)
+## Creating or Updating Rules
 
-## Project Structure
-
-```
-lib/
-├── flutter_a11y_lints.dart          # Main library export
-├── src/
-    ├── plugin.dart                   # Plugin entry point
-    ├── rules/                        # Individual lint rule implementations
-    │   ├── a01_label_non_text_controls.dart
-    │   ├── a02_avoid_redundant_role_words.dart
-    │   ├── a03_decorative_images_excluded.dart
-    │   ├── a04_informative_images_labeled.dart
-    │   ├── a05_no_redundant_button_semantics.dart
-    │   ├── a06_merge_multi_part_single_concept.dart
-    │   ├── a07_replace_semantics_cleanly.dart
-    │   ├── a08_block_semantics_only_for_true_modals.dart
-    │   └── a21_use_iconbutton_tooltip.dart
-    └── utils/                        # Helper utilities
-        ├── ast_utils.dart
-        ├── flutter_imports.dart
-        └── type_utils.dart
-```
-
-## Coding Standards
-
-### Import Organization
-
-1. **Always hide `LintCode` from analyzer package** to avoid conflicts:
+1. **Pick a slot:** add a new file under `lib/src/rules/` with name `aXX_description.dart`. Export it from `lib/flutter_a11y_lints.dart` and invoke it inside `FlutterA11yAnalyzer._analyzeFile` in `bin/a11y.dart`. Rules should remain stateless.
+2. **Structure:**
    ```dart
-   import 'package:analyzer/error/error.dart' hide LintCode;
+   import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
+   import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
+
+   class A99MyRule {
+     static const code = 'a99_my_rule';
+     static const message = 'Short human warning';
+     static const correctionMessage = 'Actionable remediation';
+
+     static List<A99Violation> checkTree(SemanticTree tree) {
+       final hits = <A99Violation>[];
+       for (final node in tree.accessibilityFocusNodes) {
+         if (_violates(node)) {
+           hits.add(A99Violation(node: node));
+         }
+       }
+       return hits;
+     }
+
+     static bool _violates(SemanticNode node) {
+       // pure logic only
+       return node.isEnabled && node.labelGuarantee == LabelGuarantee.none;
+     }
+   }
+
+   class A99Violation {
+     const A99Violation({required this.node});
+     final SemanticNode node;
+   }
    ```
+   - Use helper getters like `SemanticNode.effectiveLabel`, `node.controlKind`, or group metadata provided by the builder.
+   - Never mutate `SemanticNode` instances. Clone only with `copyWith` during builder phases, not in rules.
+3. **Reporting:** Convert violations to `A11yIssue` inside `FlutterA11yAnalyzer._analyzeFile`. Keep severity as `'warning'` unless the rule is guaranteed to be fatal.
 
-2. Standard import order:
-   - Dart SDK imports
-   - Package imports (analyzer, custom_lint_builder)
-   - Relative imports (utils)
+## Testing New Rules
 
-### Lint Rule Implementation Pattern
+- Place tests under `test/rules/`, mirroring the rule filename (e.g., `a01_unlabeled_interactive_test.dart`).
+- Tests generally:
+  1. Build sample widget trees using helper builders in `test/semantics/semantic_builder_test.dart` or inline semantic nodes.
+  2. Call `Rule.checkTree(tree)` and assert on number/content of violations.
+- Use `dart test` from repo root. When targeting a single file use `dart test test/rules/a01_unlabeled_interactive_test.dart`.
+- Fixtures that resemble real Flutter projects live under `test/unit_test_assets/`. Prefer building trees programmatically before reaching for disk fixtures.
 
-Each lint rule should follow this structure:
+## Key Data & Utilities
 
-```dart
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:analyzer/error/error.dart' hide LintCode;
-import 'package:analyzer/error/listener.dart';
-import 'package:custom_lint_builder/custom_lint_builder.dart';
+- `data/known_semantics_v2.6.json`: authoritative catalogue of widget semantics. Update via the documented generator before hand editing. Keep schema unchanged (see `lib/src/semantics/known_semantics.dart`).
+- `lib/src/utils/flutter_utils.dart`: minimal Flutter detection (string match). Extend only if analyzer API access is necessary.
+- `lib/src/utils/method_utils.dart`: `findBuildMethods` and `extractBuildBodyExpression`. When adjusting, ensure they still capture function-body expressions and block returns.
+- `lib/src/widget_tree/widget_tree_builder.dart`: handles `IfElement`, `ConditionalExpression`, spreads, cascades. When adding new collection forms, respect branch grouping so rules do not flag mutually-exclusive widgets twice.
 
-class RuleName extends DartLintRule {
-  const RuleName() : super(code: _code);
+## Coding Standards & Conventions
 
-  static const _code = LintCode(
-    name: 'flutter_a11y_rule_name',
-    problemMessage: 'Clear description of the issue',
-    correctionMessage: 'Actionable fix suggestion',
-    errorSeverity: ErrorSeverity.WARNING,
-  );
+- Imports: Dart SDK → package (`analyzer`, `path`, etc.) → relative project files. No `custom_lint_builder` imports remain in the repo.
+- File encoding is ASCII (UTF-8 without BOM). Add comments sparingly—only to clarify complex heuristics.
+- Rule constants (`code`, `message`, `correctionMessage`) should start with the `aXX_` identifier and contain user-facing copy ready for CLI output.
+- When matching widget types rely on semantic metadata (`node.controlKind`, `node.role`) instead of stringly-typed comparisons whenever possible.
+- Keep public API of `lib/flutter_a11y_lints.dart` synchronized with actual rule files so downstream users can import the analyzers programmatically.
 
-  @override
-  void run(
-    CustomLintResolver resolver,
-    ErrorReporter reporter,
-    CustomLintContext context,
-  ) {
-    context.registry.addInstanceCreationExpression((node) {
-      // Rule logic here
-      
-      // Report errors using:
-      reporter.atNode(node).report(_code);
-    });
-  }
-}
-```
+## Extending the Architecture
 
-### Custom Lint API Usage
+- **New gestures / properties:** annotate them in `SemanticNode`, populate values in the semantic builder, and update `KnownSemanticsRepository` if the data is static per widget.
+- **New output formats:** add converters in `bin/a11y.dart` (e.g., JSON/SARIF). Preserve the default human-readable report.
+- **Performance:** tree building happens per `build` method; cache resolved units or known semantics but never share mutable state between analyses.
+- **Docs:** when adding a rule, briefly document it in `README.md` (Implemented Rules) and, if necessary, `doc/docs/accessibility_rules_reference.md`.
 
-- Use `context.registry` to register node visitors
-- Use `await resolver.getResolvedUnitResult()` to get compilation unit
-- Report errors with `reporter.atNode(node).report(code)`
-- Always check `fileUsesFlutter()` before running Flutter-specific checks
+## Accessibility Mindset
 
-### Utility Functions
+- Prioritize WCAG principles: perceivable, operable, understandable, robust.
+- Rules should avoid false positives: check `node.isEnabled`, `node.labelGuarantee`, and ancestor semantics before warning.
+- Prefer semantic-tree level fixes over raw AST to keep heuristics resilient to widget refactors.
 
-Leverage the utility functions in `utils/`:
-- `fileUsesFlutter(unit)` - Check if file imports Flutter
-- `isType(type, package, className)` - Type checking helper
-- `isIconButton()`, `isMaterialButton()`, `isSemantics()` - Widget type checks
-- `hasTextChild()`, `hasCallbackArg()` - AST traversal helpers
-- `getStringLiteralArg()`, `getBoolLiteralArg()` - Argument extraction
+## Reference Material
 
-## Accessibility Rules Implemented
+- `doc/docs/semantic_ir_architecture.md` – full stack description.
+- `doc/docs/accessibility_rules_reference.md` – rule catalogue with scenarios.
+- Flutter accessibility docs: <https://docs.flutter.dev/development/accessibility-and-localization/accessibility>
+- WCAG 2.1 quick reference: <https://www.w3.org/WAI/WCAG21/quickref/>
 
-| Code | Rule | Description |
-|------|------|-------------|
-| FLA01 | Label Non-Text Controls | Interactive controls without text need tooltips/labels |
-| FLA02 | Avoid Redundant Role Words | Don't use "button" in button labels |
-| FLA03 | Decorative Images Excluded | Mark decorative images with excludeFromSemantics |
-| FLA04 | Informative Images Labeled | Provide semantic labels for content images |
-| FLA05 | No Redundant Button Semantics | Don't wrap Material buttons with redundant Semantics |
-| FLA06 | Merge Multi-Part Concepts | Combine related icon+text into single semantic node |
-| FLA07 | Replace Semantics Cleanly | Use excludeSemantics when providing replacement labels |
-| FLA08 | Block Semantics for Modals | Only use BlockSemantics for true modal overlays |
-| FLA21 | Use IconButton Tooltip | Prefer IconButton.tooltip over Tooltip wrapper |
-
-## Testing Guidelines
-
-- Each rule has a corresponding test file in `test/rules/`
-- Test both positive (should trigger) and negative (should not trigger) cases
-- Use the `custom_lint_builder` testing utilities
-- Run tests with: `dart test`
-
-## Development Workflow
-
-1. Create rule implementation in `lib/src/rules/`
-2. Add rule to plugin in `lib/src/plugin.dart`
-3. Write comprehensive tests in `test/rules/`
-4. Update documentation in README.md
-5. Verify with the test app in `a11y_test_app/`
-
-## Accessibility Principles
-
-When suggesting code changes, prioritize:
-- **Perceivable**: Information must be presentable to users in ways they can perceive
-- **Operable**: Interface components must be operable by all users
-- **Understandable**: Information and UI operation must be understandable
-- **Robust**: Content must work with current and future assistive technologies
-
-## Common Patterns to Enforce
-
-✅ **Good**:
-```dart
-IconButton(
-  icon: Icon(Icons.delete),
-  tooltip: 'Delete item',
-  onPressed: () {},
-)
-```
-
-❌ **Bad**:
-```dart
-IconButton(
-  icon: Icon(Icons.delete),
-  onPressed: () {},
-) // Missing tooltip
-```
-
-## References
-
-- [Flutter Accessibility Guide](https://docs.flutter.dev/development/accessibility-and-localization/accessibility)
-- [WCAG 2.1 Guidelines](https://www.w3.org/WAI/WCAG21/quickref/)
-- [custom_lint Documentation](https://pub.dev/packages/custom_lint)
-
-## Notes for GitHub Copilot
-
-- Prioritize accessibility in all suggestions
-- Follow the established pattern for new lint rules
-- Ensure proper error reporting with actionable messages
-- Test changes against the `a11y_test_app` example
-- Keep rule logic focused and maintainable
+Use this file as the high-level compass. Dive into the referenced source files for ground truth before implementing major changes.
