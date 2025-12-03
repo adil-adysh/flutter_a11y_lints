@@ -1,3 +1,36 @@
+// Copyright: project-local (no added license header) —
+// This file implements helpers used by the semantic IR pipeline. It is
+// intentionally self-contained and focused on small, deterministic helpers
+// used by `SemanticBuilder` and the rule checks. The primary responsibilities
+// are:
+//  - Provide a compact `SemanticSummary` for custom widget classes.
+//    Summaries are used as a lightweight approximation of a widget's
+//    accessibility behaviour (role, control kind, label guarantees, and
+//    merges/excludes behaviour) when the full semantic tree for that widget
+//    isn't available.
+//  - Provide an optional resolver-based path that, given analyzer-resolved
+//    units, will inspect a widget's `build()` method and synthesize a
+//    precise `SemanticSummary` by building a temporary WidgetNode ->
+//    SemanticNode tree.
+//  - Expose small evaluators for constant expressions (`evalString`,
+//    `evalBool`, `evalInt`) used throughout the pipeline to interpret
+//    simple literal arguments.
+//
+// Rationale and design notes:
+//  - Cache & cycle guard: computing a summary can require analyzing other
+//    widgets (transitively). To avoid infinite recursion and repeated work
+//    we keep a cache keyed by class name and a `_summaryInProgress` guard
+//    set. On detecting recursion we conservatively return `unknown`.
+//  - Conservative fallbacks: when we cannot resolve a widget's body we
+//    apply simple heuristics (e.g. treat StatelessWidget/StatefulWidget
+//    subclasses as semantically-transparent containers) to reduce false
+//    positives in lint rules.
+//  - Resolver is optional: callers can provide an async resolver capable
+//    of returning a `ResolvedUnitResult` for a given `InterfaceType`. The
+//    resolver is intentionally pluggable to allow both CLI tests (where
+//    we can resolve temporary files) and lighter-weight modes where
+//    resolver access is not available.
+
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/type.dart';
@@ -9,6 +42,23 @@ import 'semantic_builder.dart';
 import 'semantic_node.dart';
 
 /// Summary of a custom widget's semantic behavior.
+/// A compact, serializable summary describing the observable accessibility
+/// behaviour of a custom widget class.
+///
+/// Purpose:
+/// - Used as a lightweight approximation of what a widget exposes to
+///   assistive technologies without needing to fully analyze or expand the
+///   widget's implementation at every call site.
+/// - The summary intentionally focuses on the aspects rules care about:
+///   role, control kind, focusability, basic gestures, merge/exclude
+///   semantics behaviour, and a simple label guarantee.
+///
+/// Notes on interpretation:
+/// - `isSemanticallyTransparent` indicates the widget should normally be
+///   treated as a pass-through container (i.e. inspect children) unless a
+///   more specific summary exists.
+/// - `labelGuarantee` and `primaryLabelSource` are coarse signals used by
+///   heuristics to decide if a widget is considered labelled.
 class SemanticSummary {
   const SemanticSummary({
     required this.widgetType,
@@ -108,9 +158,21 @@ class GlobalSemanticContext {
   /// Return a cached `SemanticSummary` for the given `InterfaceType`, or
   /// compute it if missing. If a cycle is detected during computation,
   /// `SemanticSummary.unknown` is returned to avoid infinite recursion.
+  /// How it works (high level):
+  /// 1. If the widget's class name is present in `KnownSemantics`, return a
+  ///    summary derived from that authoritative metadata.
+  /// 2. If a `resolver` was provided, attempt to obtain the resolved unit
+  ///    for the widget type and analyze its `build()` body (quick-path
+  ///    or full synthesis) via `_computeSummaryFromResolvedUnit`.
+  /// 3. If resolution is unavailable or fails, apply conservative heuristics
+  ///    (e.g. treat Stateless/Stateful widgets as semantically-transparent
+  ///    containers) to avoid spurious diagnostics.
+  ///
+  /// The returned `SemanticSummary` should be treated as a fast, best-effort
+  /// approximation used by rules — callers should not rely on it for full
+  /// semantic equivalence with a runtime widget.
   Future<SemanticSummary?> getOrComputeSummary(
-    InterfaceType? widgetType,
-  ) async {
+      InterfaceType? widgetType) async {
     final element = widgetType?.element;
     if (element == null) return null;
     final name = element.name;
@@ -233,7 +295,10 @@ class GlobalSemanticContext {
       }
     }
 
-    // First try build() on the widget class itself.
+    // First try build() on the widget class itself. We look for a `build`
+    // method declaration and accept either expression-bodied functions
+    // (`=>`) or block bodies (`{ return ...; }`). The goal is to extract
+    // the returned expression for lightweight analysis.
     MethodDeclaration? buildMethod;
     if (classDecl != null) {
       for (final member in classDecl.members) {
@@ -268,7 +333,12 @@ class GlobalSemanticContext {
       return null;
     }
 
-    // Quick-path: build() => single InstanceCreationExpression (e.g. IconButton(...)).
+    // Quick-path: when the build() body returns a single
+    // `InstanceCreationExpression` (for example `IconButton(...)`) it's
+    // common for custom widgets to simply wrap or return a framework
+    // widget. In that case we can consult `KnownSemantics` for the created
+    // widget and construct a faithful summary without doing a full
+    // widget-tree build.
     if (buildExpr is InstanceCreationExpression) {
       String? createdName;
       final createdType = buildExpr.staticType;
@@ -341,6 +411,11 @@ class GlobalSemanticContext {
 
   /// Find the expression returned by a `build()` method declaration.
   Expression? _findBuildExpression(MethodDeclaration method) {
+    // Extracts the single expression returned by `build()` when possible.
+    // Supports both `=>` expressions and classic block bodies with a
+    // top-level `return` statement. If multiple returns or complex flow is
+    // present this helper intentionally returns `null` so callers fall back
+    // to conservative analysis.
     final body = method.body;
     if (body is ExpressionFunctionBody) return body.expression;
     if (body is BlockFunctionBody) {
@@ -356,6 +431,9 @@ class GlobalSemanticContext {
   // ---------------------------------------------------------------------------
 
   String? evalString(Expression? expression) {
+    // Evaluate string-like AST nodes when they are statically known.
+    // Returns `null` when the expression cannot be reduced to a plain
+    // string (e.g. contains interpolated expressions or non-literal parts).
     if (expression == null) return null;
     if (expression is SimpleStringLiteral) {
       return expression.value;
@@ -375,7 +453,8 @@ class GlobalSemanticContext {
         if (element is InterpolationString) {
           buffer.write(element.value);
         } else {
-          // Contains a dynamic expression; bail out.
+          // Contains a dynamic expression; bail out because we can't
+          // compute a stable string at analysis time.
           return null;
         }
       }
@@ -420,6 +499,10 @@ class BuildSemanticContext {
 
   KnownSemanticsRepository get knownSemantics => global.knownSemantics;
 
+  // Convenience delegations to the global evaluators.
+  // These helpers keep the `SemanticBuilder` code concise and clarify that
+  // these evaluations are build-scoped but ultimately rely on global
+  // deterministic logic.
   String? evalString(Expression? expression) => global.evalString(expression);
   bool? evalBool(Expression? expression) => global.evalBool(expression);
   int? evalInt(Expression? expression) => global.evalInt(expression);
