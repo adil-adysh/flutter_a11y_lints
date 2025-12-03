@@ -1,4 +1,18 @@
 import 'package:analyzer/dart/ast/ast.dart';
+// Rule: A03 — Decorative Images Excluded
+//
+// Purpose: Ensure decorative images are excluded from the accessibility
+// tree (e.g., Image with semantic label omitted and marked as decorative).
+// The rule checks `Image` semantics and `excludeSemantics` wrappers.
+//
+// Testing: Add tests in `test/rules/a03_decorative_images_excluded_test.dart`.
+// Use the test helpers to create Image examples and assert whether
+// `accessibilityFocusNodes` contains the image node.
+//
+// See also:
+// - `lib/src/semantics/semantic_node.dart` (image semantics fields)
+// - `lib/src/semantics/known_semantics.dart` (Image widget entries)
+// - `test/rules/test_semantic_utils.dart` (test tree helpers)
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 

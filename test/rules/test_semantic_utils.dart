@@ -1,3 +1,14 @@
+// Test utilities used by rule and semantics tests.
+//
+// This file provides helpers for building small temporary Dart files that
+// declare minimal widget stubs and a `buildWidget(...)` function. Tests
+// create ephemeral files and call into the `SemanticIrBuilder` so unit-tests
+// exercise the real widget → semantic pipeline rather than mocking internals.
+//
+// When adding tests, prefer using `buildTestSemanticTree` to produce a
+// `SemanticTree` for a snippet of widget code. This keeps tests deterministic
+// and avoids depending on the repo's real Flutter SDK.
+
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';

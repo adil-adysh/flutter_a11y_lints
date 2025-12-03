@@ -1,3 +1,19 @@
+// Rule: A07 — Replace Semantics Cleanly
+//
+// Purpose: Ensure that when a Semantics widget replaces children announcements
+// (provides a custom label), it excludes descendant semantics to avoid double
+// announcements. This rule flags Semantics wrappers that provide replacement
+// labels but do not exclude descendants.
+//
+// Testing: Add tests to `test/rules/a07_replace_semantics_cleanly_test.dart`.
+// Use the semantic test helpers and assert `checkTree` finds wrappers that
+// have `labelSource == LabelSource.semanticsWidget` but `excludesDescendants` is false.
+//
+// See also:
+// - `lib/src/semantics/semantic_node.dart` (labelSource, excludesDescendants)
+// - `lib/src/semantics/semantic_tree.dart`
+// - `test/rules/test_semantic_utils.dart`
+
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 

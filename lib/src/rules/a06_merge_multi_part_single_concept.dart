@@ -1,3 +1,18 @@
+// Rule: A06 — Merge Multi-Part Single Concept
+//
+// Purpose: Detect interactive controls composed of multiple semantic parts
+// (e.g., icon + text) that should be merged into a single announcement
+// using `MergeSemantics` to provide a concise, atomic label.
+//
+// Testing: Add tests under `test/rules/a06_merge_multi_part_single_concept_test.dart`.
+// Create minimal widget trees with helpers and assert `checkTree` flags
+// multi-part interactive nodes lacking `mergesDescendants`.
+//
+// See also:
+// - `lib/src/semantics/semantic_node.dart` (children traversal, `mergesDescendants`)
+// - `lib/src/semantics/semantic_tree.dart` (`accessibilityFocusNodes`)
+// - `test/rules/test_semantic_utils.dart`
+
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 

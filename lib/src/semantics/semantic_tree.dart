@@ -78,14 +78,15 @@ class SemanticTree {
       }
 
       final childNodes = <SemanticNode>[];
-        // If a node merges or excludes descendants, it hides its children from
-        // the accessibility-focused view; for the purposes of determining which
-        // nodes are assigned `focusOrderIndex`, we propagate `ancestorBlocksFocus`.
-        // `hidesDescendants` means children should not be individual focus
-        // targets even though they remain in `physicalNodes` for heuristic
-        // inspection.
-        final hidesDescendants = node.mergesDescendants || node.excludesDescendants;
-        final nextAncestorBlocksFocus = ancestorBlocksFocus || hidesDescendants;
+      // If a node merges or excludes descendants, it hides its children from
+      // the accessibility-focused view; for the purposes of determining which
+      // nodes are assigned `focusOrderIndex`, we propagate `ancestorBlocksFocus`.
+      // `hidesDescendants` means children should not be individual focus
+      // targets even though they remain in `physicalNodes` for heuristic
+      // inspection.
+      final hidesDescendants =
+          node.mergesDescendants || node.excludesDescendants;
+      final nextAncestorBlocksFocus = ancestorBlocksFocus || hidesDescendants;
 
       for (var i = 0; i < node.children.length; i++) {
         final child = annotate(

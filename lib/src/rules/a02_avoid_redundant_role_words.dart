@@ -1,3 +1,18 @@
+// Rule: A02 — Avoid Redundant Role Words
+//
+// Purpose: Identify labels that include role-descriptive words (e.g. "button",
+// "icon") which are redundant because the underlying semantic role already
+// conveys that information. Encourage concise labels that omit role words.
+//
+// Testing: Place tests under `test/rules/a02_avoid_redundant_role_words_test.dart`.
+// Build small sample trees with `test/rules/test_semantic_utils.dart` and
+// assert that `checkTree` returns violations with expected `redundantWords`.
+//
+// See also:
+// - `lib/src/semantics/semantic_node.dart` (label fields: `label`, `labelSource`, `effectiveLabel`)
+// - `lib/src/semantics/semantic_tree.dart` (iterate `accessibilityFocusNodes`)
+// - `test/rules/test_semantic_utils.dart` (how to create semantic trees in tests)
+
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';

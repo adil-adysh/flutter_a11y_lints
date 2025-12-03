@@ -1,4 +1,15 @@
 import 'package:flutter_a11y_lints/src/semantics/semantic_neighborhood.dart';
+// Tests for `SemanticTree` annotation and focus node extraction.
+//
+// `SemanticTree` contains both a `physicalNodes` view (full DFS walk of the
+// semantic IR) and an `accessibilityFocusNodes` view (the nodes assistive
+// technology would iterate). These tests ensure the two views stay consistent
+// and that focus ordering and exclusion rules are respected.
+//
+// When adding tests, prefer asserting on the `accessibilityFocusNodes` where
+// possible as that represents actual runtime behavior users of the analyzer
+// rely on.
+
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 import 'package:test/test.dart';
 

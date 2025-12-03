@@ -1,3 +1,13 @@
+// GENERATED FILE — DO NOT EDIT
+//
+// This file is generated from `data/known_semantics_v2.6.json` and contains
+// the compiled `rawKnownSemanticsV26` map used by `KnownSemanticsRepository`.
+// If you need to update widget metadata, modify the JSON source and run the
+// generator (not present in this repo yet). Prefer creating `tool/generate_*`
+// scripts to produce this file rather than hand-editing it.
+//
+// The generator should ensure the output is deterministic and includes the
+// same keys/fields expected by `known_semantics.dart`.
 const Map<String, Map<String, Object>> rawKnownSemanticsV26 = {
   'Scaffold': {
     'role': 'group',

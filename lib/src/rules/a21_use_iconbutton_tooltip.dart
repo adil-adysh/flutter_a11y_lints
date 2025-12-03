@@ -1,3 +1,19 @@
+// Rule: A21 — Prefer IconButton.tooltip
+//
+// Purpose: Suggest using `IconButton.tooltip` parameter rather than wrapping
+// an `IconButton` with a `Tooltip` widget. This reduces widget nesting and
+// ensures the tooltip is associated directly with the control's semantics.
+//
+// Testing: Add tests in `test/rules/a21_use_iconbutton_tooltip_test.dart`.
+// Build examples wrapping IconButton in Tooltip and assert `checkTree`
+// returns violations when the IconButton itself lacks a tooltip parameter.
+//
+// See also:
+// - `lib/src/semantics/semantic_node.dart` (`labelSource`, `controlKind`)
+// - `lib/src/semantics/semantic_tree.dart`
+// - `lib/src/semantics/known_semantics.dart` (IconButton mapping)
+// - `test/rules/test_semantic_utils.dart`
+
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';

@@ -1,3 +1,16 @@
+// Tests for the semantic builder pipeline.
+//
+// These tests validate how `WidgetNode` trees are converted into the
+// repository's `SemanticNode` IR. They exercise label aggregation rules,
+// semantics wrappers (Merge/Exclude), and how known semantics are applied.
+//
+// When adding new tests for the builder:
+// - Prefer small, focused widget snippets created via the helpers in
+//   `test/rules/test_semantic_utils.dart`.
+// - Assert on the `SemanticTree` contents (physical vs accessibility nodes)
+//   rather than implementation details of `SemanticBuilder`.
+// - Keep tests pure: they should not rely on external network or SDK state.
+
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:test/test.dart';

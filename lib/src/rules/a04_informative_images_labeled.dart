@@ -1,5 +1,19 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/type.dart';
+// Rule: A04 — Informative Images Labeled
+//
+// Purpose: Detect images conveying important information that lack an
+// accessible label (for example, Inline images within content). Encourage
+// descriptive alt text or Semantics labels for such images.
+//
+// Testing: Add tests in `test/rules/a04_informative_images_labeled_test.dart`.
+// Build trees with the helpers and assert that unlabeled informative images
+// are reported by `checkTree`.
+//
+// See also:
+// - `lib/src/semantics/semantic_node.dart` (image labels, `labelGuarantee`)
+// - `lib/src/semantics/known_semantics.dart` (Image widget semantic metadata)
+// - `test/rules/test_semantic_utils.dart`
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 

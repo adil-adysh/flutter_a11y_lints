@@ -1,3 +1,20 @@
+// Rule: A18 — Avoid Hidden Focus Traps
+//
+// Purpose: Detect widgets (Offstage/Visibility) that remain in the tree but
+// visually hide descendant focusable elements, which can trap screen-readers
+// or keyboard focus users. Encourage disabling focusable children or
+// removing them while hidden.
+//
+// Testing: Add tests in `test/rules/a18_avoid_hidden_focus_traps_test.dart`.
+// Create Offstage/Visibility snippets with focusable descendants and assert
+// that `checkTree` returns violations for hidden-but-focusable subtrees.
+//
+// See also:
+// - `lib/src/semantics/semantic_node.dart` (focusable detection helpers)
+// - `lib/src/semantics/semantic_tree.dart` (physicalNodes traversal)
+// - `lib/src/semantics/known_semantics.dart` (Offstage/Visibility semantics hints)
+// - `test/rules/test_semantic_utils.dart`
+
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';

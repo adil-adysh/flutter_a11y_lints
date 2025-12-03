@@ -91,6 +91,7 @@ class SemanticNeighborhood {
       }
     }
   }
+
   /// Returns true when `a` and `b` are known to originate from different
   /// branches of the same conditional (`if`/`else` or `?:`) and therefore
   /// cannot both be present at runtime. This is important to avoid heuristics

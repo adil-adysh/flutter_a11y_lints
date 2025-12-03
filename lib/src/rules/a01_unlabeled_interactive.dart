@@ -1,3 +1,21 @@
+// Rule: A01 — Label Non-Text Controls
+//
+// Purpose: Detect interactive controls (icon-only buttons, custom controls)
+// that do not expose an accessible label via tooltip, Semantics.label, or
+// another guaranteed label source. Rules should be cautious of merged
+// Semantics wrappers and ancestor-provided labels.
+//
+// Testing: Add focused tests in `test/rules/a01_unlabeled_interactive_test.dart`.
+// Use helpers in `test/rules/test_semantic_utils.dart` to build a small
+// `SemanticTree` and assert on `checkTree` results rather than mocking the
+// builder internals.
+//
+// See also:
+// - `lib/src/semantics/semantic_node.dart` (fields used: `labelGuarantee`, `controlKind`, `hasTap`, `hasLongPress`)
+// - `lib/src/semantics/semantic_tree.dart` (views: `accessibilityFocusNodes`)
+// - `lib/src/semantics/known_semantics.dart` (widget role hints)
+// - `test/rules/test_semantic_utils.dart` (test helpers)
+
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';

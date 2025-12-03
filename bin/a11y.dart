@@ -1,5 +1,16 @@
 #!/usr/bin/env dart
 
+// CLI entrypoint for the Flutter A11y Semantic Analyzer.
+//
+// This executable discovers Dart files or directories, resolves them with
+// the analyzer, converts `build()` method expressions into a `SemanticTree`
+// via `SemanticIrBuilder`, and runs rule checks to produce `A11yIssue`s.
+//
+// See also:
+// - `lib/src/pipeline/semantic_ir_builder.dart` (widget→semantic orchestration)
+// - `lib/src/semantics/known_semantics.dart` (widget role metadata)
+// - `test/rules/test_semantic_utils.dart` (how tests build semantic trees)
+
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
