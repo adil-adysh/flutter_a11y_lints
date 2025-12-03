@@ -2,9 +2,9 @@ import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 
 /// A13 — Single Semantic Role For Composite Controls
-/// Conservative heuristic: when a non-focusable parent contains multiple
-/// focusable children (two or more) that likely form one visual control,
-/// suggest merging into a single control.
+/// Warn only when a semantic boundary/composite host aggregates multiple
+/// focusable descendants without merging them into one role. Layout widgets
+/// (Row/Column/ListView/etc.) are excluded to prevent noise.
 class A13SingleRoleCompositeControl {
   static const code = 'a13_single_role_composite_control';
   static const message =
@@ -12,30 +12,73 @@ class A13SingleRoleCompositeControl {
   static const correctionMessage =
       'Merge child controls into a single composite control or use MergeSemantics';
 
+  static const _layoutWidgets = {
+    'Row',
+    'Column',
+    'Wrap',
+    'Flex',
+    'ListView',
+    'GridView',
+    'Stack',
+    'SizedBox',
+    'Container',
+    'Padding',
+    'Center',
+    'Align',
+    'ListBody',
+  };
+
   static List<A13Violation> checkTree(SemanticTree tree) {
     final violations = <A13Violation>[];
 
     for (final node in tree.physicalNodes) {
-      // Skip nodes that are themselves focus targets.
-      if (node.isFocusable) continue;
-      // Count focusable descendant nodes (accessibility focus targets)
-      var count = 0;
-      void visit(SemanticNode n) {
-        if (n.isFocusable) count++;
-        for (final c in n.children) visit(c);
-      }
-
-      for (final child in node.children) {
-        visit(child);
-        if (count >= 2) break;
-      }
-
-      if (count >= 2 && !node.mergesDescendants) {
-        violations.add(A13Violation(node: node, focusableCount: count));
+      if (!_shouldInspectNode(node)) continue;
+      final focusableCount = _countFocusableDescendants(node);
+      if (focusableCount >= 2) {
+        violations
+            .add(A13Violation(node: node, focusableCount: focusableCount));
       }
     }
 
     return violations;
+  }
+
+  static bool _shouldInspectNode(SemanticNode node) {
+    if (node.isFocusable) return false;
+    if (node.isPureContainer) return false;
+    if (!node.isSemanticBoundary && !node.isCompositeControl) {
+      return false;
+    }
+    if (_layoutWidgets.contains(node.widgetType)) {
+      return false;
+    }
+    if (node.widgetType == 'MergeSemantics') {
+      return false;
+    }
+    return true;
+  }
+
+  static int _countFocusableDescendants(SemanticNode node) {
+    var count = 0;
+
+    void visit(SemanticNode n) {
+      if (count >= 2) return; // early exit once threshold reached
+      if (n.isFocusable) {
+        count++;
+        if (count >= 2) return;
+      }
+      for (final child in n.children) {
+        if (count >= 2) break;
+        visit(child);
+      }
+    }
+
+    for (final child in node.children) {
+      if (count >= 2) break;
+      visit(child);
+    }
+
+    return count;
   }
 }
 

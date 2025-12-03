@@ -27,6 +27,17 @@ void main() {
       expect(violations, isEmpty);
     });
 
+    test('does not flag when wrapped in ExcludeSemantics ancestor', () async {
+      final tree = await buildTestSemanticTree('''
+        const ExcludeSemantics(
+          child: Image.asset('assets/bg_overlay.png'),
+        )
+      ''');
+
+      final violations = A03DecorativeImagesExcluded.checkTree(tree);
+      expect(violations, isEmpty);
+    });
+
     test('does not flag when semanticLabel provided', () async {
       final tree = await buildTestSemanticTree('''
         const Image.asset(

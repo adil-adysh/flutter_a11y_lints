@@ -13,6 +13,7 @@ typedef VoidCallback = void Function();
 class Widget {}
 class Semantics extends Widget { const Semantics({String? label, bool? toggled, bool? checked, required Widget child}); }
 class Checkbox extends Widget { const Checkbox({required bool value}); }
+class Switch extends Widget { const Switch({required bool value}); }
 ''';
 
 void main() {
@@ -45,22 +46,43 @@ Widget buildWidget(bool _) {
       final tree = builder.buildForExpression(ret.expression);
       if (tree == null) fail('tree null');
 
-      // Debug dump: print tree summary and nodes to help diagnose failures.
-      print(
-          '--- DUMP: semantic root widgetType=${tree.root.widgetType} label=${tree.root.label} labelGuarantee=${tree.root.labelGuarantee}');
-      var i = 0;
-      for (final n in tree.physicalNodes) {
-        print(
-            'NODE[$i]: type=${n.widgetType} label=${n.label} labelGuarantee=${n.labelGuarantee} controlKind=${n.controlKind} isToggled=${n.isToggled} isChecked=${n.isChecked} hasTap=${n.hasTap}');
-        i++;
-      }
+      final violations = A16ToggleStateViaSemanticsFlag.checkTree(tree);
+      expect(violations, isNotEmpty);
+    } finally {
+      await tempDir.delete(recursive: true);
+    }
+  });
+
+  test('does not warn when semantics uses toggled flag', () async {
+    final tempDir = await Directory.systemTemp.createTemp('a11y_a16_ok_');
+    try {
+      final filePath = p.join(tempDir.path, 'widget.dart');
+      final content = '''
+$_stubs
+
+Widget buildWidget(bool _) {
+  return Semantics(label: 'Wifi', toggled: true, child: Switch(value: true));
+}
+''';
+      await File(filePath).writeAsString(content);
+
+      final collection = AnalysisContextCollection(includedPaths: [filePath]);
+      final context = collection.contextFor(filePath);
+      final result = await context.currentSession.getResolvedUnit(filePath);
+      if (result is! ResolvedUnitResult) fail('resolve failed');
+
+      final builder = SemanticIrBuilder(
+          unit: result, knownSemantics: KnownSemanticsRepository());
+      final buildFn = result.unit.declarations
+          .whereType<FunctionDeclaration>()
+          .firstWhere((f) => f.name.lexeme == 'buildWidget');
+      final body = buildFn.functionExpression.body as BlockFunctionBody;
+      final ret = body.block.statements.whereType<ReturnStatement>().first;
+      final tree = builder.buildForExpression(ret.expression);
+      if (tree == null) fail('tree null');
 
       final violations = A16ToggleStateViaSemanticsFlag.checkTree(tree);
-      print('--- DUMP: violations.count=${violations.length}');
-      for (final v in violations) {
-        print('VIOLATION: ${v.description}');
-      }
-      expect(violations, isNotEmpty);
+      expect(violations, isEmpty);
     } finally {
       await tempDir.delete(recursive: true);
     }

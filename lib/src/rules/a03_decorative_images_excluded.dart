@@ -32,7 +32,7 @@ class A03DecorativeImagesExcluded {
     final violations = <A03Violation>[];
 
     for (final node in tree.physicalNodes) {
-      final violation = _checkNode(node);
+      final violation = _checkNode(node, tree);
       if (violation != null) {
         violations.add(violation);
       }
@@ -41,7 +41,7 @@ class A03DecorativeImagesExcluded {
     return violations;
   }
 
-  static A03Violation? _checkNode(SemanticNode node) {
+  static A03Violation? _checkNode(SemanticNode node, SemanticTree tree) {
     if (node.widgetType != 'Image') return null;
 
     final creation = node.astNode;
@@ -66,7 +66,25 @@ class A03DecorativeImagesExcluded {
       return null;
     }
 
+    if (_hasExcludeAncestor(node, tree)) {
+      return null;
+    }
+
     return A03Violation(node: node, assetPath: assetPath);
+  }
+
+  static bool _hasExcludeAncestor(SemanticNode node, SemanticTree tree) {
+    var current = node;
+    while (current.parentId != null) {
+      final parent = tree.byId[current.parentId!];
+      if (parent == null) break;
+      if (parent.excludesDescendants ||
+          parent.widgetType == 'ExcludeSemantics') {
+        return true;
+      }
+      current = parent;
+    }
+    return false;
   }
 
   static String? _extractAssetPath(InstanceCreationExpression creation) {
