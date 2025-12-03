@@ -1,71 +1,78 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+## 0.4.0
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+### New
 
-## [0.3.0] - 2025-12-02
+- Added multiple new accessibility rules for:
+  - Decorative and informative images.
+  - Composite and dynamic controls.
+  - Numeric values, toggle states, custom gestures, and minimum tap targets.
+- Improved semantic analysis accuracy using unit-aware constant evaluation.
+- Expanded documentation for all lint rules with clearer guidance and examples.
+- Added comprehensive tests covering composite, recursive, dynamic, and quick-path widgets.
 
-### Added (0.3.0)
+### Improved
 
-- **Rule A03** Decorative images must be excluded when they are purely ornamental.
-- **Rule A04** Informative images in avatars/ListTile leading slots now require labels.
-- **Rule A05** Guards against redundant `Semantics` wrappers on material buttons.
-- **Rule A18** Detects hidden focus traps created via `Offstage`/`Visibility`.
-- **Rule A21** Enforces `IconButton.tooltip` usage instead of wrapping with `Tooltip`.
-- **Rule A22** Prevents `MergeSemantics` from collapsing ListTile-family widgets.
-- Expanded example app with guided sections that demonstrate each lint's failure and fix.
+- More accurate widget summary synthesis and semantic tree processing.
+- Enhanced label extraction and control-flow handling for complex widgets.
+- Better caching of semantic summaries using stable identifiers.
 
-### Changed (0.3.0)
+### Refactor
 
-- Reworked **Rule A02** to only inspect text for interactive widgets and ignore legitimate content labels, reducing false positives on plain text.
-- CLI output now surfaces all new rule identifiers so violations appear in `a11y` runs.
-- Test harness expanded to cover every new rule plus the updated A02 scenarios.
+- Simplified and centralized constant evaluation logic.
+- General code quality improvements across semantic builder and tree logic.
 
-### Fixed (0.3.0)
+---
 
-- Hidden-focus widgets in the test fixture now reflect real-world violation patterns, ensuring the semantic IR pipeline produces the right flags for A18.
-- Example content now distinguishes decorative vs informative assets to avoid ambiguous samples when validating A03/A04.
+## 0.3.0
 
-## [0.1.0] - 2025-12-02
+### New
 
-### Added (0.1.0)
+- Added new lint rules:
+  - A03, A04, A05 — image semantics and redundant wrappers.
+  - A18 — hidden focus traps.
+  - A21 — tooltip guidance for IconButton.
+  - A22 — ListTile semantic boundaries.
+- Expanded semantic node structure with additional fields and metadata.
+- Introduced `SemanticNeighborhood` and new semantic utility classes.
 
-- Initial release of semantic IR-based accessibility analyzer
-- CLI tool `a11y` for analyzing Flutter projects
-- **Rule A01**: Unlabeled Interactive Controls - detects interactive widgets without accessible labels
-- **Rule A02**: Avoid Redundant Role Words - flags labels with redundant words like "button"
-- **Rule A06**: Merge Multi-Part Single Concept - detects controls that should use MergeSemantics
-- **Rule A07**: Replace Semantics Cleanly - ensures ExcludeSemantics is used when replacing labels
-- Full type resolution using analyzer package's AnalysisContextCollection
-- Semantic IR pipeline: AST → WidgetNode → SemanticNode → SemanticTree
-- KnownSemantics metadata for 50+ Flutter widgets
-- Integration test suite (10 tests covering all rules)
-- Comprehensive documentation and examples
+### Improved
 
-### Features (0.1.0)
+- Updated A02, A06, and A07 with clearer messages and suggestions.
+- Improved semantic tree builder: better handling of conditional branches and label extraction.
+- Added tests for A01 and several new rule scenarios.
 
-- **Easy to use**: Simple `a11y lib/` command
-- **High confidence**: Uses full type resolution, not heuristics
-- **Real-world tested**: Successfully analyzes actual Flutter projects
-- **CI/CD ready**: Exit codes and parseable output
-- **Fast**: Analyzes typical Flutter projects in seconds
+---
 
-## [0.2.1] - 2025-12-02
+## 0.2.1
 
-### Changed (0.2.1)
+### Improved
 
-- Upgrade compatibility for Dart 3.9.x resolver ecosystem
-- Bump dependencies: analyzer ^9.0.0, meta ^1.17.0, path ^1.9.0
-- Dev deps: lints ^6.0.0, test ^1.27.0
-- SDK constraint: '>=3.5.0 <4.0.0'
+- Dart SDK compatibility upgrades.
+- Upgraded `analyzer`, `meta`, `path`, `lints`, and `test` dependencies.
 
-### Fixed (0.2.1)
+### New
 
-- Reduce dependency solver conflicts when used alongside modern Flutter apps
-- Expose `a11y` executable for global activation (`dart pub global activate flutter_a11y_lints`)
+- Exposed `a11y` executable for global activation.
 
-[0.3.0]: https://github.com/adil-adysh/flutter_a11y_lints/releases/tag/v0.3.0
-[0.2.1]: https://github.com/adil-adysh/flutter_a11y_lints/releases/tag/v0.2.1
-[0.1.0]: https://github.com/adil-adysh/flutter_a11y_lints/releases/tag/v0.1.0
+---
+
+## 0.2.0
+
+### Improved
+
+- Updated pub.dev publishing requirements.
+- Added `.pubignore` and prepared structure for package publishing.
+- Adjusted directory naming to follow Dart conventions (`docs/` → `doc/`).
+
+---
+
+## 0.1.0 — First Functional Release
+
+### New
+
+- Introduced standalone semantic IR analyzer.
+- Implemented initial lint rules: **A01**, **A02**, **A06**, **A07**.
+- Added `a11y` CLI tool for running lint checks.
+- All tests passing for initial analyzer pipeline.
