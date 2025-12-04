@@ -107,8 +107,10 @@ class SemanticBuilder {
 
     // Get known semantics or infer heuristic metadata for unregistered widgets
     var known = ctx.knownSemantics[widget.widgetType];
+    bool isHeuristic = false;
     if (known == null) {
       known = _inferHeuristicSemantics(widget) ?? _defaultSemantics;
+      isHeuristic = true;
     }
 
     final builtChildren = _buildChildren(widget, ctx);
@@ -213,6 +215,8 @@ class SemanticBuilder {
       // conditional branches.
       branchGroupId: widget.branchGroupId,
       branchValue: widget.branchValue,
+      rawAttributes: widget.props,
+      isHeuristic: isHeuristic,
     );
   }
 
@@ -470,6 +474,8 @@ class SemanticBuilder {
       isInMutuallyExclusiveGroup: isInMutuallyExclusiveGroup,
       hasScroll: hasScroll,
       hasDismiss: hasDismiss,
+      rawAttributes: widget.props,
+      isHeuristic: base?.isHeuristic ?? false,
     );
   }
 

@@ -3,6 +3,8 @@ import 'package:meta/meta.dart';
 
 import 'known_semantics.dart';
 
+export 'package:analyzer/dart/ast/ast.dart' show Expression;
+
 /// How confident the builder is that a node has a usable label.
 ///
 /// - `none` means there is no discovered label source.
@@ -79,7 +81,9 @@ class SemanticNode {
     this.isInMutuallyExclusiveGroup = false,
     this.hasScroll = false,
     this.hasDismiss = false,
-  });
+    Map<String, Expression>? rawAttributes,
+    this.isHeuristic = false,
+  }) : _rawAttributes = rawAttributes ?? const {};
 
   final String widgetType;
   final AstNode astNode;
@@ -158,6 +162,23 @@ class SemanticNode {
   final bool hasDismiss;
   final int? semanticIndex;
 
+  /// Raw widget properties (AST expressions) not yet evaluated.
+  /// This allows DSL evaluators and other tools to query non-semantic
+  /// widget properties (e.g., elevation, overflow) without exposing the
+  /// full WidgetNode.
+  final Map<String, Expression> _rawAttributes;
+
+  /// Whether the semantic role was inferred via heuristics (e.g., via onTap)
+  /// rather than explicitly specified. DSL rules may use this to apply
+  /// different strategies for explicit vs inferred roles.
+  final bool isHeuristic;
+
+  /// Retrieve a raw widget attribute by name (e.g., 'elevation', 'overflow').
+  /// Returns the AST expression if present, or null if not found.
+  /// The caller is responsible for evaluating the expression using
+  /// GlobalSemanticContext or ExpressionEvaluator.
+  Expression? getAttribute(String name) => _rawAttributes[name];
+
   String? get effectiveLabel {
     final pieces = <String>[];
     if (label != null && label!.isNotEmpty) {
@@ -219,6 +240,8 @@ class SemanticNode {
     bool? isInMutuallyExclusiveGroup,
     bool? hasScroll,
     bool? hasDismiss,
+    Map<String, Expression>? rawAttributes,
+    bool? isHeuristic,
   }) {
     return SemanticNode(
       widgetType: widgetType ?? this.widgetType,
@@ -265,6 +288,8 @@ class SemanticNode {
           isInMutuallyExclusiveGroup ?? this.isInMutuallyExclusiveGroup,
       hasScroll: hasScroll ?? this.hasScroll,
       hasDismiss: hasDismiss ?? this.hasDismiss,
+      rawAttributes: rawAttributes ?? _rawAttributes,
+      isHeuristic: isHeuristic ?? this.isHeuristic,
     );
   }
 }

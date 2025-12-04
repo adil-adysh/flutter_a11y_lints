@@ -218,4 +218,28 @@ class SemanticTree {
       byId: newById,
     );
   }
+
+  /// Returns the next accessibility focusable node after [node], or `null`
+  /// if [node] has no follow-up focus target.
+  SemanticNode? nextFocusable(SemanticNode node) {
+    final idx = node.focusOrderIndex;
+    if (idx == null) return null;
+    final next = idx + 1;
+    if (next < accessibilityFocusNodes.length) {
+      return accessibilityFocusNodes[next];
+    }
+    return null;
+  }
+
+  /// Returns the previous accessibility focusable node before [node], or
+  /// `null` if [node] has no previous focus target.
+  SemanticNode? previousFocusable(SemanticNode node) {
+    final idx = node.focusOrderIndex;
+    if (idx == null) return null;
+    final prev = idx - 1;
+    if (prev >= 0 && prev < accessibilityFocusNodes.length) {
+      return accessibilityFocusNodes[prev];
+    }
+    return null;
+  }
 }

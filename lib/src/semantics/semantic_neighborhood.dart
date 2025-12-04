@@ -40,6 +40,39 @@ class SemanticNeighborhood {
     return tree.physicalNodes[index + 1];
   }
 
+  /// Returns the next node that would receive accessibility focus.
+  /// Uses `SemanticTree.accessibilityFocusNodes` and the node's
+  /// `focusOrderIndex` assigned during annotation.
+  SemanticNode? nextFocusable(SemanticNode node) {
+    final idx = node.focusOrderIndex;
+    if (idx == null) return null;
+    final next = idx + 1;
+    if (next < 0 || next >= tree.accessibilityFocusNodes.length) return null;
+    return tree.accessibilityFocusNodes[next];
+  }
+
+  /// Returns the previous node that would receive accessibility focus.
+  SemanticNode? previousFocusable(SemanticNode node) {
+    final idx = node.focusOrderIndex;
+    if (idx == null) return null;
+    final prev = idx - 1;
+    if (prev < 0 || prev >= tree.accessibilityFocusNodes.length) return null;
+    return tree.accessibilityFocusNodes[prev];
+  }
+
+  /// Returns true when the node is effectively hidden from assistive
+  /// technologies (i.e., it does not appear in the accessibility focus list).
+  bool isHidden(SemanticNode node) {
+    // Quick-path: if no focusOrderIndex assigned, it is not in the
+    // accessibility view.
+    if (node.focusOrderIndex == null) return true;
+    final idx = node.focusOrderIndex!;
+    if (idx < 0 || idx >= tree.accessibilityFocusNodes.length) return true;
+    // Ensure the focusOrderIndex actually points to this node in the
+    // accessibility list (defensive check).
+    return tree.accessibilityFocusNodes[idx] != node;
+  }
+
   Iterable<SemanticNode> neighborsInReadingOrder(
     SemanticNode node, {
     int radius = 3,
