@@ -88,6 +88,11 @@ const Map<String, Map<String, Object>> rawKnownSemanticsV26 = {
     'blocksBehind': false,
     'isPureContainer': false,
     'slotTraversalOrder': ['leading', 'title', 'subtitle', 'trailing'],
+    'schema': {
+      'label': [
+        {'type': 'slot', 'slotName': 'title'},
+      ],
+    },
   },
   'ElevatedButton': {
     'role': 'button',
@@ -167,17 +172,25 @@ const Map<String, Map<String, Object>> rawKnownSemanticsV26 = {
     'isFocusable': true,
     'isEnabledByDefault': true,
     'hasTap': true,
-    'hasLongPress': false,
+    'hasLongPress': true,
     'hasIncrease': false,
     'hasDecrease': false,
     'isToggled': false,
     'isChecked': false,
     'mergesDescendants': false,
-    'implicitlyMergesSemantics': true,
+    'implicitlyMergesSemantics': false,
     'excludesDescendants': false,
     'blocksBehind': false,
     'isPureContainer': false,
     'slotTraversalOrder': ['icon'],
+    'schema': {
+      'label': [
+        {'type': 'prop', 'name': 'tooltip', 'sourceOverride': 'tooltip'},
+      ],
+      'tooltip': [
+        {'type': 'prop', 'name': 'tooltip'},
+      ],
+    },
   },
   'FloatingActionButton': {
     'role': 'button',
@@ -185,7 +198,7 @@ const Map<String, Map<String, Object>> rawKnownSemanticsV26 = {
     'isFocusable': true,
     'isEnabledByDefault': true,
     'hasTap': true,
-    'hasLongPress': false,
+    'hasLongPress': true,
     'hasIncrease': false,
     'hasDecrease': false,
     'isToggled': false,
@@ -196,6 +209,14 @@ const Map<String, Map<String, Object>> rawKnownSemanticsV26 = {
     'blocksBehind': false,
     'isPureContainer': false,
     'slotTraversalOrder': ['child', 'icon', 'label'],
+    'schema': {
+      'label': [
+        {'type': 'prop', 'name': 'tooltip', 'sourceOverride': 'tooltip'},
+      ],
+      'tooltip': [
+        {'type': 'prop', 'name': 'tooltip'},
+      ],
+    },
   },
   'Checkbox': {
     'role': 'checkbox',
@@ -214,6 +235,11 @@ const Map<String, Map<String, Object>> rawKnownSemanticsV26 = {
     'blocksBehind': false,
     'isPureContainer': false,
     'slotTraversalOrder': [],
+    'schema': {
+      'isChecked': [
+        {'type': 'prop', 'name': 'value'},
+      ],
+    },
   },
   'Switch': {
     'role': 'switchRole',
@@ -232,6 +258,11 @@ const Map<String, Map<String, Object>> rawKnownSemanticsV26 = {
     'blocksBehind': false,
     'isPureContainer': false,
     'slotTraversalOrder': [],
+    'schema': {
+      'toggled': [
+        {'type': 'prop', 'name': 'value'},
+      ],
+    },
   },
   'Slider': {
     'role': 'slider',
@@ -286,6 +317,12 @@ const Map<String, Map<String, Object>> rawKnownSemanticsV26 = {
     'blocksBehind': false,
     'isPureContainer': false,
     'slotTraversalOrder': [],
+    'schema': {
+      'label': [
+        {'type': 'positional', 'index': 0, 'sourceOverride': 'textChild'},
+        {'type': 'prop', 'name': 'data', 'sourceOverride': 'textChild'},
+      ],
+    },
   },
   'RichText': {
     'role': 'staticText',
@@ -340,6 +377,11 @@ const Map<String, Map<String, Object>> rawKnownSemanticsV26 = {
     'blocksBehind': false,
     'isPureContainer': false,
     'slotTraversalOrder': [],
+    'schema': {
+      'label': [
+        {'type': 'prop', 'name': 'semanticLabel'},
+      ],
+    },
   },
   'Column': {
     'role': 'group',

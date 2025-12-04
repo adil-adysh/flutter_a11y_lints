@@ -99,30 +99,52 @@ class SemanticBuilder {
   ) {
     // Build a semantic node for a standard (non-wrapper) widget.
     // Steps:
-    // 1. Lookup KnownSemantics metadata for this widget type
+    // 1. Lookup KnownSemantics metadata for this widget type (with heuristic fallback)
     // 2. Build semantic children according to slotTraversalOrder + children list
     // 3. Derive a label from widget props, tooltips, text children, etc.
     // 4. Merge child labels when the widget merges descendants
     // 5. Return a `SemanticNode` containing combined semantics for rules.
-    final known = ctx.knownSemantics[widget.widgetType] ?? _defaultSemantics;
+
+    // Get known semantics or infer heuristic metadata for unregistered widgets
+    var known = ctx.knownSemantics[widget.widgetType];
+    if (known == null) {
+      known = _inferHeuristicSemantics(widget) ?? _defaultSemantics;
+    }
+
     final builtChildren = _buildChildren(widget, ctx);
 
-    final labelInfo = _deriveLabelInfo(widget);
-    final label = labelInfo?.value;
-    var labelGuarantee = labelInfo?.guarantee ?? LabelGuarantee.none;
-    var labelSource = labelInfo?.source ?? LabelSource.none;
+    final derivedLabelInfo = _deriveLabelInfo(widget);
+    var label = derivedLabelInfo?.value;
+    var labelGuarantee = derivedLabelInfo?.guarantee ?? LabelGuarantee.none;
+    var labelSource = derivedLabelInfo?.source ?? LabelSource.none;
     String? explicitChildLabel;
     var childLabelGuarantee = LabelGuarantee.none;
 
-    if (widget.widgetType == 'ListTile') {
-      final titleChild = builtChildren.slotNodes['title'];
-      if (titleChild != null &&
-          titleChild.labelGuarantee != LabelGuarantee.none) {
-        explicitChildLabel = titleChild.effectiveLabel ?? explicitChildLabel;
-        childLabelGuarantee = _mergeGuarantees(
-          childLabelGuarantee,
-          titleChild.labelGuarantee,
-        );
+    // Try schema-based attribute resolution for label
+    if (known.schema.label.isNotEmpty) {
+      final schemaLabelInfo =
+          _resolveAttribute(widget, known.schema.label, builtChildren);
+      if (schemaLabelInfo != null) {
+        // Only set explicitChildLabel if this came from a slot child
+        // For direct prop/positional sources, use it as the main label
+        final isFromSlot = known.schema.label.any((s) =>
+            s is SlotSource && schemaLabelInfo.source != LabelSource.none);
+
+        if (isFromSlot) {
+          explicitChildLabel = schemaLabelInfo.value;
+          childLabelGuarantee = schemaLabelInfo.guarantee;
+        } else {
+          // Direct property/positional extraction
+          if (label == null) {
+            label = schemaLabelInfo.value;
+            labelGuarantee = schemaLabelInfo.guarantee;
+          }
+        }
+
+        // Always update labelSource if schema provides it and we didn't have one before
+        if (labelSource == LabelSource.none) {
+          labelSource = schemaLabelInfo.source;
+        }
       }
     }
 
@@ -519,6 +541,55 @@ class SemanticBuilder {
     }
   }
 
+  /// Infer heuristic semantics for widgets not in the KnownSemantics registry.
+  ///
+  /// Tier 1 fallback: if a widget has common callback patterns (onTap, onPressed),
+  /// assume it's a button. If it has label/text props, create a simple schema to
+  /// extract them. This provides basic accessibility support for custom widgets.
+  KnownSemantics? _inferHeuristicSemantics(WidgetNode widget) {
+    // Check if the widget has tap/press callbacks
+    final hasTap = widget.props.containsKey('onTap') ||
+        widget.props.containsKey('onPressed') ||
+        widget.props.containsKey('onLongPress');
+
+    if (!hasTap) {
+      // No obvious callback; cannot infer strong semantics
+      return null;
+    }
+
+    // Build a simple schema: check for common label/text props
+    final labelSources = <SemanticSource>[];
+    if (widget.props.containsKey('label')) {
+      labelSources.add(PropSource('label'));
+    }
+    if (widget.props.containsKey('text')) {
+      labelSources.add(PropSource('text'));
+    }
+    if (widget.props.containsKey('tooltip')) {
+      labelSources.add(PropSource('tooltip'));
+    }
+
+    return KnownSemantics(
+      role: SemanticRole.button,
+      controlKind: ControlKind.none,
+      isFocusable: true,
+      isEnabledByDefault: true,
+      hasTap: true,
+      hasLongPress: widget.props.containsKey('onLongPress'),
+      hasIncrease: false,
+      hasDecrease: false,
+      isToggled: false,
+      isChecked: false,
+      mergesDescendants: true,
+      implicitlyMergesSemantics: true,
+      excludesDescendants: false,
+      blocksBehind: false,
+      isPureContainer: false,
+      slotTraversalOrder: widget.slots.keys.toList(),
+      schema: SemanticSchema(label: labelSources),
+    );
+  }
+
   bool _computeIsEnabled(WidgetNode widget, KnownSemantics known) {
     // Determine whether the control should be considered enabled. Prefer the
     // widget-level default from `KnownSemantics` but override when a
@@ -543,41 +614,67 @@ class SemanticBuilder {
     return enabled;
   }
 
+  /// Generic attribute resolution using the declarative schema.
+  ///
+  /// Attempts to extract a semantic attribute (label, tooltip, value, etc.)
+  /// from a widget instance by trying sources in priority order:
+  ///
+  /// 1. **PropSource:** Look up a named argument in `widget.props`.
+  /// 2. **PositionalSource:** Look up a positional argument in `widget.positionalArgs`.
+  /// 3. **SlotSource:** Look up a built child in a named slot. If the child
+  ///    exists and has a label, return it with **propagated labelGuarantee**.
+  ///
+  /// Returns `null` if no source succeeds.
+  ///
+  /// Label source provenance: Each source can specify a sourceOverride to
+  /// indicate which LabelSource should be used. This preserves information
+  /// about data origin (e.g., tooltip extraction marks source as LabelSource.tooltip).
+  _LabelInfo? _resolveAttribute(
+    WidgetNode widget,
+    List<SemanticSource> sources,
+    _BuiltChildren children,
+  ) {
+    for (final source in sources) {
+      if (source is PropSource) {
+        // Try named argument
+        final expr = widget.props[source.name];
+        // Use sourceOverride if provided, else use smart defaults
+        final labelSource = source.sourceOverride ?? LabelSource.other;
+        final info = _labelFromExpression(expr, source: labelSource);
+        if (info != null) return info;
+      } else if (source is PositionalSource) {
+        // Try positional argument
+        if (source.index < widget.positionalArgs.length) {
+          final expr = widget.positionalArgs[source.index];
+          final labelSource = source.sourceOverride ?? LabelSource.textChild;
+          final info = _labelFromExpression(expr, source: labelSource);
+          if (info != null) return info;
+        }
+      } else if (source is SlotSource) {
+        // Try slot child: use the built node's label if available
+        final childNode = children.slotNodes[source.slotName];
+        if (childNode != null &&
+            childNode.labelGuarantee != LabelGuarantee.none) {
+          final labelSource = source.sourceOverride ?? LabelSource.textChild;
+          return _LabelInfo(
+            value: childNode.effectiveLabel,
+            // Crucially, propagate the child's labelGuarantee
+            guarantee: childNode.labelGuarantee,
+            source: labelSource,
+          );
+        }
+      }
+    }
+
+    return null;
+  }
+
   _LabelInfo? _deriveLabelInfo(WidgetNode widget) {
     // Look for label sources that are local to this widget instance.
-    // This is intentionally conservative and only considers common patterns
-    // (Text child, tooltip on IconButton/FAB, Icon.semanticLabel, and
-    // Semantics.label overrides).
-    if (widget.widgetType == 'Text' && widget.positionalArgs.isNotEmpty) {
-      return _labelFromExpression(
-        widget.positionalArgs.first,
-        source: LabelSource.textChild,
-      );
-    }
+    // This uses the schema from KnownSemantics when available, otherwise
+    // falls back to hardcoded checks for special cases like Semantics.label.
 
-    if (widget.widgetType == 'IconButton') {
-      final tooltip = widget.props['tooltip'];
-      final tooltipInfo =
-          _labelFromExpression(tooltip, source: LabelSource.tooltip);
-      if (tooltipInfo != null) return tooltipInfo;
-    }
-
-    if (widget.widgetType == 'FloatingActionButton') {
-      final tooltip = widget.props['tooltip'];
-      final tooltipInfo =
-          _labelFromExpression(tooltip, source: LabelSource.tooltip);
-      if (tooltipInfo != null) return tooltipInfo;
-    }
-
-    if (widget.widgetType == 'Icon') {
-      final semanticLabel = widget.props['semanticLabel'];
-      final labelInfo = _labelFromExpression(
-        semanticLabel,
-        source: LabelSource.other,
-      );
-      if (labelInfo != null) return labelInfo;
-    }
-
+    // For Semantics widget, always check the label prop directly
     if (widget.widgetType == 'Semantics') {
       final semanticsLabel = widget.props['label'];
       final labelInfo = _labelFromExpression(
