@@ -39,18 +39,30 @@ import 'package:flutter_a11y_lints/src/rules/a16_toggle_state_via_semantics_flag
 import 'package:flutter_a11y_lints/src/rules/a24_exclude_visual_only_indicators.dart';
 
 void main(List<String> args) async {
-  if (args.isEmpty) {
-    print('Usage: a11y <path_to_analyze>');
-    print(
-        '  Analyzes Flutter files for accessibility issues using semantic IR.');
+  // Support an optional flag to fail CI on warnings.
+  // Usage: a11y [--fail-on-warnings|--fail] <path_to_analyze>
+  bool failOnWarnings = false;
+  final positional = <String>[];
+  for (final a in args) {
+    if (a == '--fail-on-warnings' || a == '--fail') {
+      failOnWarnings = true;
+    } else {
+      positional.add(a);
+    }
+  }
+
+  if (positional.isEmpty) {
+    print('Usage: a11y [--fail-on-warnings] <path_to_analyze>');
+    print('  Analyzes Flutter files for accessibility issues using semantic IR.');
     print('');
     print('Examples:');
     print('  a11y lib/main.dart');
     print('  a11y lib/');
+    print('  a11y --fail-on-warnings lib/');
     exit(1);
   }
 
-  final targetPath = args[0];
+  final targetPath = positional[0];
   final target = File(targetPath);
   final targetDir = Directory(targetPath);
 
@@ -80,7 +92,13 @@ void main(List<String> args) async {
     print('');
   }
 
-  exit(results.any((r) => r.severity == 'error') ? 1 : 0);
+  if (failOnWarnings) {
+    // In CI mode fail on any issue (warning or error).
+    exit(results.isNotEmpty ? 1 : 0);
+  } else {
+    // Default: only treat explicit 'error' severity as a failing exit code.
+    exit(results.any((r) => r.severity == 'error') ? 1 : 0);
+  }
 }
 
 class A11yIssue {
