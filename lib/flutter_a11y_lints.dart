@@ -13,6 +13,43 @@ export 'src/semantics/semantic_neighborhood.dart';
 export 'src/widget_tree/widget_node.dart';
 export 'src/pipeline/semantic_ir_builder.dart';
 
+// Rules (built-in)
+export 'rules/a01_unlabeled_interactive.dart';
+export 'rules/a02_avoid_redundant_role_words.dart';
+export 'rules/a03_decorative_images_excluded.dart';
+export 'rules/a04_informative_images_labeled.dart';
+export 'rules/a05_no_redundant_button_semantics.dart';
+export 'rules/a06_merge_multi_part_single_concept.dart';
+export 'rules/a07_replace_semantics_cleanly.dart';
+export 'rules/a21_use_iconbutton_tooltip.dart';
+export 'rules/a22_respect_widget_semantic_boundaries.dart';
+export 'rules/a18_avoid_hidden_focus_traps.dart';
+export 'rules/a09_numeric_values_require_units.dart';
+export 'rules/a11_minimum_tap_target_size.dart';
+export 'rules/a13_single_role_composite_control.dart';
+export 'rules/a15_map_custom_gestures_to_on_tap.dart';
+export 'rules/a16_toggle_state_via_semantics_flag.dart';
+export 'rules/a24_exclude_visual_only_indicators.dart';
+export 'rules/faql_rule_runner.dart';
+
+// Utilities
+export 'src/utils/flutter_utils.dart';
+export 'src/utils/method_utils.dart';
+/// Flutter accessibility analyzer - semantic IR-based accessibility analysis
+library;
+
+// Core semantic IR components
+export 'src/semantics/semantic_node.dart';
+export 'src/semantics/semantic_tree.dart';
+export 'src/semantics/semantic_builder.dart';
+export 'src/semantics/semantic_context.dart';
+export 'src/semantics/known_semantics.dart';
+export 'src/semantics/semantic_neighborhood.dart';
+
+// Pipeline components
+export 'src/widget_tree/widget_node.dart';
+export 'src/pipeline/semantic_ir_builder.dart';
+
 // Rules
 export 'src/rules/a01_unlabeled_interactive.dart';
 export 'src/rules/a02_avoid_redundant_role_words.dart';

@@ -16,9 +16,9 @@ import 'package:flutter_a11y_lints/src/pipeline/semantic_ir_builder.dart';
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
 import 'package:flutter_a11y_lints/src/utils/flutter_utils.dart';
 import 'package:flutter_a11y_lints/src/utils/method_utils.dart';
-import 'package:flutter_a11y_lints/src/rules/a01_unlabeled_interactive.dart';
-import 'package:flutter_a11y_lints/src/rules/faql_rule_catalog.dart';
-import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
+import 'package:flutter_a11y_lints/rules/a01_unlabeled_interactive.dart';
+import 'package:flutter_a11y_lints/rules/faql_rule_catalog.dart';
+import 'package:flutter_a11y_lints/rules/faql_rule_runner.dart';
 import 'package:flutter_a11y_lints/src/faql/parser.dart';
 import 'package:flutter_a11y_lints/src/faql/validator.dart';
 import 'package:flutter_a11y_lints/src/bridge/semantic_faql_adapter.dart'

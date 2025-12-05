@@ -2,13 +2,13 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../bridge/semantic_faql_adapter.dart';
-import '../faql/ast.dart';
-import '../faql/interpreter.dart';
-import '../faql/parser.dart';
-import '../faql/validator.dart';
-import '../semantics/semantic_node.dart';
-import '../semantics/semantic_tree.dart';
+import '../src/bridge/semantic_faql_adapter.dart';
+import '../src/faql/ast.dart';
+import '../src/faql/interpreter.dart';
+import '../src/faql/parser.dart';
+import '../src/faql/validator.dart';
+import '../src/semantics/semantic_node.dart';
+import '../src/semantics/semantic_tree.dart';
 
 class FaqlRuleSpec {
   FaqlRuleSpec({

@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../bridge/semantic_faql_adapter.dart';
-import '../faql/parser.dart';
-import '../faql/validator.dart';
+import '../src/bridge/semantic_faql_adapter.dart';
+import '../src/faql/parser.dart';
+import '../src/faql/validator.dart';
 import 'builtin_faql_rules.g.dart' as builtin;
 import 'faql_rule_runner.dart';
 
