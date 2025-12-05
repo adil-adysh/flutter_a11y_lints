@@ -14,7 +14,6 @@ void main() {
     final rulePath = p.normalize(p.join(
       Directory.current.path,
       'lib',
-      'src',
       'rules',
       'a02_avoid_redundant_role_words.faql',
     ));

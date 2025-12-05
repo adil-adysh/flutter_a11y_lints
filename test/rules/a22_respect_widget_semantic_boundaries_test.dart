@@ -13,7 +13,6 @@ void main() {
     final rulesDir = p.normalize(p.join(
       Directory.current.path,
       'lib',
-      'src',
       'rules',
     ));
     final specs = await FaqlRuleRunner.loadFromDirectory(rulesDir);

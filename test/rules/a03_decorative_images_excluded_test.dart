@@ -14,7 +14,6 @@ void main() {
     final rulePath = p.normalize(p.join(
       Directory.current.path,
       'lib',
-      'src',
       'rules',
       'a03_decorative_images_excluded.faql',
     ));

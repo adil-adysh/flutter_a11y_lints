@@ -4,7 +4,8 @@ import 'ast.dart';
 /// Grammar that also builds the AST nodes during parsing.
 class FaqlGrammar extends GrammarDefinition {
   @override
-  Parser start() => ref0(ruleDefinition).trim(ref0(hidden)).end();
+    Parser start() => (ref0(hidden) & ref0(ruleDefinition) & ref0(hidden))
+      .map((v) => v[1]).end();
 
   // Top-level rule -> produces a FaqlRule
   Parser<FaqlRule> ruleDefinition() => (token('rule') &
@@ -211,14 +212,14 @@ class FaqlGrammar extends GrammarDefinition {
       (token(char('(')) & ref0(expression) & token(char(')')))
           .map((v) => v[1] as FaqlExpression);
 
-  // traversal -> RelationLengthExpression or AggregatorExpression
-  Parser<FaqlExpression> traversal() => (ref0(relationName) &
-              token(char('.')) &
-              (string('length').trim() |
-                  (ref0(aggregatorName) &
-                      token(char('(')) &
-                      ref0(expression) &
-                      token(char(')')))))
+    // traversal -> RelationLengthExpression or AggregatorExpression
+    Parser<FaqlExpression> traversal() => (ref0(relationName) &
+          token(char('.')) &
+          (token('length') |
+            (ref0(aggregatorName) &
+              token(char('(')) &
+              ref0(expression) &
+              token(char(')')))))
           .map((v) {
         final relationStr = v[0] as String;
         final relation = _mapRelation(relationStr);
@@ -263,7 +264,7 @@ class FaqlGrammar extends GrammarDefinition {
   }
 
   // prop("name") [.is_resolved] | as type
-  Parser<FaqlExpression> propAccess() => (string('prop').trim() &
+  Parser<FaqlExpression> propAccess() => (token('prop') &
               token(char('(')) &
               ref0(stringLiteral) &
               token(char(')')) &
@@ -281,36 +282,32 @@ class FaqlGrammar extends GrammarDefinition {
         return PropExpression(name, asType: asType, isResolved: isResolved);
       });
 
-  Parser<dynamic> castOperation() => (string('.is_resolved').trim() |
-      (string('as').trim() &
-          (string('string') | string('int') | string('bool'))));
+    Parser<dynamic> castOperation() => (token('.is_resolved') |
+      (token('as') &
+        (token('string') | token('int') | token('bool'))));
 
-  // Tokens and helpers
-  Parser<String> relationName() => (string('children') |
-          string('siblings') |
-          string('ancestors') |
-          string('next_focus') |
-          string('prev_focus'))
-      .trim(ref0(hidden))
-      .flatten();
+    // Tokens and helpers
+    Parser<String> relationName() => token(
+      (string('children') |
+        string('siblings') |
+        string('ancestors') |
+        string('next_focus') |
+        string('prev_focus'))).flatten();
 
-  Parser<String> aggregatorName() =>
-      (string('any') | string('all') | string('none'))
-          .trim(ref0(hidden))
-          .flatten();
+    Parser<String> aggregatorName() => token(
+      (string('any') | string('all') | string('none'))).flatten();
 
-  Parser<FaqlExpression> booleanState() => (string('focusable') |
-          string('enabled') |
-          string('hidden') |
-          string('checked') |
-          string('toggled') |
-          string('merges_descendants') |
-          string('has_tap') |
-          string('has_long_press') |
-          string('is_empty') |
-          string('is_not_empty'))
-      .trim(ref0(hidden))
-      .flatten()
+    Parser<FaqlExpression> booleanState() => token(
+      (string('focusable') |
+        string('enabled') |
+        string('hidden') |
+        string('checked') |
+        string('toggled') |
+        string('merges_descendants') |
+        string('has_tap') |
+        string('has_long_press') |
+        string('is_empty') |
+        string('is_not_empty'))).flatten()
       .map((s) => BooleanStateExpression(s.toString().trim()));
 
   Parser<String> functionCallArgs() =>
@@ -323,15 +320,15 @@ class FaqlGrammar extends GrammarDefinition {
         .map((s) => LiteralExpression(num.parse(s.toString())));
     final p3 = ref0(booleanLiteral)
         .map((s) => LiteralExpression(s.toString().trim() == 'true'));
-    return (p1 | p2 | p3).map((v) => v as FaqlExpression);
+    final p4 = token(string('null')).map((_) => LiteralExpression(null));
+    return (p1 | p2 | p3 | p4).map((v) => v as FaqlExpression);
   }
 
   // Bare identifiers produce an Identifier AST node.
   Parser<FaqlExpression> identifierExpr() =>
       ref0(identifier).map((s) => Identifier(s.toString()));
 
-  Parser<String> identifier() =>
-      ((letter() | char('_')) & (word()).star()).flatten().trim(ref0(hidden));
+  Parser<String> identifier() => token(((letter() | char('_')) & (word()).star()).flatten()).map((s) => s as String);
 
   Parser<String> stringLiteral() =>
       (char('"') & (char('\\') & any() | pattern('^"')).star() & char('"'))
@@ -360,26 +357,25 @@ class FaqlGrammar extends GrammarDefinition {
         });
       });
 
-  Parser<String> numberLiteral() =>
-      ((digit().plus() & (char('.') & digit().plus()).optional()))
-          .flatten()
-          .trim(ref0(hidden));
+  Parser<String> numberLiteral() => token(((digit().plus() & (char('.') & digit().plus()).optional())).flatten()).map((s) => s as String);
 
-  Parser<String> booleanLiteral() =>
-      (string('true') | string('false')).trim(ref0(hidden)).flatten();
+  Parser<String> booleanLiteral() => token((string('true') | string('false'))).flatten();
 
   // Comments and whitespace handling
-  Parser singleLineComment() =>
-      string('//') & any().starLazy(char('\n')) & (char('\n') | endOfInput());
+      Parser singleLineComment() =>
+        string('//') &
+        // consume any chars except CR or LF
+        pattern('^\r\n').star() &
+        (string('\r\n') | char('\r') | char('\n') | endOfInput());
 
-  Parser hidden() => (whitespace() | ref0(singleLineComment)).plus();
+    // `hidden` matches zero-or-more separators (whitespace or comments).
+    Parser hidden() => (whitespace() | ref0(singleLineComment)).star();
 
-  // Token helper: trims the given string or parser using `hidden` which
-  // consumes whitespace and single-line comments. If `input` is a String,
-  // create a string parser, otherwise assume it's already a Parser.
-  Parser token(Object input) {
-    if (input is String) return string(input).trim(ref0(hidden));
-    if (input is Parser) return input.trim(ref0(hidden));
-    throw ArgumentError('token() expects a String or Parser');
-  }
+    // Token helper: explicitly wraps the inner parser with optional leading
+    // and trailing separators so we don't pass a `.star()`-capable parser
+    // directly into `.trim()` (which can cause infinite trimming loops).
+    Parser token(Object input) {
+      final Parser inner = input is String ? string(input) : (input as Parser);
+      return (ref0(hidden) & inner & ref0(hidden)).map((v) => v[1]);
+    }
 }

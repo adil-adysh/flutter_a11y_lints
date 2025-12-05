@@ -1,10 +1,10 @@
 abstract class FaqlExpression {}
 
 class LiteralExpression extends FaqlExpression {
-  final Object value;
+  final Object? value;
   LiteralExpression(this.value);
   @override
-  String toString() => 'Literal($value)';
+  String toString() => 'Literal(${value == null ? 'null' : value})';
 }
 
 class BooleanStateExpression extends FaqlExpression {
