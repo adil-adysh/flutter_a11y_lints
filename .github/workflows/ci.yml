@@ -29,11 +29,32 @@ jobs:
       - name: Analyze project source
         run: dart analyze --fatal-infos
 
-      - name: Run tests
+      - name: List test files
+        run: |
+          echo "Discovered test files:";
+          find test -name '*_test.dart' -print || true
+
+      - name: Run full test suite
         run: dart test
 
-      - name: Run FAQL tests (explicit)
-        run: dart test test/faql
+      - name: Run FAQL tests (root)
+        run: dart test test/faql || true
+
+      - name: Run FAQL parser tests
+        run: |
+          if [ -d test/faql/parser ]; then
+            dart test test/faql/parser || true
+          else
+            echo "No parser test directory found"
+          fi
+
+      - name: Run FAQL interpreter tests
+        run: |
+          if [ -d test/faql/interpreter ]; then
+            dart test test/faql/interpreter || true
+          else
+            echo "No interpreter test directory found"
+          fi
 
       - name: Check test coverage
         run: |
