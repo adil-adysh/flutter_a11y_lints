@@ -12,6 +12,7 @@ environment:
 dependencies:
   analyzer: ^9.0.0
   collection: ^1.18.0
+  petitparser: ^7.0.0
   meta: ^1.17.0
   path: ^1.9.0
 

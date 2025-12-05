@@ -1,0 +1,117 @@
+00:00 +0: loading test/faql\identifier_and_numeric_test.dart
+00:00 +0: test/faql\identifier_and_numeric_test.dart: unresolved identifier evaluates as null (not the identifier name)
+[DEBUG]== expr.left AST: Prop(color, as:null, resolved:null) expr.right AST: Identifier(red)
+[DEBUG]== comparing LHS(String): blue RHS(Null): null
+00:00 +1: test/faql\interpreter\basic_test.dart: Interpreter Basic Basic property check (Slider divisions)
+00:00 +2: test/faql\interpreter\basic_test.dart: Interpreter Basic Basic property check (Slider divisions)
+00:00 +3: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion string numeric coerces to number in comparisons
+00:00 +4: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion string numeric coerces to number in comparisons
+00:00 +5: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion string numeric coerces to number in comparisons
+00:00 +5: test/faql\interpreter\basic_test.dart: Interpreter Basic Traversal: ancestors.none() (Nested Buttons)
+[DEBUG]== expr.left AST: Identifier(role) expr.right AST: Literal(button)
+[DEBUG]== comparing LHS(String): window RHS(String): button
+[DEBUG]== expr.left AST: Identifier(role) expr.right AST: Literal(button)
+[DEBUG]== comparing LHS(String): button RHS(String): button
+00:00 +6: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion string numeric coerces to number in comparisons
+00:00 +7: test/faql\interpreter\basic_test.dart: Interpreter Basic Complex Logic (&&, ||, parens)
+00:00 +8: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion invalid numeric string comparison returns false
+00:00 +9: test/faql\interpreter\basic_test.dart: Interpreter Basic Short-circuiting: when clause
+00:00 +10: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion as int from numeric string works
+00:00 +11: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion as int from numeric string works
+[DEBUG]== expr.left AST: Prop(n, as:int, resolved:null) expr.right AST: Literal(42)
+[DEBUG]== comparing LHS(int): 42 RHS(int): 42
+00:00 +12: test/faql\interpreter\basic_test.dart: Interpreter Basic String operators: contains and matches (regex)
+00:00 +12: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion as bool from string true/false
+[DEBUG] Prop as bool raw string: "true"
+[DEBUG]== expr.left AST: Prop(f, as:bool, resolved:null) expr.right AST: Literal(false)
+[DEBUG]== comparing LHS(bool): true RHS(bool): false
+00:00 +13: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion as bool from string true/false
+00:00 +13: test/faql\interpreter\basic_test.dart: Interpreter Basic Relation length and nested aggregators
+[DEBUG]== expr.left AST: Length(children) expr.right AST: Literal(2)
+[DEBUG]== comparing LHS(int): 2 RHS(int): 2
+00:00 +14: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion as bool from string true/false
+00:00 +14: test/faql\interpreter\basic_test.dart: Interpreter Basic Prop casting: as int/string/bool behavior
+[DEBUG]== expr.left AST: Prop(name, as:string, resolved:null) expr.right AST: Literal(123)
+[DEBUG]== comparing LHS(String): 123 RHS(String): 123
+00:00 +15: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion as bool from string true/false
+00:00 +15 -1: test/faql\interpreter\edge_cases_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +16 -1: test/faql\interpreter\edge_cases_test.dart: Interpreter Additional Edge Cases contains with null left operand returns false
+00:00 +17 -1: test/faql\interpreter\edge_cases_test.dart: Interpreter Additional Edge Cases next_focus/prev_focus relations default to empty and length == 0
+[DEBUG]== expr.left AST: Length(next_focus) expr.right AST: Literal(0)
+[DEBUG]== comparing LHS(int): 0 RHS(int): 0
+00:00 +18 -1: test/faql\interpreter\extra_tests_test.dart: Interpreter Extra Short-circuit: RHS not evaluated for &&/||
+00:00 +18 -1: test/faql\interpreter\edge_cases_test.dart: Interpreter Additional Edge Cases equality between number literal and numeric string is false (no coercion)
+[DEBUG]== expr.left AST: Prop(size, as:null, resolved:null) expr.right AST: Literal(10)
+[DEBUG]== comparing LHS(String): 10 RHS(int): 10
+00:00 +19 -1: test/faql\interpreter\extra_tests_test.dart: Interpreter Extra Short-circuit: RHS not evaluated for &&/||
+00:00 +20 -1: test/faql\interpreter\extra_tests_test.dart: Interpreter Extra Short-circuit: RHS not evaluated for &&/||
+00:00 +20 -1: test/faql\interpreter\casting_numeric_test.dart: Casting and Numeric Coercion as bool from string true/false [E]
+  Expected: true
+    Actual: <false>
+  
+  package:matcher                                        expect
+  test\faql\interpreter\casting_numeric_test.dart 115:7  main.<fn>.<fn>
+  
+00:00 +20 -1: test/faql\interpreter\extra_tests_test.dart: Interpreter Extra Short-circuit: RHS not evaluated for &&/||
+[DEBUG]== expr.left AST: Literal(1) expr.right AST: Literal(1)
+[DEBUG]== comparing LHS(int): 1 RHS(int): 1
+00:00 +21 -1: test/faql\interpreter\extra_tests_test.dart: Interpreter Extra Short-circuit: RHS not evaluated for &&/||
+00:00 +22 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +22 -1: test/faql\interpreter\casting_numeric_test.dart: Additional Interpreter Behaviors unresolved identifier evaluates as null (not the identifier name)
+[DEBUG]== expr.left AST: Prop(color, as:null, resolved:null) expr.right AST: Identifier(red)
+[DEBUG]== comparing LHS(String): blue RHS(Null): null
+00:00 +23 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +24 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +25 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +25 -1: test/faql\interpreter\extra_tests_test.dart: Interpreter Extra Arithmetic and unary minus work with coercion
+[DEBUG]== expr.left AST: Binary(Prop(a, as:null, resolved:null) * Prop(b, as:int, resolved:null)) expr.right AST: Literal(6)
+[DEBUG]== comparing LHS(int): 6 RHS(int): 6
+00:00 +26 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +27 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +27 -1: test/faql\interpreter\extra_tests_test.dart: Interpreter Extra Aggregator all returns false if any child fails
+[DEBUG]== expr.left AST: Prop(ok, as:null, resolved:null) expr.right AST: Literal(true)
+[DEBUG]== comparing LHS(bool): true RHS(bool): true
+[DEBUG]== expr.left AST: Prop(ok, as:null, resolved:null) expr.right AST: Literal(true)
+[DEBUG]== comparing LHS(bool): false RHS(bool): true
+00:00 +28 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +29 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +29 -1: test/faql\interpreter\extra_tests_test.dart: Interpreter Extra null equality semantics
+[DEBUG]== expr.left AST: Prop(x, as:null, resolved:null) expr.right AST: Identifier(null)
+[DEBUG]== comparing LHS(Null): null RHS(Null): null
+00:00 +30 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +31 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +32 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases invalid regex in matches returns false and does not throw
+00:00 +33 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +34 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +34 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases next_focus/prev_focus relations default to empty and length == 0
+[DEBUG]== expr.left AST: Length(next_focus) expr.right AST: Literal(0)
+[DEBUG]== comparing LHS(int): 0 RHS(int): 0
+00:00 +35 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +35 -1: test/faql\interpreter_additional_test.dart: Interpreter Additional Edge Cases equality between number literal and numeric string is false (no coercion)
+[DEBUG]== expr.left AST: Prop(size, as:null, resolved:null) expr.right AST: Literal(10)
+[DEBUG]== comparing LHS(String): 10 RHS(int): 10
+00:00 +36 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +37 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +38 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +39 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +40 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +40 -1: test/faql\interpreter_test.dart: Interpreter Logic Traversal: ancestors.none() (Nested Buttons)
+[DEBUG]== expr.left AST: Identifier(role) expr.right AST: Literal(button)
+[DEBUG]== comparing LHS(String): window RHS(String): button
+[DEBUG]== expr.left AST: Identifier(role) expr.right AST: Literal(button)
+[DEBUG]== comparing LHS(String): button RHS(String): button
+00:00 +41 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +42 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +43 -1: test/faql\parser\string_literal_test.dart: string literal with escaped quote parses and unescapes
+00:00 +44 -1: test/faql\string_escape_test.dart: string literal with escaped quote parses and unescapes
+00:00 +45 -1: test/faql\string_escape_test.dart: string literal with escaped quote parses and unescapes
+00:00 +46 -1: test/faql\string_escape_test.dart: string literal with escaped quote parses and unescapes
+00:00 +46 -1: test/faql\interpreter_test.dart: Interpreter Logic Relation length and nested aggregators
+[DEBUG]== expr.left AST: Length(children) expr.right AST: Literal(2)
+[DEBUG]== comparing LHS(int): 2 RHS(int): 2
+00:00 +47 -1: test/faql\string_escape_test.dart: string literal with escaped quote parses and unescapes
+00:00 +47 -1: test/faql\interpreter_test.dart: Interpreter Logic Prop casting: as int/string/bool behavior
+[DEBUG]== expr.left AST: Prop(name, as:string, resolved:null) expr.right AST: Literal(123)
+[DEBUG]== comparing LHS(String): 123 RHS(String): 123
+00:00 +48 -1: test/faql\string_escape_test.dart: string literal with escaped quote parses and unescapes
+00:00 +49 -1: Some tests failed.
