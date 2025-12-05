@@ -65,8 +65,8 @@ jobs:
 
       - name: Run a11y linter
         run: |
-          # Try the requested invocation, fall back to pub global run if needed
-          dart a11y linter || dart pub global run a11y linter
+          # Invoke the activated package executable explicitly by package:executable
+          dart pub global run flutter_a11y_lints:a11y
 
 
       - name: Run Flutter tests
