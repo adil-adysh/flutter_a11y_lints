@@ -4,7 +4,7 @@ import 'ast.dart';
 /// Grammar that also builds the AST nodes during parsing.
 class FaqlGrammar extends GrammarDefinition {
   @override
-  Parser start() => (ref0(hidden) & ref0(ruleDefinition) & ref0(hidden))
+  Parser start() => (ref0(hidden) & ref0(ruleDefinition).plus() & ref0(hidden))
       .map((v) => v[1])
       .end();
 

@@ -56,7 +56,8 @@ class FaqlRuleViolation {
 }
 
 class FaqlRuleRunner {
-  FaqlRuleRunner({required List<FaqlRuleSpec> rules, FaqlInterpreter? interpreter})
+  FaqlRuleRunner(
+      {required List<FaqlRuleSpec> rules, FaqlInterpreter? interpreter})
       : _rules = rules,
         _interpreter = interpreter ?? FaqlInterpreter();
 
@@ -93,14 +94,19 @@ class FaqlRuleRunner {
       if (entity is! File) continue;
       if (!entity.path.toLowerCase().endsWith('.faql')) continue;
       final content = await entity.readAsString();
-      final rule = p2.parseRule(content);
-      if (validator != null) {
-        validator.validate(rule);
-      } else if (allowedIdentifiers != null && allowedIdentifiers.isNotEmpty) {
-        FaqlSemanticValidator(allowedIdentifiers).validate(rule);
-      }
+      // Parser now supports multiple rules per file. Use parseRules to
+      // obtain all rules defined in the file.
+      final rules = p2.parseRules(content);
+      for (final rule in rules) {
+        if (validator != null) {
+          validator.validate(rule);
+        } else if (allowedIdentifiers != null &&
+            allowedIdentifiers.isNotEmpty) {
+          FaqlSemanticValidator(allowedIdentifiers).validate(rule);
+        }
         specs.add(FaqlRuleSpec.fromRule(rule,
-          sourcePath: entity.path, source: content));
+            sourcePath: entity.path, source: content));
+      }
     }
 
     return specs;
@@ -108,6 +114,7 @@ class FaqlRuleRunner {
 
   static String defaultRulesDirFromScript(Uri scriptUri) {
     final scriptPath = p.fromUri(scriptUri);
-    return p.normalize(p.join(p.dirname(scriptPath), '..', 'lib', 'src', 'rules'));
+    return p
+        .normalize(p.join(p.dirname(scriptPath), '..', 'lib', 'src', 'rules'));
   }
 }
