@@ -1,0 +1,24 @@
+rule "a04_informative_images_labeled_circle_avatar" on type(CircleAvatar) {
+  meta {
+    severity: "warning"
+    code: "a04_informative_images_labeled"
+    message: "Informative images must provide semantic labels"
+    correction: "Add semanticLabel/semanticsLabel or wrap with Semantics label."
+  }
+
+  when:
+    prop("backgroundImageProvided") == true &&
+    !prop("label").is_resolved &&
+    !prop("tooltip").is_resolved &&
+    !prop("semanticLabel").is_resolved &&
+    !prop("semanticsLabel").is_resolved
+
+  ensure:
+    ancestors.any(widgetType == "Semantics" && prop("label").is_resolved) ||
+    prop("label").is_resolved ||
+    prop("tooltip").is_resolved ||
+    prop("semanticLabel").is_resolved ||
+    prop("semanticsLabel").is_resolved
+
+  report: "Informative images must provide semantic labels"
+}

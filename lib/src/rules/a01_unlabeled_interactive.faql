@@ -1,0 +1,23 @@
+rule "a01_unlabeled_interactive" on any {
+  meta {
+    severity: "warning"
+    code: "a01_unlabeled_interactive"
+    message: "Interactive control must have an accessible label"
+    correction: "Add a tooltip, Text child, or Semantics label"
+  }
+  when:
+    enabled &&
+    (has_tap || has_long_press) &&
+    (
+      prop("controlKind") == "iconButton" ||
+      prop("controlKind") == "elevatedButton" ||
+      prop("controlKind") == "textButton" ||
+      prop("controlKind") == "floatingActionButton" ||
+      prop("controlKind") == "filledButton" ||
+      prop("controlKind") == "outlinedButton"
+    )
+  ensure:
+    prop("label").is_resolved ||
+    ancestors.any(prop("widgetType") == "Semantics" && prop("label").is_resolved)
+  report: "Interactive control must have an accessible label"
+}

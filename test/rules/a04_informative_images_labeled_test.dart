@@ -1,10 +1,30 @@
-import 'package:flutter_a11y_lints/src/rules/a04_informative_images_labeled.dart';
+import 'dart:io';
+
+import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'test_semantic_utils.dart';
 
 void main() {
-  group('A04 - informative images labeled', () {
+  late FaqlRuleRunner runner;
+
+  setUpAll(() async {
+    final rulesDir = p.normalize(p.join(
+      Directory.current.path,
+      'lib',
+      'src',
+      'rules',
+    ));
+
+    final specs = await FaqlRuleRunner.loadFromDirectory(rulesDir);
+    final filtered = specs
+        .where((s) => s.code == 'a04_informative_images_labeled')
+        .toList();
+    runner = FaqlRuleRunner(rules: filtered);
+  });
+
+  group('A04 - informative images labeled (FAQL)', () {
     test('CircleAvatar with backgroundImage requires semanticsLabel', () async {
       final tree = await buildTestSemanticTree('''
         CircleAvatar(
@@ -12,7 +32,7 @@ void main() {
         )
       ''');
 
-      final violations = A04InformativeImagesLabeled.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, hasLength(1));
     });
 
@@ -24,7 +44,7 @@ void main() {
         )
       ''');
 
-      final violations = A04InformativeImagesLabeled.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, isEmpty);
     });
 
@@ -39,7 +59,7 @@ void main() {
         )
       ''');
 
-      final violations = A04InformativeImagesLabeled.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, isEmpty);
     });
 
@@ -52,7 +72,7 @@ void main() {
         )
       ''');
 
-      final violations = A04InformativeImagesLabeled.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, hasLength(1));
     });
 
@@ -67,7 +87,7 @@ void main() {
         )
       ''');
 
-      final violations = A04InformativeImagesLabeled.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, isEmpty);
     });
 
@@ -82,7 +102,7 @@ void main() {
         )
       ''');
 
-      final violations = A04InformativeImagesLabeled.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, isEmpty);
     });
   });

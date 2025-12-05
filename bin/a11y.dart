@@ -10,6 +10,7 @@
 // - `lib/src/semantics/known_semantics.dart` (widget role metadata)
 // - `test/rules/test_semantic_utils.dart` (how tests build semantic trees)
 
+import 'dart:async';
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
@@ -37,18 +38,30 @@ import 'package:flutter_a11y_lints/src/rules/a13_single_role_composite_control.d
 import 'package:flutter_a11y_lints/src/rules/a15_map_custom_gestures_to_on_tap.dart';
 import 'package:flutter_a11y_lints/src/rules/a16_toggle_state_via_semantics_flag.dart';
 import 'package:flutter_a11y_lints/src/rules/a24_exclude_visual_only_indicators.dart';
+import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
 
 void main(List<String> args) async {
   // Support an optional flag to fail CI on warnings.
-  // Usage: a11y [--fail-on-warnings|--fail] <path_to_analyze>
+  // Usage: a11y [--fail-on-warnings|--fail] [--faql-only|--dart-only] <path_to_analyze>
   bool failOnWarnings = false;
+  bool faqlOnly = false;
+  bool dartOnly = false;
   final positional = <String>[];
   for (final a in args) {
     if (a == '--fail-on-warnings' || a == '--fail') {
       failOnWarnings = true;
+    } else if (a == '--faql-only') {
+      faqlOnly = true;
+    } else if (a == '--dart-only') {
+      dartOnly = true;
     } else {
       positional.add(a);
     }
+  }
+
+  // If both switches are set, prefer FAQL-only (explicit override).
+  if (faqlOnly && dartOnly) {
+    dartOnly = false;
   }
 
   if (positional.isEmpty) {
@@ -76,7 +89,10 @@ void main(List<String> args) async {
   print('==============================');
   print('Analyzing: $targetPath\n');
 
-  final analyzer = FlutterA11yAnalyzer();
+  final analyzer = FlutterA11yAnalyzer(
+    runDartRules: !faqlOnly,
+    runFaqlRules: !dartOnly,
+  );
   final results = await analyzer.analyze(targetPath);
 
   if (results.isEmpty) {
@@ -127,10 +143,19 @@ class A11yIssue {
 
 class FlutterA11yAnalyzer {
   final KnownSemanticsRepository _knownSemantics = KnownSemanticsRepository();
+  final Future<FaqlRuleRunner?> _faqlRunnerFuture;
+  final bool runDartRules;
+  final bool runFaqlRules;
+
+  FlutterA11yAnalyzer({FaqlRuleRunner? faqlRunner, String? faqlRulesDir, this.runDartRules = true, this.runFaqlRules = true})
+      : _faqlRunnerFuture = faqlRunner != null
+            ? Future.value(faqlRunner)
+            : _loadDefaultFaqlRunner(faqlRulesDir);
 
   Future<List<A11yIssue>> analyze(String path) async {
     final issues = <A11yIssue>[];
     final resourceProvider = PhysicalResourceProvider.INSTANCE;
+    final faqlRunner = await _faqlRunnerFuture;
 
     // Determine the root directory for analysis - must be absolute and normalized
     final targetFile = File(path);
@@ -168,14 +193,14 @@ class FlutterA11yAnalyzer {
 
       print('Analyzing: ${p.relative(filePath, from: analysisRoot)}');
 
-      final fileIssues = _analyzeFile(unitResult);
+      final fileIssues = _analyzeFile(unitResult, faqlRunner);
       issues.addAll(fileIssues);
     }
 
     return issues;
   }
 
-  List<A11yIssue> _analyzeFile(ResolvedUnitResult unit) {
+  List<A11yIssue> _analyzeFile(ResolvedUnitResult unit, FaqlRuleRunner? faqlRunner) {
     final issues = <A11yIssue>[];
     final irBuilder =
         SemanticIrBuilder(unit: unit, knownSemantics: _knownSemantics);
@@ -196,269 +221,295 @@ class FlutterA11yAnalyzer {
       if (tree == null) continue;
 
       // Run all rules on the semantic tree
-      final a01Violations = A01UnlabeledInteractive.checkTree(tree);
-      final a02Violations = A02AvoidRedundantRoleWords.checkTree(tree);
-      final a03Violations = A03DecorativeImagesExcluded.checkTree(tree);
-      final a04Violations = A04InformativeImagesLabeled.checkTree(tree);
-      final a05Violations = A05NoRedundantButtonSemantics.checkTree(tree);
-      final a06Violations = A06MergeMultiPartSingleConcept.checkTree(tree);
-      final a07Violations = A07ReplaceSemanticsCleanly.checkTree(tree);
-      final a18Violations = A18AvoidHiddenFocusTraps.checkTree(tree);
-      final a21Violations = A21UseIconButtonTooltip.checkTree(tree);
-      final a22Violations = A22RespectWidgetSemanticBoundaries.checkTree(tree);
-      final a09Violations = A09NumericValuesRequireUnits.checkTree(tree);
-      final a11Violations = A11MinimumTapTargetSize.checkTree(tree);
-      final a13Violations = A13SingleRoleCompositeControl.checkTree(tree);
-      final a15Violations = A15MapCustomGesturesToOnTap.checkTree(tree);
-      final a16Violations = A16ToggleStateViaSemanticsFlag.checkTree(tree);
-      final a24Violations = A24ExcludeVisualOnlyIndicators.checkTree(tree);
+      if (runDartRules) {
+        final a01Violations = A01UnlabeledInteractive.checkTree(tree);
+        final a02Violations = A02AvoidRedundantRoleWords.checkTree(tree);
+        final a03Violations = A03DecorativeImagesExcluded.checkTree(tree);
+        final a04Violations = A04InformativeImagesLabeled.checkTree(tree);
+        final a05Violations = A05NoRedundantButtonSemantics.checkTree(tree);
+        final a06Violations = A06MergeMultiPartSingleConcept.checkTree(tree);
+        final a07Violations = A07ReplaceSemanticsCleanly.checkTree(tree);
+        final a18Violations = A18AvoidHiddenFocusTraps.checkTree(tree);
+        final a21Violations = A21UseIconButtonTooltip.checkTree(tree);
+        final a22Violations = A22RespectWidgetSemanticBoundaries.checkTree(tree);
+        final a09Violations = A09NumericValuesRequireUnits.checkTree(tree);
+        final a11Violations = A11MinimumTapTargetSize.checkTree(tree);
+        final a13Violations = A13SingleRoleCompositeControl.checkTree(tree);
+        final a15Violations = A15MapCustomGesturesToOnTap.checkTree(tree);
+        final a16Violations = A16ToggleStateViaSemanticsFlag.checkTree(tree);
+        final a24Violations = A24ExcludeVisualOnlyIndicators.checkTree(tree);
 
-      // Convert A01 violations to issues
-      for (final violation in a01Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A01UnlabeledInteractive.code,
-          message: A01UnlabeledInteractive.message,
-          correctionMessage: A01UnlabeledInteractive.correctionMessage,
-        ));
+        // Convert A01 violations to issues
+        for (final violation in a01Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A01UnlabeledInteractive.code,
+            message: A01UnlabeledInteractive.message,
+            correctionMessage: A01UnlabeledInteractive.correctionMessage,
+          ));
+        }
+
+        // Convert A02 violations to issues
+        for (final violation in a02Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A02AvoidRedundantRoleWords.code,
+            message:
+                '${A02AvoidRedundantRoleWords.message}: ${violation.redundantWords.join(", ")}',
+            correctionMessage: A02AvoidRedundantRoleWords.correctionMessage,
+          ));
+        }
+
+        // Convert A03 violations to issues
+        for (final violation in a03Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A03DecorativeImagesExcluded.code,
+            message:
+                '${A03DecorativeImagesExcluded.message}: ${violation.assetPath}',
+            correctionMessage: A03DecorativeImagesExcluded.correctionMessage,
+          ));
+        }
+
+        // Convert A04 violations to issues
+        for (final violation in a04Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A04InformativeImagesLabeled.code,
+            message:
+                '${A04InformativeImagesLabeled.message}: ${violation.context}',
+            correctionMessage: A04InformativeImagesLabeled.correctionMessage,
+          ));
+        }
+
+        // Convert A05 violations to issues
+        for (final violation in a05Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A05NoRedundantButtonSemantics.code,
+            message: A05NoRedundantButtonSemantics.message,
+            correctionMessage: A05NoRedundantButtonSemantics.correctionMessage,
+          ));
+        }
+
+        // Convert A06 violations to issues
+        for (final violation in a06Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A06MergeMultiPartSingleConcept.code,
+            message: A06MergeMultiPartSingleConcept.message,
+            correctionMessage: A06MergeMultiPartSingleConcept.correctionMessage,
+          ));
+        }
+
+        // Convert A07 violations to issues
+        for (final violation in a07Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A07ReplaceSemanticsCleanly.code,
+            message: A07ReplaceSemanticsCleanly.message,
+            correctionMessage: A07ReplaceSemanticsCleanly.correctionMessage,
+          ));
+        }
+
+        // Convert A18 violations to issues
+        for (final violation in a18Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A18AvoidHiddenFocusTraps.code,
+            message: A18AvoidHiddenFocusTraps.message,
+            correctionMessage: A18AvoidHiddenFocusTraps.correctionMessage,
+          ));
+        }
+
+        // Convert A21 violations to issues
+        for (final violation in a21Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A21UseIconButtonTooltip.code,
+            message: A21UseIconButtonTooltip.message,
+            correctionMessage: A21UseIconButtonTooltip.correctionMessage,
+          ));
+        }
+
+        // Convert A22 violations to issues
+        for (final violation in a22Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A22RespectWidgetSemanticBoundaries.code,
+            message: A22RespectWidgetSemanticBoundaries.message,
+            correctionMessage: A22RespectWidgetSemanticBoundaries.correctionMessage,
+          ));
+        }
+
+        // Convert A09 violations to issues
+        for (final violation in a09Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A09NumericValuesRequireUnits.code,
+            message: A09NumericValuesRequireUnits.message,
+            correctionMessage: A09NumericValuesRequireUnits.correctionMessage,
+          ));
+        }
+
+        // Convert A11 violations to issues
+        for (final violation in a11Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A11MinimumTapTargetSize.code,
+            message: A11MinimumTapTargetSize.message,
+            correctionMessage: A11MinimumTapTargetSize.correctionMessage,
+          ));
+        }
+
+        // Convert A13 violations to issues
+        for (final violation in a13Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A13SingleRoleCompositeControl.code,
+            message: A13SingleRoleCompositeControl.message,
+            correctionMessage: A13SingleRoleCompositeControl.correctionMessage,
+          ));
+        }
+
+        // Convert A15 violations to issues
+        for (final violation in a15Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A15MapCustomGesturesToOnTap.code,
+            message: A15MapCustomGesturesToOnTap.message,
+            correctionMessage: A15MapCustomGesturesToOnTap.correctionMessage,
+          ));
+        }
+
+        // Convert A16 violations to issues
+        for (final violation in a16Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A16ToggleStateViaSemanticsFlag.code,
+            message: A16ToggleStateViaSemanticsFlag.message,
+            correctionMessage: A16ToggleStateViaSemanticsFlag.correctionMessage,
+          ));
+        }
+
+        // Convert A24 violations to issues
+        for (final violation in a24Violations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: 'warning',
+            code: A24ExcludeVisualOnlyIndicators.code,
+            message: A24ExcludeVisualOnlyIndicators.message,
+            correctionMessage: A24ExcludeVisualOnlyIndicators.correctionMessage,
+          ));
+        }
       }
 
-      // Convert A02 violations to issues
-      for (final violation in a02Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A02AvoidRedundantRoleWords.code,
-          message:
-              '${A02AvoidRedundantRoleWords.message}: ${violation.redundantWords.join(", ")}',
-          correctionMessage: A02AvoidRedundantRoleWords.correctionMessage,
-        ));
+      if (runFaqlRules && faqlRunner != null) {
+        final faqlViolations = faqlRunner.run(tree);
+        for (final violation in faqlViolations) {
+          final location =
+              unit.lineInfo.getLocation(violation.node.astNode.offset);
+          issues.add(A11yIssue(
+            file: unit.path,
+            line: location.lineNumber,
+            column: location.columnNumber,
+            severity: violation.spec.severity,
+            code: violation.spec.code,
+            message: violation.spec.message,
+            correctionMessage: violation.spec.correctionMessage,
+          ));
+        }
       }
 
-      // Convert A03 violations to issues
-      for (final violation in a03Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A03DecorativeImagesExcluded.code,
-          message:
-              '${A03DecorativeImagesExcluded.message}: ${violation.assetPath}',
-          correctionMessage: A03DecorativeImagesExcluded.correctionMessage,
-        ));
-      }
-
-      // Convert A04 violations to issues
-      for (final violation in a04Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A04InformativeImagesLabeled.code,
-          message:
-              '${A04InformativeImagesLabeled.message}: ${violation.context}',
-          correctionMessage: A04InformativeImagesLabeled.correctionMessage,
-        ));
-      }
-
-      // Convert A05 violations to issues
-      for (final violation in a05Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A05NoRedundantButtonSemantics.code,
-          message: A05NoRedundantButtonSemantics.message,
-          correctionMessage: A05NoRedundantButtonSemantics.correctionMessage,
-        ));
-      }
-
-      // Convert A06 violations to issues
-      for (final violation in a06Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A06MergeMultiPartSingleConcept.code,
-          message: A06MergeMultiPartSingleConcept.message,
-          correctionMessage: A06MergeMultiPartSingleConcept.correctionMessage,
-        ));
-      }
-
-      // Convert A07 violations to issues
-      for (final violation in a07Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A07ReplaceSemanticsCleanly.code,
-          message: A07ReplaceSemanticsCleanly.message,
-          correctionMessage: A07ReplaceSemanticsCleanly.correctionMessage,
-        ));
-      }
-
-      // Convert A21 violations to issues
-      for (final violation in a21Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A21UseIconButtonTooltip.code,
-          message: A21UseIconButtonTooltip.message,
-          correctionMessage: A21UseIconButtonTooltip.correctionMessage,
-        ));
-      }
-
-      // Convert A22 violations to issues
-      for (final violation in a22Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A22RespectWidgetSemanticBoundaries.code,
-          message: A22RespectWidgetSemanticBoundaries.message,
-          correctionMessage:
-              A22RespectWidgetSemanticBoundaries.correctionMessage,
-        ));
-      }
-
-      // Convert A09 violations to issues
-      for (final violation in a09Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A09NumericValuesRequireUnits.code,
-          message: A09NumericValuesRequireUnits.message,
-          correctionMessage: A09NumericValuesRequireUnits.correctionMessage,
-        ));
-      }
-
-      // Convert A11 violations to issues
-      for (final violation in a11Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A11MinimumTapTargetSize.code,
-          message:
-              '${A11MinimumTapTargetSize.message}: ${violation.width}x${violation.height}',
-          correctionMessage: A11MinimumTapTargetSize.correctionMessage,
-        ));
-      }
-
-      // Convert A13 violations to issues
-      for (final violation in a13Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A13SingleRoleCompositeControl.code,
-          message: A13SingleRoleCompositeControl.message,
-          correctionMessage: A13SingleRoleCompositeControl.correctionMessage,
-        ));
-      }
-
-      // Convert A15 violations to issues
-      for (final violation in a15Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A15MapCustomGesturesToOnTap.code,
-          message: A15MapCustomGesturesToOnTap.message,
-          correctionMessage: A15MapCustomGesturesToOnTap.correctionMessage,
-        ));
-      }
-
-      // Convert A16 violations to issues
-      for (final violation in a16Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A16ToggleStateViaSemanticsFlag.code,
-          message: A16ToggleStateViaSemanticsFlag.message,
-          correctionMessage: A16ToggleStateViaSemanticsFlag.correctionMessage,
-        ));
-      }
-
-      // Convert A24 violations to issues
-      for (final violation in a24Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A24ExcludeVisualOnlyIndicators.code,
-          message: A24ExcludeVisualOnlyIndicators.message,
-          correctionMessage: A24ExcludeVisualOnlyIndicators.correctionMessage,
-        ));
-      }
-
-      // Convert A18 violations to issues
-      for (final violation in a18Violations) {
-        final location =
-            unit.lineInfo.getLocation(violation.node.astNode.offset);
-        issues.add(A11yIssue(
-          file: unit.path,
-          line: location.lineNumber,
-          column: location.columnNumber,
-          severity: 'warning',
-          code: A18AvoidHiddenFocusTraps.code,
-          message: A18AvoidHiddenFocusTraps.message,
-          correctionMessage: A18AvoidHiddenFocusTraps.correctionMessage,
-        ));
-      }
     }
 
     return issues;
+  }
+
+  static Future<FaqlRuleRunner?> _loadDefaultFaqlRunner(String? faqlRulesDir) async {
+    final rulesDir = faqlRulesDir ??
+        FaqlRuleRunner.defaultRulesDirFromScript(Platform.script);
+    final specs = await FaqlRuleRunner.loadFromDirectory(rulesDir);
+    if (specs.isEmpty) return null;
+    return FaqlRuleRunner(rules: specs);
   }
 }

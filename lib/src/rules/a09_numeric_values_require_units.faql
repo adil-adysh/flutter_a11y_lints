@@ -1,0 +1,18 @@
+rule "a09_numeric_values_require_units" on any {
+  meta {
+    severity: "warning"
+    code: "a09_numeric_values_require_units"
+    message: "Numeric label should include units"
+    correction: "Include units (e.g., 'bpm', '%') in numeric labels"
+  }
+
+  when:
+    prop("labelGuarantee") == "hasStaticLabel" &&
+    prop("label").is_resolved &&
+    prop("label") matches "^\\s*\\d+(?:\\.\\d+)?\\s*$"
+
+  ensure:
+    !(prop("label") matches "^\\s*\\d+(?:\\.\\d+)?\\s*$")
+
+  report: "Numeric label should include units"
+}

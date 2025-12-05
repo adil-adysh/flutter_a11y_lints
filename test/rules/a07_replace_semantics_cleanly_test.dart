@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
+import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
@@ -18,27 +19,23 @@ void main() {
     ));
     final specs = await FaqlRuleRunner.loadFromDirectory(rulesDir);
     final filtered = specs
-        .where((s) => s.code == 'a13_single_role_composite_control')
+        .where((s) => s.code == 'a07_replace_semantics_cleanly')
         .toList();
     runner = FaqlRuleRunner(rules: filtered);
   });
 
-  group('A13 - single role composite control (FAQL)', () {
-    test('flags semantics container with multiple focusable children', () {
+  group('A07 - replace semantics cleanly (FAQL)', () {
+    test('flags Semantics with custom label not excluding labeled children', () {
       final root = makeSemanticNode(
         widgetType: 'Semantics',
-        isSemanticBoundary: true,
-        isFocusable: false,
+        label: 'Complete action',
+        labelSource: LabelSource.semanticsWidget,
+        labelGuarantee: LabelGuarantee.hasStaticLabel,
+        excludesDescendants: false,
         children: [
           makeSemanticNode(
-            widgetType: 'IconButton',
-            isFocusable: true,
-            isEnabled: true,
-          ),
-          makeSemanticNode(
-            widgetType: 'IconButton',
-            isFocusable: true,
-            isEnabled: true,
+            label: 'Save',
+            labelGuarantee: LabelGuarantee.hasStaticLabel,
           ),
         ],
       );
@@ -48,62 +45,56 @@ void main() {
       expect(violations, hasLength(1));
     });
 
-    test('does not flag pure layout containers', () {
-      final root = makeSemanticNode(
-        widgetType: 'Row',
-        isFocusable: false,
-        children: [
-          makeSemanticNode(
-            widgetType: 'IconButton',
-            isFocusable: true,
-            isEnabled: true,
-          ),
-          makeSemanticNode(
-            widgetType: 'IconButton',
-            isFocusable: true,
-            isEnabled: true,
-          ),
-        ],
-      );
-      final tree = buildManualTree(root);
-
-      final violations = runner.run(tree);
-      expect(violations, isEmpty);
-    });
-
-    test('does not flag MergeSemantics', () {
-      final root = makeSemanticNode(
-        widgetType: 'MergeSemantics',
-        isFocusable: false,
-        children: [
-          makeSemanticNode(
-            widgetType: 'IconButton',
-            isFocusable: true,
-            isEnabled: true,
-          ),
-          makeSemanticNode(
-            widgetType: 'IconButton',
-            isFocusable: true,
-            isEnabled: true,
-          ),
-        ],
-      );
-      final tree = buildManualTree(root);
-
-      final violations = runner.run(tree);
-      expect(violations, isEmpty);
-    });
-
-    test('passes when only one focusable child', () {
+    test('passes when Semantics excludes descendants', () {
       final root = makeSemanticNode(
         widgetType: 'Semantics',
-        isSemanticBoundary: true,
-        isFocusable: false,
+        label: 'Complete action',
+        labelSource: LabelSource.semanticsWidget,
+        labelGuarantee: LabelGuarantee.hasStaticLabel,
+        excludesDescendants: true,
         children: [
           makeSemanticNode(
-            widgetType: 'IconButton',
-            isFocusable: true,
-            isEnabled: true,
+            label: 'Save',
+            labelGuarantee: LabelGuarantee.hasStaticLabel,
+          ),
+        ],
+      );
+      final tree = buildManualTree(root);
+
+      final violations = runner.run(tree);
+      expect(violations, isEmpty);
+    });
+
+    test('passes when children have no labels', () {
+      final root = makeSemanticNode(
+        widgetType: 'Semantics',
+        label: 'Complete action',
+        labelSource: LabelSource.semanticsWidget,
+        labelGuarantee: LabelGuarantee.hasStaticLabel,
+        excludesDescendants: false,
+        children: [
+          makeSemanticNode(
+            labelGuarantee: LabelGuarantee.none,
+          ),
+        ],
+      );
+      final tree = buildManualTree(root);
+
+      final violations = runner.run(tree);
+      expect(violations, isEmpty);
+    });
+
+    test('passes when labelSource is not semanticsWidget', () {
+      final root = makeSemanticNode(
+        widgetType: 'IconButton',
+        label: 'Save',
+        labelSource: LabelSource.tooltip,
+        labelGuarantee: LabelGuarantee.hasStaticLabel,
+        excludesDescendants: false,
+        children: [
+          makeSemanticNode(
+            label: 'Icon',
+            labelGuarantee: LabelGuarantee.hasStaticLabel,
           ),
         ],
       );

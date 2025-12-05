@@ -1,10 +1,29 @@
-import 'package:flutter_a11y_lints/src/rules/a05_no_redundant_button_semantics.dart';
+import 'dart:io';
+
+import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'test_semantic_utils.dart';
 
 void main() {
-  group('A05 - no redundant button semantics', () {
+  late FaqlRuleRunner runner;
+
+  setUpAll(() async {
+    final rulesDir = p.normalize(p.join(
+      Directory.current.path,
+      'lib',
+      'src',
+      'rules',
+    ));
+    final specs = await FaqlRuleRunner.loadFromDirectory(rulesDir);
+    final filtered = specs
+        .where((s) => s.code == 'a05_no_redundant_button_semantics')
+        .toList();
+    runner = FaqlRuleRunner(rules: filtered);
+  });
+
+  group('A05 - no redundant button semantics (FAQL)', () {
     test('flags Semantics button:true wrapper', () async {
       final tree = await buildTestSemanticTree('''
         Semantics(
@@ -16,7 +35,7 @@ void main() {
         )
       ''');
 
-      final violations = A05NoRedundantButtonSemantics.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, hasLength(1));
     });
 
@@ -31,7 +50,7 @@ void main() {
         )
       ''');
 
-      final violations = A05NoRedundantButtonSemantics.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, hasLength(1));
     });
 
@@ -46,7 +65,7 @@ void main() {
         )
       ''');
 
-      final violations = A05NoRedundantButtonSemantics.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, isEmpty);
     });
 
@@ -62,7 +81,7 @@ void main() {
         )
       ''');
 
-      final violations = A05NoRedundantButtonSemantics.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, hasLength(1));
     });
 
@@ -73,7 +92,7 @@ void main() {
         )
       ''');
 
-      final violations = A05NoRedundantButtonSemantics.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, isEmpty);
     });
   });

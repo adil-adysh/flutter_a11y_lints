@@ -1,0 +1,16 @@
+rule "a21_use_iconbutton_tooltip" on type(Tooltip) {
+  meta {
+    severity: "warning"
+    code: "a21_use_iconbutton_tooltip"
+    message: "Use the IconButton.tooltip parameter instead of wrapping with Tooltip"
+    correction: "Move the tooltip text into the IconButton.tooltip parameter"
+  }
+
+  when:
+    children.any(prop("controlKind") == "iconButton")
+
+  ensure:
+    !children.any(prop("controlKind") == "iconButton" && prop("labelSource") != "tooltip")
+
+  report: "Use IconButton.tooltip parameter instead of Tooltip widget"
+}

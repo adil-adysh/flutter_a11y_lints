@@ -1,0 +1,6 @@
+rule "a99_faql_label_required" on any {
+  meta { severity: "warning" code: "a99_faql_label_required" }
+  when: focusable && enabled
+  ensure: prop("label").is_resolved || prop("tooltip").is_resolved
+  report: "Focusable controls should have a label or tooltip"
+}

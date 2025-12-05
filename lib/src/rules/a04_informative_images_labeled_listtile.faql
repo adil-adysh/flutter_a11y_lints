@@ -1,0 +1,23 @@
+rule "a04_informative_images_labeled_listtile_image" on type(Image) {
+  meta {
+    severity: "warning"
+    code: "a04_informative_images_labeled"
+    message: "Informative images must provide semantic labels"
+    correction: "Add semanticLabel or wrap with Semantics label."
+  }
+
+  when:
+    (prop("imageConstructor") == "network" || prop("imageConstructor") == "file") &&
+    ancestors.any(widgetType == "ListTile") &&
+    !prop("label").is_resolved &&
+    !prop("tooltip").is_resolved &&
+    !prop("semanticLabel").is_resolved
+
+  ensure:
+    prop("label").is_resolved ||
+    prop("tooltip").is_resolved ||
+    prop("semanticLabel").is_resolved ||
+    ancestors.any(widgetType == "Semantics" && prop("label").is_resolved)
+
+  report: "Informative images must provide semantic labels"
+}

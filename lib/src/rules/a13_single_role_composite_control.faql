@@ -1,0 +1,32 @@
+rule "a13_single_role_composite_control" on any {
+  meta {
+    severity: "warning"
+    code: "a13_single_role_composite_control"
+    message: "Composite control should present a single semantic role"
+    correction: "Merge child controls into a single composite control or use MergeSemantics"
+  }
+
+  when:
+    !focusable &&
+    !prop("isPureContainer") &&
+    (prop("isSemanticBoundary") || prop("isCompositeControl")) &&
+    !(widgetType == "Row") &&
+    !(widgetType == "Column") &&
+    !(widgetType == "Wrap") &&
+    !(widgetType == "Flex") &&
+    !(widgetType == "ListView") &&
+    !(widgetType == "GridView") &&
+    !(widgetType == "Stack") &&
+    !(widgetType == "SizedBox") &&
+    !(widgetType == "Container") &&
+    !(widgetType == "Padding") &&
+    !(widgetType == "Center") &&
+    !(widgetType == "Align") &&
+    !(widgetType == "ListBody") &&
+    !(widgetType == "MergeSemantics")
+
+  ensure:
+    prop("focusableDescendantCount") < 2
+
+  report: "Composite control should present a single semantic role"
+}

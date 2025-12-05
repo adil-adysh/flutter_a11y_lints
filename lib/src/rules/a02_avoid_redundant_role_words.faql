@@ -1,0 +1,31 @@
+rule "a02_avoid_redundant_role_words" on any {
+  meta {
+    severity: "warning"
+    code: "a02_avoid_redundant_role_words"
+    message: "Label contains redundant role words"
+    correction: "Remove words like \"button\" or \"icon\"; the role is announced automatically."
+  }
+
+  when:
+    enabled &&
+    (
+      prop("controlKind") != "none" ||
+      has_tap || has_long_press ||
+      prop("hasIncrease") == true ||
+      prop("hasDecrease") == true
+    ) &&
+    prop("labelGuarantee") != "none" &&
+    (
+      prop("labelSource") == "tooltip" ||
+      prop("labelSource") == "semanticsWidget" ||
+      prop("labelSource") == "customWidgetParameter" ||
+      prop("labelSource") == "inputDecoration" ||
+      prop("labelSource") == "other"
+    ) &&
+    prop("label").is_resolved
+
+  ensure:
+    !(prop("label") matches "(?i)\b(button|btn|icon|image|link|checkbox|radio|switch|selected|checked|toggle)\b")
+
+  report: "Label contains redundant role words"
+}

@@ -1,10 +1,31 @@
-import 'package:flutter_a11y_lints/src/rules/a02_avoid_redundant_role_words.dart';
+import 'dart:io';
+
+import 'package:flutter_a11y_lints/src/faql/parser.dart';
+import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
+import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
 import 'test_semantic_utils.dart';
 
 void main() {
-  group('A02 - avoid redundant role words', () {
+  late FaqlRuleRunner runner;
+
+  setUpAll(() async {
+    final rulePath = p.normalize(p.join(
+      Directory.current.path,
+      'lib',
+      'src',
+      'rules',
+      'a02_avoid_redundant_role_words.faql',
+    ));
+    final ruleText = await File(rulePath).readAsString();
+    final parser = FaqlParser();
+    final rule = parser.parseRule(ruleText);
+    final spec = FaqlRuleSpec.fromRule(rule, sourcePath: rulePath);
+    runner = FaqlRuleRunner(rules: [spec]);
+  });
+
+  group('A02 - avoid redundant role words (FAQL)', () {
     test('flags tooltip text containing button keyword', () async {
       final tree = await buildTestSemanticTree('''
         IconButton(
@@ -14,9 +35,9 @@ void main() {
         )
       ''');
 
-      final violations = A02AvoidRedundantRoleWords.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, hasLength(1));
-      expect(violations.single.redundantWords, contains('button'));
+      expect(violations.single.spec.code, 'a02_avoid_redundant_role_words');
     });
 
     test('flags Semantics label with redundant role word', () async {
@@ -30,9 +51,9 @@ void main() {
         )
       ''');
 
-      final violations = A02AvoidRedundantRoleWords.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, hasLength(1));
-      expect(violations.single.redundantWords, contains('button'));
+      expect(violations.single.spec.code, 'a02_avoid_redundant_role_words');
     });
 
     test('ignores visible text children containing role words', () async {
@@ -43,7 +64,7 @@ void main() {
         )
       ''');
 
-      final violations = A02AvoidRedundantRoleWords.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, isEmpty);
     });
 
@@ -56,7 +77,7 @@ void main() {
         )
       ''');
 
-      final violations = A02AvoidRedundantRoleWords.checkTree(tree);
+      final violations = runner.run(tree);
       expect(violations, isEmpty);
     });
   });

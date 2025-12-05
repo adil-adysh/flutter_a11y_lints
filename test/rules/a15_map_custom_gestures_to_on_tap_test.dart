@@ -1,50 +1,72 @@
 import 'dart:io';
-import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
-import 'package:analyzer/dart/analysis/results.dart';
-import 'package:analyzer/dart/ast/ast.dart';
-import 'package:flutter_a11y_lints/src/pipeline/semantic_ir_builder.dart';
-import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
-import 'package:flutter_a11y_lints/src/rules/a15_map_custom_gestures_to_on_tap.dart';
+
+import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
+import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 
-const _stubs = '''
-typedef VoidCallback = void Function();
-class Widget {}
-class GestureDetector extends Widget { const GestureDetector({VoidCallback? onTap, required Widget child}); }
-class Icon extends Widget { const Icon(String name); }
-''';
+import 'test_semantic_utils.dart';
 
 void main() {
-  test('flags GestureDetector with onTap and no semantics', () async {
-    final tempDir = await Directory.systemTemp.createTemp('a11y_a15_');
-    try {
-      final filePath = p.join(tempDir.path, 'widget.dart');
-      final content = '''
-$_stubs
+  late FaqlRuleRunner runner;
 
-Widget buildWidget(bool _) {
-  return GestureDetector(onTap: () {}, child: const Icon('drag'));
-}
-''';
-      await File(filePath).writeAsString(content);
-      final collection = AnalysisContextCollection(includedPaths: [filePath]);
-      final context = collection.contextFor(filePath);
-      final result = await context.currentSession.getResolvedUnit(filePath);
-      if (result is! ResolvedUnitResult) fail('resolve failed');
-      final builder = SemanticIrBuilder(
-          unit: result, knownSemantics: KnownSemanticsRepository());
-      final buildFn = result.unit.declarations
-          .whereType<FunctionDeclaration>()
-          .firstWhere((f) => f.name.lexeme == 'buildWidget');
-      final body = buildFn.functionExpression.body as BlockFunctionBody;
-      final ret = body.block.statements.whereType<ReturnStatement>().first;
-      final tree = builder.buildForExpression(ret.expression);
-      if (tree == null) fail('tree null');
-      final violations = A15MapCustomGesturesToOnTap.checkTree(tree);
-      expect(violations, isNotEmpty);
-    } finally {
-      await tempDir.delete(recursive: true);
-    }
+  setUpAll(() async {
+    final rulesDir = p.normalize(p.join(
+      Directory.current.path,
+      'lib',
+      'src',
+      'rules',
+    ));
+    final specs = await FaqlRuleRunner.loadFromDirectory(rulesDir);
+    final filtered = specs
+        .where((s) => s.code == 'a15_map_custom_gestures_to_on_tap')
+        .toList();
+    runner = FaqlRuleRunner(rules: filtered);
+  });
+
+  group('A15 - map custom gestures to onTap (FAQL)', () {
+    test('flags GestureDetector with onTap and no semantics', () {
+      final root = makeSemanticNode(
+        widgetType: 'GestureDetector',
+        labelGuarantee: LabelGuarantee.none,
+        children: [
+          makeSemanticNode(
+            widgetType: 'Icon',
+          ),
+        ],
+      );
+      final tree = buildManualTree(root);
+
+      final violations = runner.run(tree);
+      expect(violations, hasLength(1));
+    });
+
+    test('passes when GestureDetector has label', () {
+      final root = makeSemanticNode(
+        widgetType: 'GestureDetector',
+        label: 'Tap to select',
+        labelGuarantee: LabelGuarantee.hasStaticLabel,
+      );
+      final tree = buildManualTree(root);
+
+      final violations = runner.run(tree);
+      expect(violations, isEmpty);
+    });
+
+    test('passes when wrapped in Semantics', () {
+      final root = makeSemanticNode(
+        widgetType: 'Semantics',
+        children: [
+          makeSemanticNode(
+            widgetType: 'GestureDetector',
+            labelGuarantee: LabelGuarantee.none,
+          ),
+        ],
+      );
+      final tree = buildManualTree(root);
+
+      final violations = runner.run(tree);
+      expect(violations, isEmpty);
+    });
   });
 }

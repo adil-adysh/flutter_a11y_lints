@@ -1,0 +1,21 @@
+rule "a22_respect_widget_semantic_boundaries" on type(MergeSemantics) {
+  meta {
+    severity: "warning"
+    code: "a22_respect_widget_semantic_boundaries"
+    message: "Avoid wrapping ListTile family widgets in MergeSemantics"
+    correction: "Remove the MergeSemantics wrapper to keep the widget's built-in semantics"
+  }
+
+  when:
+    children.any(
+      widgetType == "ListTile" ||
+      widgetType == "CheckboxListTile" ||
+      widgetType == "SwitchListTile" ||
+      widgetType == "RadioListTile"
+    )
+
+  ensure:
+    false
+
+  report: "ListTile family widgets already merge semantics; remove MergeSemantics wrapper"
+}

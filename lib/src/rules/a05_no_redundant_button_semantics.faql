@@ -1,0 +1,40 @@
+rule "a05_no_redundant_button_semantics" on type(Semantics) {
+  meta {
+    severity: "warning"
+    code: "a05_no_redundant_button_semantics"
+    message: "Remove redundant Semantics wrapper around button"
+    correction: "Remove the Semantics wrapper or provide a custom label instead of button:true."
+  }
+
+  when:
+    !prop("excludesDescendants") &&
+    (
+      prop("controlKind") == "iconButton" ||
+      prop("controlKind") == "elevatedButton" ||
+      prop("controlKind") == "textButton" ||
+      prop("controlKind") == "filledButton" ||
+      prop("controlKind") == "outlinedButton" ||
+      prop("controlKind") == "floatingActionButton" ||
+      prop("childWidgetType") == "IconButton" ||
+      prop("childWidgetType") == "ElevatedButton" ||
+      prop("childWidgetType") == "TextButton" ||
+      prop("childWidgetType") == "FilledButton" ||
+      prop("childWidgetType") == "OutlinedButton" ||
+      prop("childWidgetType") == "FloatingActionButton" ||
+      prop("hasButtonDescendant") == true ||
+      children.any(
+        prop("controlKind") == "iconButton" ||
+        prop("controlKind") == "elevatedButton" ||
+        prop("controlKind") == "textButton" ||
+        prop("controlKind") == "filledButton" ||
+        prop("controlKind") == "outlinedButton" ||
+        prop("controlKind") == "floatingActionButton"
+      )
+    )
+
+  ensure:
+    (prop("button") != true) &&
+    prop("hasMeaningfulSemanticsArgs") == true
+
+  report: "Remove redundant Semantics wrapper around button"
+}

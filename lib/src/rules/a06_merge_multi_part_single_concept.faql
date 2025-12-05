@@ -1,0 +1,19 @@
+rule "a06_merge_multi_part_single_concept" on any {
+  meta {
+    severity: "warning"
+    code: "a06_merge_multi_part_single_concept"
+    message: "Interactive control has multiple semantic parts"
+    correction: "Use MergeSemantics to combine icon and text into a single announcement"
+  }
+
+  when:
+    enabled &&
+    (has_tap || has_long_press || prop("hasIncrease") == true || prop("hasDecrease") == true) &&
+    children.length >= 2 &&
+    !merges_descendants
+
+  ensure:
+    prop("labeledChildrenCount") < 2
+
+  report: "Interactive control has multiple semantic parts"
+}

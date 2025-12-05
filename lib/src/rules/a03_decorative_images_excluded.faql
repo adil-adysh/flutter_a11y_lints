@@ -1,0 +1,21 @@
+rule "a03_decorative_images_excluded" on type(Image) {
+  meta {
+    severity: "warning"
+    code: "a03_decorative_images_excluded"
+    message: "Exclude purely decorative images from semantics"
+    correction: "Set excludeFromSemantics: true or provide a semanticLabel for decorative assets."
+  }
+
+  when:
+    prop("assetPath").is_resolved &&
+    (prop("assetPath") matches "(?i)(background|bg|backdrop|decor|decorative|pattern|wallpaper|divider|separator)")
+
+  ensure:
+    prop("semanticLabel").is_resolved ||
+    prop("label").is_resolved ||
+    prop("tooltip").is_resolved ||
+    prop("excludeFromSemantics") == true ||
+    ancestors.any(widgetType == "ExcludeSemantics" || prop("excludesDescendants") == true)
+
+  report: "Exclude purely decorative images from semantics"
+}

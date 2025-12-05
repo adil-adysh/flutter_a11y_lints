@@ -1,0 +1,17 @@
+rule "a15_map_custom_gestures_to_on_tap" on type(GestureDetector) {
+  meta {
+    severity: "warning"
+    code: "a15_map_custom_gestures_to_on_tap"
+    message: "Custom gestures should surface semantic actions"
+    correction: "Add a Semantics( button: true ) or provide an accessible label for GestureDetector"
+  }
+
+  when:
+    true
+
+  ensure:
+    prop("labelGuarantee") != "none" ||
+    ancestors.any(widgetType == "Semantics")
+
+  report: "GestureDetector should expose semantic action"
+}

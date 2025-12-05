@@ -30,6 +30,7 @@ export 'src/rules/a13_single_role_composite_control.dart';
 export 'src/rules/a15_map_custom_gestures_to_on_tap.dart';
 export 'src/rules/a16_toggle_state_via_semantics_flag.dart';
 export 'src/rules/a24_exclude_visual_only_indicators.dart';
+export 'src/rules/faql_rule_runner.dart';
 
 // Utilities
 export 'src/utils/flutter_utils.dart';

@@ -1,0 +1,19 @@
+rule "a07_replace_semantics_cleanly" on type(Semantics) {
+  meta {
+    severity: "warning"
+    code: "a07_replace_semantics_cleanly"
+    message: "Semantics replacement doesn't exclude children"
+    correction: "Wrap children with ExcludeSemantics to prevent double announcements"
+  }
+
+  when:
+    prop("labelSource") == "semanticsWidget" &&
+    prop("label").is_resolved &&
+    !prop("excludesDescendants") &&
+    children.length > 0
+
+  ensure:
+    prop("labeledChildrenCount") == 0
+
+  report: "Semantics replacement doesn't exclude children"
+}
