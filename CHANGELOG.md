@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0
+
+### New
+- Added comprehensive documentation for the FAQL (Flutter Accessibility Query Language), including a language specification and implementation guide.
+- Implemented a semantic schema for more robust extraction of accessibility attributes.
+
+### Improved
+- Enhanced CI/CD pipeline for more reliable and efficient builds.
+- Added a `--fail-on-warnings` flag to the CLI for stricter linting.
+- Reorganized and expanded tests for the FAQL parser and interpreter, improving test coverage.
+
+### Refactor
+- Improved code formatting and readability across the project.
+
 ## 0.4.0
 
 ### New
