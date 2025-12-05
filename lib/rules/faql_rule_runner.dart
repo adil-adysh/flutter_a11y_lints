@@ -18,6 +18,7 @@ class FaqlRuleSpec {
     required this.correctionMessage,
     required this.severity,
     this.sourcePath,
+    this.source,
   });
 
   final FaqlRule rule;
@@ -26,8 +27,10 @@ class FaqlRuleSpec {
   final String correctionMessage;
   final String severity;
   final String? sourcePath;
+  final String? source;
 
-  static FaqlRuleSpec fromRule(FaqlRule rule, {String? sourcePath}) {
+  static FaqlRuleSpec fromRule(FaqlRule rule,
+      {String? sourcePath, String? source}) {
     final meta = rule.meta;
     final severity = meta['severity'] ?? 'warning';
     final code = meta['code'] ?? rule.name;
@@ -40,6 +43,7 @@ class FaqlRuleSpec {
       correctionMessage: correction,
       severity: severity,
       sourcePath: sourcePath,
+      source: source,
     );
   }
 }
@@ -95,7 +99,8 @@ class FaqlRuleRunner {
       } else if (allowedIdentifiers != null && allowedIdentifiers.isNotEmpty) {
         FaqlSemanticValidator(allowedIdentifiers).validate(rule);
       }
-      specs.add(FaqlRuleSpec.fromRule(rule, sourcePath: entity.path));
+        specs.add(FaqlRuleSpec.fromRule(rule,
+          sourcePath: entity.path, source: content));
     }
 
     return specs;

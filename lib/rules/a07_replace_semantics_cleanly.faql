@@ -17,3 +17,4 @@ rule "a07_replace_semantics_cleanly" on type(Semantics) {
 
   report: "Semantics replacement doesn't exclude children"
 }
+  

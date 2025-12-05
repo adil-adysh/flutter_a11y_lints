@@ -1,121 +1,434 @@
 #!/usr/bin/env dart
-// CLI entrypoint for the Flutter A11y Semantic Analyzer.
-//
-// This executable discovers Dart files or directories, resolves them with
-// the analyzer, converts `build()` method expressions into a `SemanticTree`
-// via `SemanticIrBuilder`, and runs rule checks to produce `A11yIssue`s.
-//
-// See also:
-// - `lib/src/pipeline/semantic_ir_builder.dart` (widget→semantic orchestration)
-// - `lib/src/semantics/known_semantics.dart` (widget role metadata)
-// - `test/rules/test_semantic_utils.dart` (how tests build semantic trees)
 
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/file_system/physical_file_system.dart';
+import 'package:args/args.dart';
 import 'package:path/path.dart' as p;
+import 'package:glob/glob.dart'; // REQUIRED: Add to pubspec.yaml
 
+// Generated file containing built-in rules map
 import 'package:flutter_a11y_lints/src/pipeline/semantic_ir_builder.dart';
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
 import 'package:flutter_a11y_lints/src/utils/flutter_utils.dart';
 import 'package:flutter_a11y_lints/src/utils/method_utils.dart';
 import 'package:flutter_a11y_lints/src/rules/a01_unlabeled_interactive.dart';
-import 'package:flutter_a11y_lints/src/rules/a02_avoid_redundant_role_words.dart';
-import 'package:flutter_a11y_lints/src/rules/a03_decorative_images_excluded.dart';
-import 'package:flutter_a11y_lints/src/rules/a04_informative_images_labeled.dart';
-import 'package:flutter_a11y_lints/src/rules/a05_no_redundant_button_semantics.dart';
-import 'package:flutter_a11y_lints/src/rules/a06_merge_multi_part_single_concept.dart';
-import 'package:flutter_a11y_lints/src/rules/a07_replace_semantics_cleanly.dart';
-import 'package:flutter_a11y_lints/src/rules/a18_avoid_hidden_focus_traps.dart';
-import 'package:flutter_a11y_lints/src/rules/a21_use_iconbutton_tooltip.dart';
-import 'package:flutter_a11y_lints/src/rules/a22_respect_widget_semantic_boundaries.dart';
-import 'package:flutter_a11y_lints/src/rules/a09_numeric_values_require_units.dart';
-import 'package:flutter_a11y_lints/src/rules/a11_minimum_tap_target_size.dart';
-import 'package:flutter_a11y_lints/src/rules/a13_single_role_composite_control.dart';
-import 'package:flutter_a11y_lints/src/rules/a15_map_custom_gestures_to_on_tap.dart';
-import 'package:flutter_a11y_lints/src/rules/a16_toggle_state_via_semantics_flag.dart';
-import 'package:flutter_a11y_lints/src/rules/a24_exclude_visual_only_indicators.dart';
+import 'package:flutter_a11y_lints/src/rules/faql_rule_catalog.dart';
 import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
+import 'package:flutter_a11y_lints/src/faql/parser.dart';
+import 'package:flutter_a11y_lints/src/faql/validator.dart';
+import 'package:flutter_a11y_lints/src/bridge/semantic_faql_adapter.dart'
+    show faqlAllowedIdentifiers;
+import 'package:flutter_a11y_lints/src/version.g.dart' show kPackageVersion;
+
+// Use generated package version that's derived from pubspec.yaml.
+const String _version = kPackageVersion;
 
 void main(List<String> args) async {
-  // Support an optional flag to fail CI on warnings.
-  // Usage: a11y [--fail-on-warnings|--fail] [--faql-only|--dart-only] <path_to_analyze>
-  bool failOnWarnings = false;
-  bool faqlOnly = false;
-  bool dartOnly = false;
-  final positional = <String>[];
-  for (final a in args) {
-    if (a == '--fail-on-warnings' || a == '--fail') {
-      failOnWarnings = true;
-    } else if (a == '--faql-only') {
-      faqlOnly = true;
-    } else if (a == '--dart-only') {
-      dartOnly = true;
-    } else {
-      positional.add(a);
-    }
+  final parser = ArgParser()
+    ..addFlag('help',
+        abbr: 'h', negatable: false, help: 'Print this usage information.')
+    ..addFlag('version', negatable: false, help: 'Print the package version.')
+    ..addFlag('verbose',
+        abbr: 'v', negatable: false, help: 'Show additional logging.')
+    ..addFlag('fail-on-warnings',
+        defaultsTo: false, help: 'Exit with code 1 if any issues are found.')
+
+    // Analysis Scope
+    ..addOption('exclude',
+        help:
+            'Comma-separated glob patterns to skip (relative to analysis root).',
+        defaultsTo: '**/*.g.dart,**/*.freezed.dart')
+
+    // Rule Selection
+    ..addFlag('faql-only',
+        defaultsTo: false,
+        help: 'Run only FAQL rules (skip legacy Dart rules).')
+    ..addFlag('dart-only',
+        defaultsTo: false, help: 'Run only legacy Dart rules (skip FAQL).')
+    ..addOption('rules-dir', help: 'Directory containing custom .faql rules.')
+
+    // Reporting
+    ..addOption('reporter',
+        allowed: ['console', 'json', 'machine'],
+        defaultsTo: 'console',
+        help: 'The format of the output.')
+
+    // Utilities
+    ..addFlag('list-rules',
+        negatable: false, help: 'List all active rules and exit.')
+    ..addFlag('init',
+        negatable: false, help: 'Generate a starter rules directory.')
+    ..addOption('show-rule', help: 'Print the source code of a specific rule.')
+    ..addOption('validate-faql',
+        help: 'Validate the syntax of a specific .faql file.');
+
+  late ArgResults argResults;
+  try {
+    argResults = parser.parse(args);
+  } catch (e) {
+    _printError(e.toString());
+    print(parser.usage);
+    exit(2);
   }
 
-  // If both switches are set, prefer FAQL-only (explicit override).
-  if (faqlOnly && dartOnly) {
-    dartOnly = false;
-  }
-
-  if (positional.isEmpty) {
-    print('Usage: a11y [--fail-on-warnings] <path_to_analyze>');
-    print(
-        '  Analyzes Flutter files for accessibility issues using semantic IR.');
-    print('');
-    print('Examples:');
-    print('  a11y lib/main.dart');
-    print('  a11y lib/');
-    print('  a11y --fail-on-warnings lib/');
-    exit(1);
-  }
-
-  final targetPath = positional[0];
-  final target = File(targetPath);
-  final targetDir = Directory(targetPath);
-
-  if (!target.existsSync() && !targetDir.existsSync()) {
-    print('Error: Path "$targetPath" does not exist.');
-    exit(1);
-  }
-
-  print('Flutter A11y Semantic Analyzer');
-  print('==============================');
-  print('Analyzing: $targetPath\n');
-
-  final analyzer = FlutterA11yAnalyzer(
-    runDartRules: !faqlOnly,
-    runFaqlRules: !dartOnly,
-  );
-  final results = await analyzer.analyze(targetPath);
-
-  if (results.isEmpty) {
-    print('✓ No accessibility issues found!');
+  if (argResults['help'] as bool) {
+    _printUsage(parser);
     exit(0);
   }
 
-  print('Found ${results.length} accessibility issue(s):\n');
-
-  for (final result in results) {
-    print('${result.severity.toUpperCase()}: ${result.message}');
-    print('  at ${result.file}:${result.line}:${result.column}');
-    print('  ${result.correctionMessage}');
-    print('');
+  if (argResults['version'] as bool) {
+    print('flutter_a11y_lints version $_version');
+    exit(0);
   }
 
-  if (failOnWarnings) {
-    // In CI mode fail on any issue (warning or error).
-    exit(results.isNotEmpty ? 1 : 0);
+  // --- Utility Commands ---
+
+  if (argResults['init'] as bool) {
+    _scaffoldRulesDirectory();
+    exit(0);
+  }
+
+  if (argResults['validate-faql'] != null) {
+    await _validateFaqlFile(argResults['validate-faql'] as String);
+    exit(0);
+  }
+
+  // --- Rule Loading ---
+
+  final rulesDir = argResults['rules-dir'] as String?;
+  final ruleLogger = (String msg) => stderr.writeln('[rules] $msg');
+  final catalog = FaqlRuleCatalog(logger: ruleLogger);
+  final activeRules = catalog.load(customRulesDir: rulesDir);
+
+  if (argResults['list-rules'] as bool) {
+    if (activeRules.isEmpty) {
+      print('No active FAQL rules.');
+      exit(0);
+    }
+    final sortedRules = activeRules.values.toList()
+      ..sort((a, b) => a.code.compareTo(b.code));
+    print('Active FAQL Rules:');
+    for (final rule in sortedRules) {
+      final sourceLabel = rule.sourcePath != null ? 'custom' : 'builtin';
+      print(
+          ' - ${rule.code} (${rule.severity}) [$sourceLabel] • ${rule.message}');
+    }
+    exit(0);
+  }
+
+  if (argResults['show-rule'] != null) {
+    final code = argResults['show-rule'] as String;
+    final rule = activeRules[code];
+    if (rule == null) {
+      _printError('Rule "$code" not found.');
+      exit(2);
+    }
+    if (rule.source != null) {
+      print(rule.source);
+      exit(0);
+    }
+    if (rule.sourcePath != null) {
+      try {
+        print(File(rule.sourcePath!).readAsStringSync());
+        exit(0);
+      } catch (_) {
+        // ignore and fall through
+      }
+    }
+    print('// Source not available');
+    exit(0);
+  }
+
+  // --- Analysis Phase ---
+
+  if (argResults.rest.isEmpty) {
+    _printError('No target path provided.');
+    _printUsage(parser);
+    exit(1);
+  }
+
+  final targetPath = argResults.rest.first;
+  final verbose = argResults['verbose'] as bool;
+
+  // Parse Glob excludes
+  final excludeRaw = argResults['exclude'] as String;
+  final excludes = excludeRaw
+      .split(',')
+      .map((e) => e.trim())
+      .where((e) => e.isNotEmpty)
+      .map((e) => Glob(e))
+      .toList();
+
+  if (verbose) print('Analyzing: $targetPath');
+
+  final analyzer = FlutterA11yAnalyzer(
+    faqlRunner: activeRules.isNotEmpty
+        ? FaqlRuleRunner(rules: activeRules.values.toList())
+        : null,
+    runDartRules: !(argResults['faql-only'] as bool),
+    runFaqlRules: !(argResults['dart-only'] as bool),
+    verbose: verbose,
+    excludes: excludes, // Pass excludes to analyzer
+  );
+
+  List<A11yIssue> issues;
+  try {
+    issues = await analyzer.analyze(targetPath);
+  } catch (e, st) {
+    _printError('Analysis failed: $e');
+    if (verbose) stderr.writeln(st);
+    exit(3);
+  }
+
+  // --- Reporting ---
+
+  final reporter = argResults['reporter'] as String;
+  _reportIssues(issues, reporter);
+
+  // --- Exit Code ---
+
+  final failOnWarnings = argResults['fail-on-warnings'] as bool;
+
+  if (issues.any((i) => i.severity == 'error')) exit(1);
+  if (issues.isNotEmpty && failOnWarnings) exit(1);
+  exit(0);
+}
+
+// ----------------------------------------------------------------------
+// Core Analysis Engine
+// ----------------------------------------------------------------------
+
+class FlutterA11yAnalyzer {
+  final KnownSemanticsRepository _knownSemantics = KnownSemanticsRepository();
+  final FaqlRuleRunner? faqlRunner;
+  final bool runDartRules;
+  final bool runFaqlRules;
+  final bool verbose;
+  final List<Glob> excludes;
+
+  FlutterA11yAnalyzer({
+    this.faqlRunner,
+    this.runDartRules = true,
+    this.runFaqlRules = true,
+    this.verbose = false,
+    this.excludes = const [],
+  });
+
+  Future<List<A11yIssue>> analyze(String path) async {
+    final issues = <A11yIssue>[];
+    final resourceProvider = PhysicalResourceProvider.INSTANCE;
+
+    final targetFile = File(path);
+    final targetDir = Directory(path);
+
+    if (!targetFile.existsSync() && !targetDir.existsSync()) {
+      throw Exception('Path "$path" does not exist.');
+    }
+
+    final analysisRoot = targetFile.existsSync()
+        ? p.normalize(targetFile.parent.absolute.path)
+        : p.normalize(targetDir.absolute.path);
+
+    final collection = AnalysisContextCollection(
+      includedPaths: [analysisRoot],
+      resourceProvider: resourceProvider,
+    );
+
+    final filesToAnalyze = <String>[];
+    if (targetFile.existsSync()) {
+      filesToAnalyze.add(p.normalize(targetFile.absolute.path));
+    } else {
+      if (verbose) print('Scanning directory for Dart files...');
+      // Use BFS or recursive list to find files
+      await for (final entity in targetDir.list(recursive: true)) {
+        if (entity is File && entity.path.endsWith('.dart')) {
+          final absPath = p.normalize(entity.absolute.path);
+          final relPath = p.relative(absPath, from: analysisRoot);
+
+          // --- FIX: Apply Exclusions ---
+          if (excludes.any((glob) => glob.matches(relPath))) {
+            if (verbose) print('Skipping excluded file: $relPath');
+            continue;
+          }
+
+          filesToAnalyze.add(absPath);
+        }
+      }
+    }
+
+    for (final filePath in filesToAnalyze) {
+      // Safety check: ensure context exists
+      try {
+        final context = collection.contextFor(filePath);
+        final unitResult =
+            await context.currentSession.getResolvedUnit(filePath);
+
+        if (unitResult is! ResolvedUnitResult) continue;
+        if (!fileUsesFlutter(unitResult)) continue;
+
+        if (verbose)
+          print('Checking ${p.relative(filePath, from: analysisRoot)}...');
+        issues.addAll(_analyzeFile(unitResult));
+      } catch (e) {
+        if (verbose) stderr.writeln('Failed to analyze $filePath: $e');
+      }
+    }
+
+    return issues;
+  }
+
+  List<A11yIssue> _analyzeFile(ResolvedUnitResult unit) {
+    final issues = <A11yIssue>[];
+    final irBuilder =
+        SemanticIrBuilder(unit: unit, knownSemantics: _knownSemantics);
+    final buildMethods = findBuildMethods(unit.unit);
+
+    for (final method in buildMethods) {
+      final expression = extractBuildBodyExpression(method);
+      if (expression == null) continue;
+
+      final tree = irBuilder.buildForExpression(expression);
+      if (tree == null) continue;
+
+      // 1. Legacy Dart Rules
+      if (runDartRules) {
+        final violations = A01UnlabeledInteractive.checkTree(tree);
+        for (final v in violations) {
+          issues.add(_mapViolation(
+              unit,
+              v.node.astNode.offset,
+              'warning',
+              A01UnlabeledInteractive.code,
+              A01UnlabeledInteractive.message,
+              A01UnlabeledInteractive.correctionMessage));
+        }
+      }
+
+      // 2. FAQL Rules
+      if (runFaqlRules && faqlRunner != null) {
+        final violations = faqlRunner!.run(tree);
+        for (final v in violations) {
+          issues.add(_mapViolation(unit, v.node.astNode.offset, v.spec.severity,
+              v.spec.code, v.spec.message, v.spec.correctionMessage));
+        }
+      }
+    }
+    return issues;
+  }
+
+  A11yIssue _mapViolation(ResolvedUnitResult unit, int offset, String severity,
+      String code, String msg, String correction) {
+    final loc = unit.lineInfo.getLocation(offset);
+    return A11yIssue(
+      file: unit.path,
+      line: loc.lineNumber,
+      column: loc.columnNumber,
+      severity: severity,
+      code: code,
+      message: msg,
+      correctionMessage: correction,
+    );
+  }
+}
+
+Future<void> _validateFaqlFile(String path) async {
+  final file = File(path);
+  if (!file.existsSync()) {
+    _printError('File not found: $path');
+    exit(2);
+  }
+  try {
+    final content = await file.readAsString();
+    final parser = FaqlParser();
+    final rule = parser.parseRule(content);
+    final validator = FaqlSemanticValidator(faqlAllowedIdentifiers);
+    validator.validate(rule);
+    print('SUCCESS: "$path" is a valid FAQL rule.');
+    print('Code: ${rule.name}');
+    print('Structure: Valid');
+  } catch (e) {
+    _printError('VALIDATION FAILED:\n$e');
+    exit(3);
+  }
+}
+
+void _scaffoldRulesDirectory() {
+  final dir = Directory('a11y_rules');
+  if (dir.existsSync()) {
+    print('Directory "a11y_rules" already exists.');
+    return;
+  }
+  dir.createSync();
+  final sampleFile = File(p.join(dir.path, 'custom_label.faql'));
+  sampleFile.writeAsStringSync(r'''
+rule "custom_buttons_must_have_labels" on role("button") {
+  meta {
+    severity: "error"
+    author: "Your Name"
+  }
+  // Ensure all buttons have resolved text labels
+  ensure: label.is_resolved
+  report: "All buttons must have a semantic label."
+}
+''');
+  print('Created "a11y_rules/" with a sample rule.');
+  print('Run with: a11y --rules-dir a11y_rules lib/');
+}
+
+void _reportIssues(List<A11yIssue> issues, String format) {
+  if (issues.isEmpty) {
+    if (format == 'console') print('No issues found.');
+    return;
+  }
+
+  if (format == 'json') {
+    final jsonList = issues
+        .map((i) => {
+              'file': i.file,
+              'line': i.line,
+              'column': i.column,
+              'severity': i.severity,
+              'code': i.code,
+              'message': i.message,
+            })
+        .toList();
+    print(JsonEncoder.withIndent('  ').convert(jsonList));
+  } else if (format == 'machine') {
+    for (final i in issues) {
+      // Machine format: SEVERITY|CODE|FILE|LINE|COL|MESSAGE
+      print(
+          '${i.severity}|${i.code}|${i.file}|${i.line}|${i.column}|${i.message}');
+    }
   } else {
-    // Default: only treat explicit 'error' severity as a failing exit code.
-    exit(results.any((r) => r.severity == 'error') ? 1 : 0);
+    // Console
+    print('');
+    for (final i in issues) {
+      final color =
+          i.severity == 'error' ? '\u001b[31m' : '\u001b[33m'; // Red/Yellow
+      final reset = '\u001b[0m';
+      print(
+          '$color${i.severity.toUpperCase()}$reset • ${i.message} • ${i.code}');
+      print('  ${i.file}:${i.line}:${i.column}');
+      print('');
+    }
+    print('Total: ${issues.length} issue(s).');
   }
+}
+
+void _printUsage(ArgParser parser) {
+  print('Flutter A11y Linter - Semantic Accessibility Analysis');
+  print('Usage: a11y [options] <file_or_directory>');
+  print('\nOptions:');
+  print(parser.usage);
+}
+
+void _printError(String msg) {
+  stderr.writeln('\u001b[31mERROR: $msg\u001b[0m');
 }
 
 class A11yIssue {
@@ -136,380 +449,4 @@ class A11yIssue {
     required this.message,
     required this.correctionMessage,
   });
-
-  @override
-  String toString() => '$file:$line:$column - $message';
-}
-
-class FlutterA11yAnalyzer {
-  final KnownSemanticsRepository _knownSemantics = KnownSemanticsRepository();
-  final Future<FaqlRuleRunner?> _faqlRunnerFuture;
-  final bool runDartRules;
-  final bool runFaqlRules;
-
-  FlutterA11yAnalyzer({FaqlRuleRunner? faqlRunner, String? faqlRulesDir, this.runDartRules = true, this.runFaqlRules = true})
-      : _faqlRunnerFuture = faqlRunner != null
-            ? Future.value(faqlRunner)
-            : _loadDefaultFaqlRunner(faqlRulesDir);
-
-  Future<List<A11yIssue>> analyze(String path) async {
-    final issues = <A11yIssue>[];
-    final resourceProvider = PhysicalResourceProvider.INSTANCE;
-    final faqlRunner = await _faqlRunnerFuture;
-
-    // Determine the root directory for analysis - must be absolute and normalized
-    final targetFile = File(path);
-    final targetDir = Directory(path);
-
-    final analysisRoot = targetFile.existsSync()
-        ? p.normalize(targetFile.parent.absolute.path)
-        : p.normalize(targetDir.absolute.path);
-
-    final collection = AnalysisContextCollection(
-      includedPaths: [analysisRoot],
-      resourceProvider: resourceProvider,
-    );
-
-    // Get all Dart files to analyze
-    final files = <String>[];
-    if (targetFile.existsSync()) {
-      files.add(p.normalize(targetFile.absolute.path));
-    } else {
-      await for (final entity in targetDir.list(recursive: true)) {
-        if (entity is File && entity.path.endsWith('.dart')) {
-          files.add(p.normalize(entity.absolute.path));
-        }
-      }
-    }
-
-    for (final filePath in files) {
-      final context = collection.contextFor(filePath);
-      final unitResult = await context.currentSession.getResolvedUnit(filePath);
-
-      if (unitResult is! ResolvedUnitResult) continue;
-
-      // Skip non-Flutter files
-      if (!fileUsesFlutter(unitResult)) continue;
-
-      print('Analyzing: ${p.relative(filePath, from: analysisRoot)}');
-
-      final fileIssues = _analyzeFile(unitResult, faqlRunner);
-      issues.addAll(fileIssues);
-    }
-
-    return issues;
-  }
-
-  List<A11yIssue> _analyzeFile(ResolvedUnitResult unit, FaqlRuleRunner? faqlRunner) {
-    final issues = <A11yIssue>[];
-    final irBuilder =
-        SemanticIrBuilder(unit: unit, knownSemantics: _knownSemantics);
-
-    // Find all build methods in the file
-    final buildMethods = findBuildMethods(unit.unit);
-
-    if (buildMethods.isEmpty) {
-      // No build methods found
-      return issues;
-    }
-
-    for (final method in buildMethods) {
-      final expression = extractBuildBodyExpression(method);
-      if (expression == null) continue;
-
-      final tree = irBuilder.buildForExpression(expression);
-      if (tree == null) continue;
-
-      // Run all rules on the semantic tree
-      if (runDartRules) {
-        final a01Violations = A01UnlabeledInteractive.checkTree(tree);
-        final a02Violations = A02AvoidRedundantRoleWords.checkTree(tree);
-        final a03Violations = A03DecorativeImagesExcluded.checkTree(tree);
-        final a04Violations = A04InformativeImagesLabeled.checkTree(tree);
-        final a05Violations = A05NoRedundantButtonSemantics.checkTree(tree);
-        final a06Violations = A06MergeMultiPartSingleConcept.checkTree(tree);
-        final a07Violations = A07ReplaceSemanticsCleanly.checkTree(tree);
-        final a18Violations = A18AvoidHiddenFocusTraps.checkTree(tree);
-        final a21Violations = A21UseIconButtonTooltip.checkTree(tree);
-        final a22Violations = A22RespectWidgetSemanticBoundaries.checkTree(tree);
-        final a09Violations = A09NumericValuesRequireUnits.checkTree(tree);
-        final a11Violations = A11MinimumTapTargetSize.checkTree(tree);
-        final a13Violations = A13SingleRoleCompositeControl.checkTree(tree);
-        final a15Violations = A15MapCustomGesturesToOnTap.checkTree(tree);
-        final a16Violations = A16ToggleStateViaSemanticsFlag.checkTree(tree);
-        final a24Violations = A24ExcludeVisualOnlyIndicators.checkTree(tree);
-
-        // Convert A01 violations to issues
-        for (final violation in a01Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A01UnlabeledInteractive.code,
-            message: A01UnlabeledInteractive.message,
-            correctionMessage: A01UnlabeledInteractive.correctionMessage,
-          ));
-        }
-
-        // Convert A02 violations to issues
-        for (final violation in a02Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A02AvoidRedundantRoleWords.code,
-            message:
-                '${A02AvoidRedundantRoleWords.message}: ${violation.redundantWords.join(", ")}',
-            correctionMessage: A02AvoidRedundantRoleWords.correctionMessage,
-          ));
-        }
-
-        // Convert A03 violations to issues
-        for (final violation in a03Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A03DecorativeImagesExcluded.code,
-            message:
-                '${A03DecorativeImagesExcluded.message}: ${violation.assetPath}',
-            correctionMessage: A03DecorativeImagesExcluded.correctionMessage,
-          ));
-        }
-
-        // Convert A04 violations to issues
-        for (final violation in a04Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A04InformativeImagesLabeled.code,
-            message:
-                '${A04InformativeImagesLabeled.message}: ${violation.context}',
-            correctionMessage: A04InformativeImagesLabeled.correctionMessage,
-          ));
-        }
-
-        // Convert A05 violations to issues
-        for (final violation in a05Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A05NoRedundantButtonSemantics.code,
-            message: A05NoRedundantButtonSemantics.message,
-            correctionMessage: A05NoRedundantButtonSemantics.correctionMessage,
-          ));
-        }
-
-        // Convert A06 violations to issues
-        for (final violation in a06Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A06MergeMultiPartSingleConcept.code,
-            message: A06MergeMultiPartSingleConcept.message,
-            correctionMessage: A06MergeMultiPartSingleConcept.correctionMessage,
-          ));
-        }
-
-        // Convert A07 violations to issues
-        for (final violation in a07Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A07ReplaceSemanticsCleanly.code,
-            message: A07ReplaceSemanticsCleanly.message,
-            correctionMessage: A07ReplaceSemanticsCleanly.correctionMessage,
-          ));
-        }
-
-        // Convert A18 violations to issues
-        for (final violation in a18Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A18AvoidHiddenFocusTraps.code,
-            message: A18AvoidHiddenFocusTraps.message,
-            correctionMessage: A18AvoidHiddenFocusTraps.correctionMessage,
-          ));
-        }
-
-        // Convert A21 violations to issues
-        for (final violation in a21Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A21UseIconButtonTooltip.code,
-            message: A21UseIconButtonTooltip.message,
-            correctionMessage: A21UseIconButtonTooltip.correctionMessage,
-          ));
-        }
-
-        // Convert A22 violations to issues
-        for (final violation in a22Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A22RespectWidgetSemanticBoundaries.code,
-            message: A22RespectWidgetSemanticBoundaries.message,
-            correctionMessage: A22RespectWidgetSemanticBoundaries.correctionMessage,
-          ));
-        }
-
-        // Convert A09 violations to issues
-        for (final violation in a09Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A09NumericValuesRequireUnits.code,
-            message: A09NumericValuesRequireUnits.message,
-            correctionMessage: A09NumericValuesRequireUnits.correctionMessage,
-          ));
-        }
-
-        // Convert A11 violations to issues
-        for (final violation in a11Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A11MinimumTapTargetSize.code,
-            message: A11MinimumTapTargetSize.message,
-            correctionMessage: A11MinimumTapTargetSize.correctionMessage,
-          ));
-        }
-
-        // Convert A13 violations to issues
-        for (final violation in a13Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A13SingleRoleCompositeControl.code,
-            message: A13SingleRoleCompositeControl.message,
-            correctionMessage: A13SingleRoleCompositeControl.correctionMessage,
-          ));
-        }
-
-        // Convert A15 violations to issues
-        for (final violation in a15Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A15MapCustomGesturesToOnTap.code,
-            message: A15MapCustomGesturesToOnTap.message,
-            correctionMessage: A15MapCustomGesturesToOnTap.correctionMessage,
-          ));
-        }
-
-        // Convert A16 violations to issues
-        for (final violation in a16Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A16ToggleStateViaSemanticsFlag.code,
-            message: A16ToggleStateViaSemanticsFlag.message,
-            correctionMessage: A16ToggleStateViaSemanticsFlag.correctionMessage,
-          ));
-        }
-
-        // Convert A24 violations to issues
-        for (final violation in a24Violations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: 'warning',
-            code: A24ExcludeVisualOnlyIndicators.code,
-            message: A24ExcludeVisualOnlyIndicators.message,
-            correctionMessage: A24ExcludeVisualOnlyIndicators.correctionMessage,
-          ));
-        }
-      }
-
-      if (runFaqlRules && faqlRunner != null) {
-        final faqlViolations = faqlRunner.run(tree);
-        for (final violation in faqlViolations) {
-          final location =
-              unit.lineInfo.getLocation(violation.node.astNode.offset);
-          issues.add(A11yIssue(
-            file: unit.path,
-            line: location.lineNumber,
-            column: location.columnNumber,
-            severity: violation.spec.severity,
-            code: violation.spec.code,
-            message: violation.spec.message,
-            correctionMessage: violation.spec.correctionMessage,
-          ));
-        }
-      }
-
-    }
-
-    return issues;
-  }
-
-  static Future<FaqlRuleRunner?> _loadDefaultFaqlRunner(String? faqlRulesDir) async {
-    final rulesDir = faqlRulesDir ??
-        FaqlRuleRunner.defaultRulesDirFromScript(Platform.script);
-    final specs = await FaqlRuleRunner.loadFromDirectory(rulesDir);
-    if (specs.isEmpty) return null;
-    return FaqlRuleRunner(rules: specs);
-  }
 }

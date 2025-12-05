@@ -4,7 +4,7 @@ import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:flutter_a11y_lints/src/pipeline/semantic_ir_builder.dart';
-import 'package:flutter_a11y_lints/src/rules/a01_unlabeled_interactive.dart';
+import 'package:flutter_a11y_lints/rules/a01_unlabeled_interactive.dart';
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';

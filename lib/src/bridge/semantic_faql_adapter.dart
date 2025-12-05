@@ -120,7 +120,8 @@ class SemanticFaqlContext extends FaqlContext {
         return null;
       case 'imageConstructor':
         final creation = node.astNode;
-        if (creation is InstanceCreationExpression && node.widgetType == 'Image') {
+        if (creation is InstanceCreationExpression &&
+            node.widgetType == 'Image') {
           return creation.constructorName.name?.name ?? 'default';
         }
         return null;
@@ -330,3 +331,41 @@ class SemanticFaqlContext extends FaqlContext {
     return false;
   }
 }
+
+/// Allowed FAQL identifier names exposed by the `SemanticFaqlContext`.
+/// Used by the FAQL semantic validator to ensure rules only reference
+/// known properties.
+const Set<String> faqlAllowedIdentifiers = {
+  // Direct getters
+  'role',
+  'widgetType',
+  'isFocusable',
+  'isEnabled',
+  'mergesDescendants',
+  'hasTap',
+  'hasLongPress',
+  'isHidden',
+
+  // Dynamic properties exposed via getProperty
+  'label',
+  'tooltip',
+  'value',
+  'depth',
+  'controlKind',
+  'labelSource',
+  'hasIncrease',
+  'hasDecrease',
+  'labelGuarantee',
+  'excludesDescendants',
+  'isPureContainer',
+  'isSemanticBoundary',
+  'isCompositeControl',
+  'focusableDescendantCount',
+  'assetPath',
+  'imageConstructor',
+  'backgroundImageProvided',
+  'childWidgetType',
+  'hasMeaningfulSemanticsArgs',
+  'labeledChildrenCount',
+  'hasButtonDescendant',
+};

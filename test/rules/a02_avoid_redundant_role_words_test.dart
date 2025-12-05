@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_a11y_lints/src/faql/parser.dart';
-import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
+import 'package:flutter_a11y_lints/rules/faql_rule_runner.dart';
 import 'package:path/path.dart' as p;
 import 'package:test/test.dart';
 

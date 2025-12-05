@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
+import 'package:flutter_a11y_lints/rules/faql_rule_runner.dart';
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:path/path.dart' as p;

@@ -1,5 +1,5 @@
 import 'package:flutter_a11y_lints/src/faql/parser.dart';
-import 'package:flutter_a11y_lints/src/rules/faql_rule_runner.dart';
+import 'package:flutter_a11y_lints/rules/faql_rule_runner.dart';
 import 'package:test/test.dart';
 
 import '../rules/test_semantic_utils.dart';

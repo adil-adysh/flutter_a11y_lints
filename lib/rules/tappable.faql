@@ -1,0 +1,8 @@
+rule "tappable-is-focusable" on any {
+    meta { severity: "error" }
+    // Guard: Only check nodes that have a tap handler
+    when: has_tap
+    // Assertion: The node must be explicitly focusable
+    ensure: focusable
+    report: "Elements with an onTap handler must be marked as focusable."
+}
