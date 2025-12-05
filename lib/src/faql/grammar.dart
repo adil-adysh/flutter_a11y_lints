@@ -88,7 +88,11 @@ class FaqlGrammar extends GrammarDefinition {
           .map((v) => v[1] as String);
 
   // Expression builder producing FaqlExpression nodes
-  Parser<FaqlExpression> expression() {
+  late final Parser<FaqlExpression> _expressionParser = _buildExpression();
+
+  Parser<FaqlExpression> expression() => _expressionParser;
+
+  Parser<FaqlExpression> _buildExpression() {
     final builder = ExpressionBuilder<FaqlExpression>();
 
     // primitives - register each separately to satisfy types
@@ -97,7 +101,7 @@ class FaqlGrammar extends GrammarDefinition {
     builder.primitive(ref0(propAccess));
     builder.primitive(ref0(booleanState));
     builder.primitive(ref0(literal));
-    // allow bare identifiers in expressions (e.g., `role == "button"`)
+    // allow bare identifiers in expressions (e.g., `role == "button")`
     builder.primitive(ref0(identifierExpr));
 
     // prefix
@@ -109,51 +113,100 @@ class FaqlGrammar extends GrammarDefinition {
 
     // multiplicative
     builder.group()
-      ..left(
-          char('*').trim(), (l, op, r) => BinaryExpression(l, op.toString(), r))
+      ..left(char('*').trim(), (l, op, r) =>
+          BinaryExpression(l, _mapOp(op.toString()), r))
       ..left(char('/').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r));
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r));
 
     // additive
     builder.group()
-      ..left(
-          char('+').trim(), (l, op, r) => BinaryExpression(l, op.toString(), r))
+      ..left(char('+').trim(),
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
       ..left(char('-').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r));
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r));
 
     // relational
     builder.group()
       ..left(string('<=').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r))
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
       ..left(string('>=').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r))
-      ..left(
-          char('<').trim(), (l, op, r) => BinaryExpression(l, op.toString(), r))
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
+      ..left(char('<').trim(),
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
       ..left(char('>').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r));
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r));
 
     // equality & contains/matches
     builder.group()
       ..left(string('==').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r))
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
       ..left(string('!=').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r))
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
       ..left(string('~=').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r))
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
       ..left(string('contains').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r))
-      ..left(string('matches').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r));
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
+      ..left(string('matches').trim(), (l, op, r) {
+        // If the right-hand-side is a string literal, pre-compile the RegExp.
+        if (r is LiteralExpression && r.value is String) {
+          var pattern = (r.value as String);
+          var caseSensitive = true;
+          if (pattern.startsWith('(?i)')) {
+            caseSensitive = false;
+            pattern = pattern.substring(4);
+          }
+          return RegexMatchExpression(l, RegExp(pattern, caseSensitive: caseSensitive));
+        }
+        return BinaryExpression(l, _mapOp(op.toString()), r);
+      });
 
     // logical
     builder.group()
       ..left(string('&&').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r));
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r));
     builder.group()
       ..left(string('||').trim(),
-          (l, op, r) => BinaryExpression(l, op.toString(), r));
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r));
 
     return builder.build();
+  }
+
+  FaqlBinaryOp _mapOp(String opToken) {
+    final t = opToken.trim();
+    switch (t) {
+      case '&&':
+        return FaqlBinaryOp.and;
+      case '||':
+        return FaqlBinaryOp.or;
+      case '+':
+        return FaqlBinaryOp.add;
+      case '-':
+        return FaqlBinaryOp.subtract;
+      case '*':
+        return FaqlBinaryOp.multiply;
+      case '/':
+        return FaqlBinaryOp.divide;
+      case '<':
+        return FaqlBinaryOp.less;
+      case '>':
+        return FaqlBinaryOp.greater;
+      case '<=':
+        return FaqlBinaryOp.lessEqual;
+      case '>=':
+        return FaqlBinaryOp.greaterEqual;
+      case '==':
+        return FaqlBinaryOp.equals;
+      case '!=':
+        return FaqlBinaryOp.notEquals;
+      case '~=':
+        return FaqlBinaryOp.tildeEquals;
+      case 'contains':
+        return FaqlBinaryOp.contains;
+      case 'matches':
+        return FaqlBinaryOp.matches;
+      default:
+        return FaqlBinaryOp.equals;
+    }
   }
 
   Parser<FaqlExpression> parentheses() =>
@@ -169,15 +222,47 @@ class FaqlGrammar extends GrammarDefinition {
                       ref0(expression) &
                       char(')').trim())))
           .map((v) {
-        final relation = v[0] as String;
+        final relationStr = v[0] as String;
+        final relation = _mapRelation(relationStr);
         final tail = v[2];
         if (tail is String && tail == 'length')
           return RelationLengthExpression(relation);
         // tail is a List: [aggregator, '(', expr, ')']
         final agg = (tail as List)[0] as String;
+        final aggEnum = _mapAggregator(agg);
         final expr = (tail[2]) as FaqlExpression;
-        return AggregatorExpression(relation, agg, expr);
+        return AggregatorExpression(relation, aggEnum, expr);
       });
+
+  FaqlRelation _mapRelation(String s) {
+    switch (s) {
+      case 'children':
+        return FaqlRelation.children;
+      case 'ancestors':
+        return FaqlRelation.ancestors;
+      case 'siblings':
+        return FaqlRelation.siblings;
+      case 'next_focus':
+        return FaqlRelation.nextFocus;
+      case 'prev_focus':
+        return FaqlRelation.prevFocus;
+      default:
+        return FaqlRelation.children;
+    }
+  }
+
+  FaqlAggregator _mapAggregator(String s) {
+    switch (s) {
+      case 'any':
+        return FaqlAggregator.any;
+      case 'all':
+        return FaqlAggregator.all;
+      case 'none':
+        return FaqlAggregator.none;
+      default:
+        return FaqlAggregator.any;
+    }
+  }
 
   // prop("name") [.is_resolved] | as type
   Parser<FaqlExpression> propAccess() => (string('prop').trim() &
@@ -268,7 +353,9 @@ class FaqlGrammar extends GrammarDefinition {
             case '"':
               return '"';
             default:
-              return ch ?? '';
+              // Preserve unknown escapes (e.g. '\\d') as-is so regex
+              // escape sequences like '\\d' are not stripped to 'd'.
+              return '\\${ch ?? ''}';
           }
         });
       });

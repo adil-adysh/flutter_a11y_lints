@@ -23,11 +23,11 @@ void main() {
     final ensure = rule.ensure;
     expect(ensure, isA<BinaryExpression>());
     final be = ensure as BinaryExpression;
-    expect(be.op, '&&');
+    expect(be.op, FaqlBinaryOp.and);
     // left side
     expect(be.left, isA<BinaryExpression>());
     final left = be.left as BinaryExpression;
-    expect(left.op, '<=');
+    expect(left.op, FaqlBinaryOp.lessEqual);
     expect(left.left, isA<PropExpression>());
     final prop = left.left as PropExpression;
     expect(prop.name, 'divisions');
@@ -45,7 +45,7 @@ void main() {
     ''';
     final rule = parser.parseRule(input);
     final ensure = rule.ensure as BinaryExpression;
-    expect(ensure.op, '&&');
+    expect(ensure.op, FaqlBinaryOp.and);
     // left should be PropExpression with isResolved true
     final left = ensure.left as PropExpression;
     expect(left.name, 'x');
@@ -63,8 +63,8 @@ void main() {
     final expr = rule.ensure;
     expect(expr, isA<AggregatorExpression>());
     final agg = expr as AggregatorExpression;
-    expect(agg.relation, 'children');
-    expect(agg.aggregator, 'any');
+    expect(agg.relation, FaqlRelation.children);
+    expect(agg.aggregator, FaqlAggregator.any);
   });
 
   test('boolean state', () {
@@ -73,7 +73,7 @@ void main() {
     ''';
     final rule = parser.parseRule(input);
     final expr = rule.ensure as BinaryExpression;
-    expect(expr.op, '&&');
+    expect(expr.op, FaqlBinaryOp.and);
     expect(expr.left, isA<BooleanStateExpression>());
     expect((expr.left as BooleanStateExpression).name, 'focusable');
   });
@@ -95,10 +95,14 @@ void main() {
     ''';
     final rule = parser.parseRule(input);
     final be = rule.ensure as BinaryExpression;
-    expect(be.op, '&&');
+    expect(be.op, FaqlBinaryOp.and);
     expect(be.left, isA<UnaryExpression>());
     expect((be.left as UnaryExpression).op, '!');
+    expect((be.left as UnaryExpression).expr, isA<BinaryExpression>());
+    final inner = (be.left as UnaryExpression).expr as BinaryExpression;
+    expect(inner.op, FaqlBinaryOp.equals);
     expect(be.right, isA<UnaryExpression>());
+    expect((be.right as UnaryExpression).op, '!');
   });
 
   test('equality and matches operators', () {
@@ -108,13 +112,14 @@ void main() {
     final rule = parser.parseRule(input);
     final be = rule.ensure as BinaryExpression;
     // top-level is OR
-    expect(be.op, '||');
-    // left is BinaryExpression with op 'matches'
-    expect(be.left, isA<BinaryExpression>());
-    expect((be.left as BinaryExpression).op, 'matches');
+    expect(be.op, FaqlBinaryOp.or);
+    // left is a RegexMatchExpression with precompiled pattern
+    expect(be.left, isA<RegexMatchExpression>());
+    final leftRegex = be.left as RegexMatchExpression;
+    expect(leftRegex.pattern.pattern, '^foo.*');
     // right is BinaryExpression with op '=='
     expect(be.right, isA<BinaryExpression>());
-    expect((be.right as BinaryExpression).op, '==');
+    expect((be.right as BinaryExpression).op, FaqlBinaryOp.equals);
   });
 
   test('relation length and float literal', () {
@@ -124,7 +129,7 @@ void main() {
     final rule = parser.parseRule(input);
     final be = rule.ensure as BinaryExpression;
     // top-level AND
-    expect(be.op, '&&');
+    expect(be.op, FaqlBinaryOp.and);
     // left should be BinaryExpression with RelationLengthExpression on left
     final left = be.left as BinaryExpression;
     expect(left.left, isA<RelationLengthExpression>());
@@ -143,10 +148,10 @@ void main() {
     ''';
     final rule = parser.parseRule(input);
     final expr = rule.ensure as AggregatorExpression;
-    expect(expr.aggregator, 'any');
+    expect(expr.aggregator, FaqlAggregator.any);
     expect(expr.expr, isA<BinaryExpression>());
     final inner = expr.expr as BinaryExpression;
-    expect(inner.op, '&&');
+    expect(inner.op, FaqlBinaryOp.and);
   });
 
   test('aggregator all/none variations', () {
@@ -155,8 +160,8 @@ void main() {
     ''';
     final rule = parser.parseRule(input);
     final expr = rule.ensure as AggregatorExpression;
-    expect(expr.aggregator, 'all');
-    expect(expr.relation, 'ancestors');
+    expect(expr.aggregator, FaqlAggregator.all);
+    expect(expr.relation, FaqlRelation.ancestors);
   });
 
   test('unary minus with float literal', () {
@@ -165,7 +170,7 @@ void main() {
     ''';
     final rule = parser.parseRule(input);
     final be = rule.ensure as BinaryExpression;
-    expect(be.op, '<');
+    expect(be.op, FaqlBinaryOp.less);
     expect(be.right, isA<UnaryExpression>());
     final ue = be.right as UnaryExpression;
     expect(ue.op, '-');
@@ -193,7 +198,7 @@ void main() {
     ''';
     final rule = parser.parseRule(input);
     final be = rule.ensure as BinaryExpression;
-    expect(be.op, 'contains');
+    expect(be.op, FaqlBinaryOp.contains);
   });
 
   test('nested aggregators', () {
@@ -205,11 +210,11 @@ void main() {
     ''';
     final rule = parser.parseRule(input);
     final expr = rule.ensure as AggregatorExpression;
-    expect(expr.aggregator, 'any');
+    expect(expr.aggregator, FaqlAggregator.any);
     expect(expr.expr, isA<AggregatorExpression>());
     final inner = expr.expr as AggregatorExpression;
-    expect(inner.relation, 'ancestors');
-    expect(inner.aggregator, 'any');
+    expect(inner.relation, FaqlRelation.ancestors);
+    expect(inner.aggregator, FaqlAggregator.any);
   });
 
   test('operator precedence (AND binds tighter than OR)', () {
@@ -219,11 +224,11 @@ void main() {
     final rule = parser.parseRule(input);
     final top = rule.ensure as BinaryExpression;
     // top-level should be '||'
-    expect(top.op, '||');
+    expect(top.op, FaqlBinaryOp.or);
     expect(top.left, isA<BooleanStateExpression>());
     // right side should be an '&&' BinaryExpression
     expect(top.right, isA<BinaryExpression>());
-    expect((top.right as BinaryExpression).op, '&&');
+    expect((top.right as BinaryExpression).op, FaqlBinaryOp.and);
   });
 
   test('prop as-cast produces asType', () {
@@ -274,14 +279,14 @@ void main() {
     bool foundAll = false;
 
     void walk(FaqlExpression e) {
-      if (e is RelationLengthExpression && e.relation == 'children')
+      if (e is RelationLengthExpression && e.relation == FaqlRelation.children)
         foundLength = true;
       if (e is AggregatorExpression &&
-          e.aggregator == 'none' &&
-          e.relation == 'siblings') foundNone = true;
+          e.aggregator == FaqlAggregator.none &&
+          e.relation == FaqlRelation.siblings) foundNone = true;
       if (e is AggregatorExpression &&
-          e.aggregator == 'all' &&
-          e.relation == 'ancestors') foundAll = true;
+          e.aggregator == FaqlAggregator.all &&
+          e.relation == FaqlRelation.ancestors) foundAll = true;
       if (e is UnaryExpression) walk(e.expr);
       if (e is BinaryExpression) {
         walk(e.left);
@@ -330,8 +335,10 @@ void main() {
     ''';
     final rule = parser.parseRule(input);
     final be = rule.ensure as BinaryExpression;
-    expect(be.op, '||');
-    expect((be.left as BinaryExpression).op, 'matches');
-    expect((be.right as BinaryExpression).op, '~=');
+    expect(be.op, FaqlBinaryOp.or);
+    expect(be.left, isA<RegexMatchExpression>());
+    final leftRegex = be.left as RegexMatchExpression;
+    expect(leftRegex.pattern.pattern, '^foo\\d+');
+    expect((be.right as BinaryExpression).op, FaqlBinaryOp.tildeEquals);
   });
 }

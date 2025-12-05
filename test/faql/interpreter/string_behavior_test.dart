@@ -51,11 +51,10 @@ void main() {
       expect(run(rule, node), isTrue);
     });
 
-    test('invalid regex in matches returns false and does not throw', () {
-      final node = TestContext(role: 'text', props: {'label': 'abc'});
+    test('invalid regex in matches now throws at parse time', () {
       const rule =
           'rule "r" on any { ensure: prop("label") matches "[unclosed" report: "" }';
-      expect(run(rule, node), isFalse);
+      expect(() => parser.parseRule(rule), throwsFormatException);
     });
   });
 }

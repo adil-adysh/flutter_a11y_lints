@@ -1,5 +1,19 @@
 import 'ast.dart';
 
+class FaqlRuntimeError implements Exception {
+  final String message;
+  FaqlRuntimeError(this.message);
+  @override
+  String toString() => 'FaqlRuntimeError: $message';
+}
+
+class FaqlCompilationError implements Exception {
+  final String message;
+  FaqlCompilationError(this.message);
+  @override
+  String toString() => 'FaqlCompilationError: $message';
+}
+
 /// The contract that your Flutter Linter must implement.
 /// This bridges the gap between FAQL and the Analyzer.
 abstract class FaqlContext {
@@ -154,32 +168,33 @@ class FaqlInterpreter {
     if (expr is UnaryExpression) {
       final val = _evaluateExpression(expr.expr, context);
       if (expr.op == '!') return val != true; // logical NOT
-      if (expr.op == '-') return (val is num) ? -val : 0;
+      if (expr.op == '-') {
+        if (val is num) return -val;
+        throw FaqlRuntimeError('Unary - applied to non-number: $val');
+      }
     }
 
     if (expr is BinaryExpression) {
       switch (expr.op) {
-        case '&&':
+        case FaqlBinaryOp.and:
           final l = _evaluateExpression(expr.left, context);
           if (l != true) return false; // short-circuit
           final r = _evaluateExpression(expr.right, context);
           return r == true;
-        case '||':
+        case FaqlBinaryOp.or:
           final l = _evaluateExpression(expr.left, context);
           if (l == true) return true; // short-circuit
           final r = _evaluateExpression(expr.right, context);
           return r == true;
-        case '==':
+        case FaqlBinaryOp.equals:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
-          // compare values
           if (l == r) return true;
-          // Try boolean coercion from strings (accept 'true'/'false')
           final lb = _toBool(l);
           final rb = _toBool(r);
           if (lb != null && rb != null) return lb == rb;
           return false;
-        case '!=':
+        case FaqlBinaryOp.notEquals:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           if (l == r) return false;
@@ -187,88 +202,97 @@ class FaqlInterpreter {
           final rb2 = _toBool(r);
           if (lb2 != null && rb2 != null) return lb2 != rb2;
           return true;
-        case '+':
+        case FaqlBinaryOp.add:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
           if (ln != null && rn != null) return ln + rn;
-          return '${l ?? ''}${r ?? ''}';
-        case '-':
+          throw FaqlRuntimeError('Operator + requires two numbers, got $l and $r');
+        case FaqlBinaryOp.subtract:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          return (ln != null && rn != null) ? ln - rn : null;
-        case '*':
+          if (ln == null || rn == null) throw FaqlRuntimeError('Operator - requires two numbers, got $l and $r');
+          return ln - rn;
+        case FaqlBinaryOp.multiply:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          return (ln != null && rn != null) ? ln * rn : null;
-        case '/':
+          if (ln == null || rn == null) throw FaqlRuntimeError('Operator * requires two numbers, got $l and $r');
+          return ln * rn;
+        case FaqlBinaryOp.divide:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          if (ln == null || rn == null) return null;
-          if (rn == 0) return null;
+          if (ln == null || rn == null) throw FaqlRuntimeError('Operator / requires two numbers, got $l and $r');
+          if (rn == 0) throw FaqlRuntimeError('Division by zero');
           return ln / rn;
-        case '<':
+        case FaqlBinaryOp.less:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          return (ln != null && rn != null) && ln < rn;
-        case '>':
+          if (ln == null || rn == null) throw FaqlRuntimeError('< requires numbers');
+          return ln < rn;
+        case FaqlBinaryOp.greater:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          return (ln != null && rn != null) && ln > rn;
-        case '<=':
+          if (ln == null || rn == null) throw FaqlRuntimeError('> requires numbers');
+          return ln > rn;
+        case FaqlBinaryOp.lessEqual:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          return (ln != null && rn != null) && ln <= rn;
-        case '>=':
+          if (ln == null || rn == null) throw FaqlRuntimeError('<= requires numbers');
+          return ln <= rn;
+        case FaqlBinaryOp.greaterEqual:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          return (ln != null && rn != null) && ln >= rn;
-        case '~=':
-          try {
-            final lv = _evaluateExpression(expr.left, context);
-            final rv = _evaluateExpression(expr.right, context);
-            return lv.toString().toLowerCase().trim() ==
-                rv.toString().toLowerCase().trim();
-          } catch (_) {
-            return false;
-          }
-        case 'contains':
+          if (ln == null || rn == null) throw FaqlRuntimeError('>= requires numbers');
+          return ln >= rn;
+        case FaqlBinaryOp.tildeEquals:
+          final lv = _evaluateExpression(expr.left, context);
+          final rv = _evaluateExpression(expr.right, context);
+          return lv.toString().toLowerCase().trim() == rv.toString().toLowerCase().trim();
+        case FaqlBinaryOp.contains:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           if (l == null) return false;
           return l.toString().contains(r.toString());
-        case 'matches':
+        case FaqlBinaryOp.matches:
+          // If RHS is a RegexMatchExpression was produced by the parser it will
+          // be represented as a RegexMatchExpression node instead of BinaryExpression.
+          // But handle generic runtime where RHS may be a string pattern.
+          final l = _evaluateExpression(expr.left, context);
+          final r = _evaluateExpression(expr.right, context);
+          if (l == null || r == null) return false;
           try {
-            final l = _evaluateExpression(expr.left, context);
-            final r = _evaluateExpression(expr.right, context);
-            if (l == null || r == null) return false;
             var pattern = r.toString();
             var caseSensitive = true;
             if (pattern.startsWith('(?i)')) {
               caseSensitive = false;
               pattern = pattern.substring(4);
             }
-            return RegExp(pattern, caseSensitive: caseSensitive)
-                .hasMatch(l.toString());
-          } catch (_) {
-            return false;
+            return RegExp(pattern, caseSensitive: caseSensitive).hasMatch(l.toString());
+          } catch (e) {
+            throw FaqlRuntimeError('Invalid regex: $e');
           }
       }
+    }
+
+    if (expr is RegexMatchExpression) {
+      final l = _evaluateExpression(expr.left, context);
+      if (l == null) return false;
+      return expr.pattern.hasMatch(l.toString());
     }
 
     if (expr is RelationLengthExpression) {
@@ -279,38 +303,39 @@ class FaqlInterpreter {
     if (expr is AggregatorExpression) {
       final list = _getRelation(expr.relation, context);
 
-      if (expr.aggregator == 'any') {
-        for (final child in list) {
-          if (_evaluateExpression(expr.expr, child) == true) return true;
-        }
-        return false;
-      }
-      if (expr.aggregator == 'all') {
-        for (final child in list) {
-          if (_evaluateExpression(expr.expr, child) != true) return false;
-        }
-        return true;
-      }
-      if (expr.aggregator == 'none') {
-        for (final child in list) {
-          if (_evaluateExpression(expr.expr, child) == true) return false;
-        }
-        return true;
+      switch (expr.aggregator) {
+        case FaqlAggregator.any:
+          for (final child in list) {
+            if (_evaluateExpression(expr.expr, child) == true) return true;
+          }
+          return false;
+        case FaqlAggregator.all:
+          for (final child in list) {
+            if (_evaluateExpression(expr.expr, child) != true) return false;
+          }
+          return true;
+        case FaqlAggregator.none:
+          for (final child in list) {
+            if (_evaluateExpression(expr.expr, child) == true) return false;
+          }
+          return true;
       }
     }
 
     return null;
   }
 
-  Iterable<FaqlContext> _getRelation(String relation, FaqlContext context) {
+  Iterable<FaqlContext> _getRelation(FaqlRelation relation, FaqlContext context) {
     switch (relation) {
-      case 'children':
+      case FaqlRelation.children:
         return context.children;
-      case 'ancestors':
+      case FaqlRelation.ancestors:
         return context.ancestors;
-      case 'siblings':
+      case FaqlRelation.siblings:
         return context.siblings;
-      default:
+      case FaqlRelation.nextFocus:
+      case FaqlRelation.prevFocus:
+        // Not modeled in FaqlContext currently
         return [];
     }
   }

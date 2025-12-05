@@ -16,14 +16,13 @@ void main() {
     final unary = UnaryExpression('!', lit);
     expect(unary.toString(), contains('Unary('));
 
-    final bin = BinaryExpression(lit, '==', LiteralExpression(123));
+    final bin = BinaryExpression(lit, FaqlBinaryOp.equals, LiteralExpression(123));
     expect(bin.toString(), contains('Binary('));
 
     final agg =
-        AggregatorExpression('children', 'all', LiteralExpression(true));
+      AggregatorExpression(FaqlRelation.children, FaqlAggregator.all, LiteralExpression(true));
     expect(agg.toString(), contains('Aggregator('));
-
-    final len = RelationLengthExpression('children');
+    final len = RelationLengthExpression(FaqlRelation.children);
     expect(len.toString(), contains('Length('));
 
     final id = Identifier('myId');

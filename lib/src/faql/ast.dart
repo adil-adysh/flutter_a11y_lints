@@ -31,18 +31,54 @@ class UnaryExpression extends FaqlExpression {
   String toString() => 'Unary($op $expr)';
 }
 
+enum FaqlBinaryOp {
+  and,
+  or,
+  add,
+  subtract,
+  multiply,
+  divide,
+  less,
+  greater,
+  lessEqual,
+  greaterEqual,
+  equals,
+  notEquals,
+  tildeEquals,
+  contains,
+  matches,
+}
+
+enum FaqlRelation {
+  children,
+  ancestors,
+  siblings,
+  nextFocus,
+  prevFocus,
+}
+
+enum FaqlAggregator { any, all, none }
+
 class BinaryExpression extends FaqlExpression {
   final FaqlExpression left;
-  final String op;
+  final FaqlBinaryOp op;
   final FaqlExpression right;
   BinaryExpression(this.left, this.op, this.right);
   @override
   String toString() => 'Binary($left $op $right)';
 }
 
+class RegexMatchExpression extends FaqlExpression {
+  final FaqlExpression left;
+  final RegExp pattern;
+  RegexMatchExpression(this.left, this.pattern);
+  @override
+  String toString() => 'RegexMatch($left, ${pattern.pattern})';
+}
+
 class AggregatorExpression extends FaqlExpression {
-  final String relation; // children/ancestors/siblings/next_focus/prev_focus
-  final String aggregator; // any/all/none
+  final FaqlRelation relation; // children/ancestors/siblings/next_focus/prev_focus
+  final FaqlAggregator aggregator; // any/all/none
   final FaqlExpression expr;
   AggregatorExpression(this.relation, this.aggregator, this.expr);
   @override
@@ -50,7 +86,7 @@ class AggregatorExpression extends FaqlExpression {
 }
 
 class RelationLengthExpression extends FaqlExpression {
-  final String relation;
+  final FaqlRelation relation;
   RelationLengthExpression(this.relation);
   @override
   String toString() => 'Length($relation)';

@@ -2,6 +2,7 @@ import 'package:test/test.dart';
 import 'package:flutter_a11y_lints/src/faql/parser.dart';
 import 'package:flutter_a11y_lints/src/faql/interpreter.dart';
 import 'test_contexts.dart';
+import 'package:flutter_a11y_lints/src/faql/validator.dart';
 
 void main() {
   final parser = FaqlParser();
@@ -34,10 +35,10 @@ void main() {
       expect(run(rule, node), isTrue);
     });
 
-    test('invalid numeric string comparison returns false', () {
+    test('invalid numeric string comparison throws FaqlRuntimeError', () {
       final node = TestContext(role: 'x', props: {'n': 'abc'});
       const rule = 'rule "r" on any { ensure: prop("n") > 5 report: "" }';
-      expect(run(rule, node), isFalse);
+      expect(() => run(rule, node), throwsA(isA<FaqlRuntimeError>()));
     });
 
     test('as int from numeric string works', () {
@@ -54,28 +55,26 @@ void main() {
       expect(run(rule, node), isTrue);
     });
 
-    test('as int from non-numeric returns null and comparison false', () {
+    test('as int from non-numeric throws FaqlRuntimeError', () {
       final node = TestContext(role: 'x', props: {'n': 'NaN'});
       const rule =
           'rule "r" on any { ensure: (prop("n") as int) > 0 report: "" }';
-      expect(run(rule, node), isFalse);
+      expect(() => run(rule, node), throwsA(isA<FaqlRuntimeError>()));
     });
 
-    test('invalid cast returns null and comparison is false', () {
+    test('invalid cast throws FaqlRuntimeError', () {
       final node = TestContext(role: 'x', props: {'size': 'NaN'});
       const rule =
           'rule "r" on any { ensure: prop("size") as int > 5 report: "" }';
-      expect(run(rule, node), isFalse);
+      expect(() => run(rule, node), throwsA(isA<FaqlRuntimeError>()));
     });
 
-    test('unresolved identifier evaluates as null (not the identifier name)',
-        () {
+    test('unresolved identifier now fails validation with FaqlCompilationError', () {
       final rule = parser.parseRule(
           'rule "r" on any { ensure: prop("color") == red report: "r" }');
-      final ctx = TestContext(
-          role: 'button', widgetType: 'Button', props: {'color': 'blue'});
-      final result = interpreter.evaluate(rule, ctx);
-      expect(result, isFalse);
+      final validator = FaqlSemanticValidator(['role', 'widgetType', 'color']);
+      // 'red' is an identifier and not in the schema -> compilation error
+      expect(() => validator.validate(rule), throwsA(isA<FaqlCompilationError>()));
     });
 
     test('numeric coercion: string numeric property compares as number', () {
