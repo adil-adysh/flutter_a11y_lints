@@ -63,10 +63,12 @@ jobs:
           # Install this repo's a11y linter globally from the workspace
           dart pub global activate --source path .
 
-      - name: Run a11y linter
+      - name: Run a11y linter (allow failures)
+        continue-on-error: true
         run: |
-          # Invoke the activated package executable explicitly by package:executable
-          dart pub global run flutter_a11y_lints:a11y
+          # Run the linter with --fail to return non-zero if issues found,
+          # but allow the step to continue so the job remains successful.
+          dart pub global run flutter_a11y_lints:a11y --fail a11y_test_app
 
 
       - name: Run Flutter tests
