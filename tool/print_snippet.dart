@@ -1,4 +1,5 @@
 import 'dart:io';
+
 void main() {
   final s = File('test.faql').readAsStringSync();
   print('LEN=${s.length}');

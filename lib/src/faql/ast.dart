@@ -77,7 +77,8 @@ class RegexMatchExpression extends FaqlExpression {
 }
 
 class AggregatorExpression extends FaqlExpression {
-  final FaqlRelation relation; // children/ancestors/siblings/next_focus/prev_focus
+  final FaqlRelation
+      relation; // children/ancestors/siblings/next_focus/prev_focus
   final FaqlAggregator aggregator; // any/all/none
   final FaqlExpression expr;
   AggregatorExpression(this.relation, this.aggregator, this.expr);
