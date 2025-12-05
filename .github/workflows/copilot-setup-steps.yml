@@ -58,12 +58,16 @@ jobs:
       - name: Fetch Flutter dependencies
         run: flutter pub get
 
-      - name: Run custom lints
-        working-directory: a11y_test_app
-        run: dart run custom_lint
+      - name: Activate local a11y linter
+        run: |
+          # Install this repo's a11y linter globally from the workspace
+          dart pub global activate --source path .
 
-      - name: Run Flutter analyze
-        run: flutter analyze
+      - name: Run a11y linter
+        run: |
+          # Try the requested invocation, fall back to pub global run if needed
+          dart a11y linter || dart pub global run a11y linter
+
 
       - name: Run Flutter tests
         run: flutter test
