@@ -32,6 +32,9 @@ jobs:
       - name: Run tests
         run: dart test
 
+      - name: Run FAQL tests (explicit)
+        run: dart test test/faql
+
       - name: Check test coverage
         run: |
           dart pub global activate coverage
