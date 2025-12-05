@@ -53,7 +53,8 @@ void main(List<String> args) async {
 
   if (positional.isEmpty) {
     print('Usage: a11y [--fail-on-warnings] <path_to_analyze>');
-    print('  Analyzes Flutter files for accessibility issues using semantic IR.');
+    print(
+        '  Analyzes Flutter files for accessibility issues using semantic IR.');
     print('');
     print('Examples:');
     print('  a11y lib/main.dart');

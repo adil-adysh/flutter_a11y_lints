@@ -258,11 +258,16 @@ void main() {
       bool foundAll = false;
 
       void walk(FaqlExpression e) {
-        if (e is RelationLengthExpression && e.relation == 'children') foundLength = true;
-        if (e is AggregatorExpression && e.aggregator == 'none' && e.relation == 'siblings') {
+        if (e is RelationLengthExpression && e.relation == 'children')
+          foundLength = true;
+        if (e is AggregatorExpression &&
+            e.aggregator == 'none' &&
+            e.relation == 'siblings') {
           foundNone = true;
         }
-        if (e is AggregatorExpression && e.aggregator == 'all' && e.relation == 'ancestors') {
+        if (e is AggregatorExpression &&
+            e.aggregator == 'all' &&
+            e.relation == 'ancestors') {
           foundAll = true;
         }
         if (e is UnaryExpression) walk(e.expr);

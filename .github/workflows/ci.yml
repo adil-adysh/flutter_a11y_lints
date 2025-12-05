@@ -65,7 +65,6 @@ jobs:
       - name: Analyze test app with plugin
         working-directory: a11y_test_app
         run: flutter analyze
-
   publish-dry-run:
     name: Publish Dry Run
     runs-on: ubuntu-latest

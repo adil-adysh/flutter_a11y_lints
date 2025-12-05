@@ -15,13 +15,16 @@ void main() {
   group('Interpreter string behavior', () {
     test('contains with null left operand returns false', () {
       final node = TestContext(role: 'text');
-      const rule = 'rule "c" on any { ensure: prop("label") contains "foo" report: "" }';
+      const rule =
+          'rule "c" on any { ensure: prop("label") contains "foo" report: "" }';
       expect(run(rule, node), isFalse);
     });
 
-    test('next_focus/prev_focus relations default to empty and length == 0', () {
+    test('next_focus/prev_focus relations default to empty and length == 0',
+        () {
       final node = TestContext(role: 'x');
-      const rule = 'rule "r" on any { ensure: next_focus.length == 0 report: "" }';
+      const rule =
+          'rule "r" on any { ensure: next_focus.length == 0 report: "" }';
       expect(run(rule, node), isTrue);
     });
 
@@ -33,21 +36,25 @@ void main() {
 
     test('matches honors anchors and is case-sensitive by default', () {
       final node = TestContext(role: 'text', props: {'label': 'Save'});
-      final rule1 = r'rule "r1" on any { ensure: prop("label") matches "^Save$" report: "" }';
-      final rule2 = r'rule "r2" on any { ensure: prop("label") matches "^save$" report: "" }';
+      final rule1 =
+          r'rule "r1" on any { ensure: prop("label") matches "^Save$" report: "" }';
+      final rule2 =
+          r'rule "r2" on any { ensure: prop("label") matches "^save$" report: "" }';
       expect(run(rule1, node), isTrue);
       expect(run(rule2, node), isFalse);
     });
 
     test('matches supports inline (?i) flag for case-insensitive pattern', () {
       final node = TestContext(role: 'text', props: {'label': 'save'});
-      const rule = r'rule "r" on any { ensure: prop("label") matches "(?i)^Save$" report: "" }';
+      const rule =
+          r'rule "r" on any { ensure: prop("label") matches "(?i)^Save$" report: "" }';
       expect(run(rule, node), isTrue);
     });
 
     test('invalid regex in matches returns false and does not throw', () {
       final node = TestContext(role: 'text', props: {'label': 'abc'});
-      const rule = 'rule "r" on any { ensure: prop("label") matches "[unclosed" report: "" }';
+      const rule =
+          'rule "r" on any { ensure: prop("label") matches "[unclosed" report: "" }';
       expect(run(rule, node), isFalse);
     });
   });

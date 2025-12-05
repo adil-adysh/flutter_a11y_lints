@@ -14,10 +14,12 @@ void main() {
 
   group('Interpreter casting and numeric coercion', () {
     test('Prop casting: as int/string/bool behavior', () {
-      final node = TestContext(role: 'x', props: {'size': '15', 'flag': true, 'name': 123});
+      final node = TestContext(
+          role: 'x', props: {'size': '15', 'flag': true, 'name': 123});
       const ruleSize =
           'rule "s" on any { ensure: prop("size") as int > 10 report: "" }';
-      const ruleFlag = 'rule "f" on any { ensure: prop("flag") as bool report: "" }';
+      const ruleFlag =
+          'rule "f" on any { ensure: prop("flag") as bool report: "" }';
       const ruleName =
           'rule "n" on any { ensure: prop("name") as string == "123" report: "" }';
 
@@ -47,32 +49,40 @@ void main() {
 
     test('as bool from string true/false', () {
       final node = TestContext(role: 'x', props: {'f': 'true'});
-      const rule = 'rule "r" on any { ensure: (prop("f") as bool) == true report: "" }';
+      const rule =
+          'rule "r" on any { ensure: (prop("f") as bool) == true report: "" }';
       expect(run(rule, node), isTrue);
     });
 
     test('as int from non-numeric returns null and comparison false', () {
       final node = TestContext(role: 'x', props: {'n': 'NaN'});
-      const rule = 'rule "r" on any { ensure: (prop("n") as int) > 0 report: "" }';
+      const rule =
+          'rule "r" on any { ensure: (prop("n") as int) > 0 report: "" }';
       expect(run(rule, node), isFalse);
     });
 
     test('invalid cast returns null and comparison is false', () {
       final node = TestContext(role: 'x', props: {'size': 'NaN'});
-      const rule = 'rule "r" on any { ensure: prop("size") as int > 5 report: "" }';
+      const rule =
+          'rule "r" on any { ensure: prop("size") as int > 5 report: "" }';
       expect(run(rule, node), isFalse);
     });
 
-    test('unresolved identifier evaluates as null (not the identifier name)', () {
-      final rule = parser.parseRule('rule "r" on any { ensure: prop("color") == red report: "r" }');
-      final ctx = TestContext(role: 'button', widgetType: 'Button', props: {'color': 'blue'});
+    test('unresolved identifier evaluates as null (not the identifier name)',
+        () {
+      final rule = parser.parseRule(
+          'rule "r" on any { ensure: prop("color") == red report: "r" }');
+      final ctx = TestContext(
+          role: 'button', widgetType: 'Button', props: {'color': 'blue'});
       final result = interpreter.evaluate(rule, ctx);
       expect(result, isFalse);
     });
 
     test('numeric coercion: string numeric property compares as number', () {
-      final rule = parser.parseRule('rule "s" on any { ensure: prop("size") > 5 report: "r" }');
-      final ctx = TestContext(role: 'x', widgetType: 'X', props: {'size': '10'});
+      final rule = parser.parseRule(
+          'rule "s" on any { ensure: prop("size") > 5 report: "r" }');
+      final ctx =
+          TestContext(role: 'x', widgetType: 'X', props: {'size': '10'});
       final result = interpreter.evaluate(rule, ctx);
       expect(result, isTrue);
     });

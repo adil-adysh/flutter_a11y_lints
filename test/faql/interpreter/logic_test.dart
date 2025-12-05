@@ -15,7 +15,8 @@ void main() {
   group('Interpreter logic', () {
     test('Basic property check (Slider divisions)', () {
       final validSlider = TestContext(role: 'slider', props: {'divisions': 5});
-      final invalidSlider = TestContext(role: 'slider', props: {'divisions': 20});
+      final invalidSlider =
+          TestContext(role: 'slider', props: {'divisions': 20});
       const rule =
           'rule "r" on any { ensure: prop("divisions") as int <= 10 report: "err" }';
 
@@ -24,8 +25,10 @@ void main() {
     });
 
     test('Boolean state (Focusable)', () {
-      final focusableNode = TestContext(role: 'button', props: {'focusable': true});
-      final nonFocusableNode = TestContext(role: 'image', props: {'focusable': false});
+      final focusableNode =
+          TestContext(role: 'button', props: {'focusable': true});
+      final nonFocusableNode =
+          TestContext(role: 'image', props: {'focusable': false});
       const rule = 'rule "r" on any { ensure: focusable report: "err" }';
 
       expect(run(rule, focusableNode), isTrue);
@@ -33,7 +36,8 @@ void main() {
     });
 
     test('Complex Logic (&&, ||, parens)', () {
-      final node = TestContext(role: 'switch', props: {'enabled': true, 'toggled': false});
+      final node = TestContext(
+          role: 'switch', props: {'enabled': true, 'toggled': false});
       const rule = '''
         rule "logic" on any {
           ensure: (enabled && !toggled) || hidden
@@ -80,7 +84,8 @@ void main() {
       expect(run(rule, node), isTrue);
     });
 
-    test('prop(...).is_resolved inside ensure short-circuits inner prop usage', () {
+    test('prop(...).is_resolved inside ensure short-circuits inner prop usage',
+        () {
       final node = TestContext(role: 'x');
       const rule =
           'rule "r" on any { ensure: prop("label").is_resolved && prop("label") contains "x" report: "" }';
@@ -89,8 +94,10 @@ void main() {
 
     test('Short-circuit: RHS not evaluated for &&/||', () {
       final node = CountingContext('x');
-      const ruleAnd = 'rule "s" on any { ensure: false && prop("x") == 1 report: "" }';
-      const ruleOr = 'rule "s2" on any { ensure: 1 == 1 || prop("x") report: "" }';
+      const ruleAnd =
+          'rule "s" on any { ensure: false && prop("x") == 1 report: "" }';
+      const ruleOr =
+          'rule "s2" on any { ensure: 1 == 1 || prop("x") report: "" }';
 
       expect(run(ruleAnd, node), isFalse);
       expect(run(ruleOr, node), isTrue);
