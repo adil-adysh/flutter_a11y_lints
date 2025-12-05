@@ -19,9 +19,8 @@ void main() {
       'rules',
     ));
     final specs = await FaqlRuleRunner.loadFromDirectory(rulesDir);
-    final filtered = specs
-        .where((s) => s.code == 'a21_use_iconbutton_tooltip')
-        .toList();
+    final filtered =
+        specs.where((s) => s.code == 'a21_use_iconbutton_tooltip').toList();
     runner = FaqlRuleRunner(rules: filtered);
   });
 

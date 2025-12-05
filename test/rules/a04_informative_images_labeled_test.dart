@@ -18,9 +18,8 @@ void main() {
     ));
 
     final specs = await FaqlRuleRunner.loadFromDirectory(rulesDir);
-    final filtered = specs
-        .where((s) => s.code == 'a04_informative_images_labeled')
-        .toList();
+    final filtered =
+        specs.where((s) => s.code == 'a04_informative_images_labeled').toList();
     runner = FaqlRuleRunner(rules: filtered);
   });
 

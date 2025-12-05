@@ -31,8 +31,10 @@ void main() {
         isEnabled: true,
         hasTap: true,
         children: [
-          makeSemanticNode(label: 'Add', labelGuarantee: LabelGuarantee.hasStaticLabel),
-          makeSemanticNode(label: 'Item', labelGuarantee: LabelGuarantee.hasStaticLabel),
+          makeSemanticNode(
+              label: 'Add', labelGuarantee: LabelGuarantee.hasStaticLabel),
+          makeSemanticNode(
+              label: 'Item', labelGuarantee: LabelGuarantee.hasStaticLabel),
         ],
       );
       final tree = buildManualTree(root);
@@ -48,8 +50,10 @@ void main() {
         hasTap: true,
         mergesDescendants: true,
         children: [
-          makeSemanticNode(label: 'Add', labelGuarantee: LabelGuarantee.hasStaticLabel),
-          makeSemanticNode(label: 'Item', labelGuarantee: LabelGuarantee.hasStaticLabel),
+          makeSemanticNode(
+              label: 'Add', labelGuarantee: LabelGuarantee.hasStaticLabel),
+          makeSemanticNode(
+              label: 'Item', labelGuarantee: LabelGuarantee.hasStaticLabel),
         ],
       );
       final tree = buildManualTree(root);
@@ -64,7 +68,8 @@ void main() {
         isEnabled: true,
         hasTap: true,
         children: [
-          makeSemanticNode(label: 'Add', labelGuarantee: LabelGuarantee.hasStaticLabel),
+          makeSemanticNode(
+              label: 'Add', labelGuarantee: LabelGuarantee.hasStaticLabel),
           makeSemanticNode(labelGuarantee: LabelGuarantee.none),
         ],
       );
@@ -80,8 +85,10 @@ void main() {
         isEnabled: true,
         hasTap: false,
         children: [
-          makeSemanticNode(label: 'Add', labelGuarantee: LabelGuarantee.hasStaticLabel),
-          makeSemanticNode(label: 'Item', labelGuarantee: LabelGuarantee.hasStaticLabel),
+          makeSemanticNode(
+              label: 'Add', labelGuarantee: LabelGuarantee.hasStaticLabel),
+          makeSemanticNode(
+              label: 'Item', labelGuarantee: LabelGuarantee.hasStaticLabel),
         ],
       );
       final tree = buildManualTree(root);

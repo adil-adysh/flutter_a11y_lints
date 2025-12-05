@@ -18,14 +18,14 @@ void main() {
       'rules',
     ));
     final specs = await FaqlRuleRunner.loadFromDirectory(rulesDir);
-    final filtered = specs
-        .where((s) => s.code == 'a07_replace_semantics_cleanly')
-        .toList();
+    final filtered =
+        specs.where((s) => s.code == 'a07_replace_semantics_cleanly').toList();
     runner = FaqlRuleRunner(rules: filtered);
   });
 
   group('A07 - replace semantics cleanly (FAQL)', () {
-    test('flags Semantics with custom label not excluding labeled children', () {
+    test('flags Semantics with custom label not excluding labeled children',
+        () {
       final root = makeSemanticNode(
         widgetType: 'Semantics',
         label: 'Complete action',
