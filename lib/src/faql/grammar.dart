@@ -312,8 +312,9 @@ class FaqlGrammar extends GrammarDefinition {
       .flatten()
       .map((s) => BooleanStateExpression(s.toString().trim()));
 
-  Parser<String> functionCallArgs() =>
-      (token(char('(')) & (ref0(identifier) | ref0(stringLiteral)) & token(char(')')))
+  Parser<String> functionCallArgs() => (token(char('(')) &
+              (ref0(identifier) | ref0(stringLiteral)) &
+              token(char(')')))
           .map((v) {
         final arg = v[1];
         if (arg is String) return arg;
@@ -333,16 +334,17 @@ class FaqlGrammar extends GrammarDefinition {
   // identifier[.is_resolved] shorthand for prop("identifier").is_resolved
   Parser<FaqlExpression> identifierPropAccess() =>
       (ref0(identifier) & ref0(castOperation).optional()).map((v) {
-    final name = v[0] as String;
-    String? asType;
-    bool? isResolved;
-    final cast = v[1];
-    if (cast != null) {
-      if (cast is String && cast == '.is_resolved') isResolved = true;
-      else if (cast is List && cast.length >= 2) asType = cast[1] as String;
-    }
-    return PropExpression(name, asType: asType, isResolved: isResolved);
-  });
+        final name = v[0] as String;
+        String? asType;
+        bool? isResolved;
+        final cast = v[1];
+        if (cast != null) {
+          if (cast is String && cast == '.is_resolved')
+            isResolved = true;
+          else if (cast is List && cast.length >= 2) asType = cast[1] as String;
+        }
+        return PropExpression(name, asType: asType, isResolved: isResolved);
+      });
 
   // Bare identifiers produce an Identifier AST node.
   Parser<FaqlExpression> identifierExpr() =>

@@ -19,8 +19,10 @@ void main(List<String> args) {
     if (m != null) {
       final pos = int.tryParse(m.group(1)!) ?? -1;
       if (pos >= 0) {
-        final before = content.substring((pos - 10).clamp(0, content.length), pos);
-        final after = content.substring(pos, (pos + 10).clamp(0, content.length));
+        final before =
+            content.substring((pos - 10).clamp(0, content.length), pos);
+        final after =
+            content.substring(pos, (pos + 10).clamp(0, content.length));
         print('Around position $pos: <<${before}>>|<<${after}>>');
       }
     }
