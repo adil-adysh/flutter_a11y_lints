@@ -16,7 +16,6 @@ import 'package:flutter_a11y_lints/src/pipeline/semantic_ir_builder.dart';
 import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
 import 'package:flutter_a11y_lints/src/utils/flutter_utils.dart';
 import 'package:flutter_a11y_lints/src/utils/method_utils.dart';
-import 'package:flutter_a11y_lints/rules/a01_unlabeled_interactive.dart';
 import 'package:flutter_a11y_lints/rules/faql_rule_catalog.dart';
 import 'package:flutter_a11y_lints/rules/faql_rule_runner.dart';
 import 'package:flutter_a11y_lints/src/faql/parser.dart';
@@ -45,11 +44,7 @@ void main(List<String> args) async {
         defaultsTo: '**/*.g.dart,**/*.freezed.dart')
 
     // Rule Selection
-    ..addFlag('faql-only',
-        defaultsTo: false,
-        help: 'Run only FAQL rules (skip legacy Dart rules).')
-    ..addFlag('dart-only',
-        defaultsTo: false, help: 'Run only legacy Dart rules (skip FAQL).')
+    // (Legacy Dart-rule engine removed; FAQL is the single rule engine.)
     ..addOption('rules-dir', help: 'Directory containing custom .faql rules.')
 
     // Reporting
@@ -170,8 +165,6 @@ void main(List<String> args) async {
     faqlRunner: activeRules.isNotEmpty
         ? FaqlRuleRunner(rules: activeRules.values.toList())
         : null,
-    runDartRules: !(argResults['faql-only'] as bool),
-    runFaqlRules: !(argResults['dart-only'] as bool),
     verbose: verbose,
     excludes: excludes, // Pass excludes to analyzer
   );
@@ -206,15 +199,11 @@ void main(List<String> args) async {
 class FlutterA11yAnalyzer {
   final KnownSemanticsRepository _knownSemantics = KnownSemanticsRepository();
   final FaqlRuleRunner? faqlRunner;
-  final bool runDartRules;
-  final bool runFaqlRules;
   final bool verbose;
   final List<Glob> excludes;
 
   FlutterA11yAnalyzer({
     this.faqlRunner,
-    this.runDartRules = true,
-    this.runFaqlRules = true,
     this.verbose = false,
     this.excludes = const [],
   });
@@ -295,22 +284,8 @@ class FlutterA11yAnalyzer {
       final tree = irBuilder.buildForExpression(expression);
       if (tree == null) continue;
 
-      // 1. Legacy Dart Rules
-      if (runDartRules) {
-        final violations = A01UnlabeledInteractive.checkTree(tree);
-        for (final v in violations) {
-          issues.add(_mapViolation(
-              unit,
-              v.node.astNode.offset,
-              'warning',
-              A01UnlabeledInteractive.code,
-              A01UnlabeledInteractive.message,
-              A01UnlabeledInteractive.correctionMessage));
-        }
-      }
-
-      // 2. FAQL Rules
-      if (runFaqlRules && faqlRunner != null) {
+      // FAQL Rules
+      if (faqlRunner != null) {
         final violations = faqlRunner!.run(tree);
         for (final v in violations) {
           issues.add(_mapViolation(unit, v.node.astNode.offset, v.spec.severity,

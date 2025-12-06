@@ -100,6 +100,8 @@ class FaqlGrammar extends GrammarDefinition {
     builder.primitive(ref0(propAccess));
     builder.primitive(ref0(booleanState));
     builder.primitive(ref0(literal));
+    // support `identifier.is_resolved` shorthand for prop("identifier").is_resolved
+    builder.primitive(ref0(identifierPropAccess));
     // allow bare identifiers in expressions (e.g., `role == "button")`
     builder.primitive(ref0(identifierExpr));
 
@@ -311,8 +313,12 @@ class FaqlGrammar extends GrammarDefinition {
       .map((s) => BooleanStateExpression(s.toString().trim()));
 
   Parser<String> functionCallArgs() =>
-      (token(char('(')) & ref0(identifier) & token(char(')')))
-          .map((v) => v[1] as String);
+      (token(char('(')) & (ref0(identifier) | ref0(stringLiteral)) & token(char(')')))
+          .map((v) {
+        final arg = v[1];
+        if (arg is String) return arg;
+        return arg.toString();
+      });
 
   Parser<FaqlExpression> literal() {
     final p1 = ref0(stringLiteral).map((s) => LiteralExpression(s.toString()));
@@ -323,6 +329,20 @@ class FaqlGrammar extends GrammarDefinition {
     final p4 = token(string('null')).map((_) => LiteralExpression(null));
     return (p1 | p2 | p3 | p4).map((v) => v as FaqlExpression);
   }
+
+  // identifier[.is_resolved] shorthand for prop("identifier").is_resolved
+  Parser<FaqlExpression> identifierPropAccess() =>
+      (ref0(identifier) & ref0(castOperation).optional()).map((v) {
+    final name = v[0] as String;
+    String? asType;
+    bool? isResolved;
+    final cast = v[1];
+    if (cast != null) {
+      if (cast is String && cast == '.is_resolved') isResolved = true;
+      else if (cast is List && cast.length >= 2) asType = cast[1] as String;
+    }
+    return PropExpression(name, asType: asType, isResolved: isResolved);
+  });
 
   // Bare identifiers produce an Identifier AST node.
   Parser<FaqlExpression> identifierExpr() =>

@@ -1,27 +1,24 @@
-
 # FAQL Language Specification
 
-**Version:** 3.0 (Candidate)
-**Status:** Draft / Implementation Ready
-**Last Updated:** December 05, 2025
+**Last Updated:** December 06, 2025
 
 ## 1\. Introduction
 
-FAQL (Flutter Accessibility Query Language) is a domain-specific language designed to enforce accessibility standards on the Flutter `SemanticsNode` tree. It operates on a static Intermediate Representation (IR) of the code, enabling accessibility compliance checks without requiring a runtime environment.
+FAQL (Flutter Accessibility Query Language) is a domain-specific language designed to enforce accessibility standards on the Flutter `SemanticsNode` tree. It operates on a static Intermediate Representation (IR), bridging the gap between the runtime **Accessibility Tree** and the static **Widget Source Code**.
 
 ### 1.1 Execution Pipeline
 
 Every rule follows a strict three-phase evaluation process:
 
-1.  **Selection (Scope):** The runtime identifies if a node matches the `on <selector>` criteria.
-2.  **Filtering (Guard):** The `when:` clause is evaluated. If it evaluates to `false`, the rule is short-circuited (skipped).
-3.  **Assertion (Compliance):** The `ensure:` clause is evaluated. If it evaluates to `false`, a violation is reported.
+1. **Selection (Scope):** The runtime identifies if a node matches the `on <selector>` criteria.
+2. **Filtering (Guard):** The `when:` clause is evaluated. If it evaluates to `false`, the rule is short-circuited (skipped).
+3. **Assertion (Compliance):** The `ensure:` clause is evaluated. If it evaluates to `false`, a violation is reported.
 
 -----
 
 ## 2\. Type System
 
-FAQL is strongly typed with explicit casting from the untyped AST.
+FAQL is strongly typed. It explicitly distinguishes between the **Semantics Context** (`this`) and the **Source Context** (`widget`).
 
 ### 2.1 Primitive Types
 
@@ -30,20 +27,18 @@ FAQL is strongly typed with explicit casting from the untyped AST.
 | `String` | UTF-16 character sequence. | Yes |
 | `Int` | 64-bit signed integer. | Yes |
 | `Bool` | Boolean value (`true` / `false`). | Yes |
-| `Node` | A reference to a `SemanticsNode` (the context `this`). | No |
+| `Node` | A reference to a `SemanticsNode`. | No |
 | `NodeList` | An ordered collection of Nodes (e.g., `children`). | No (Empty list) |
 
 ### 2.2 Null Handling (Safe Navigation)
 
-FAQL implements "Safe Failure" semantics to prevent runtime crashes during static analysis:
+FAQL implements "Safe Failure" semantics. The compiler never crashes on missing data.
 
-  * **Prop Access:** Accessing a missing property returns `null`.
-  * **Casting:** Casting `null` to any type returns `null`.
-  * **Comparison:**
-      * `null == null` $\rightarrow$ `true`
-      * `null == <value>` $\rightarrow$ `false`
-      * Relational ops (`>`, `<`, etc.) with `null` always evaluate to `false`.
-  * **Boolean Logic:** `null` in a condition (e.g., `if (null)`) evaluates to `false`.
+* **Access:** Accessing a missing property or index returns `null` (SafeValue).
+* **Comparisons:**
+  * `null == null` $\rightarrow$ `true`
+  * `null == <value>` $\rightarrow$ `false`
+  * `if (null)` $\rightarrow$ evaluates to `false` (Rule skip or failure).
 
 -----
 
@@ -54,34 +49,58 @@ The syntax is LL(1) compatible.
 ```ebnf
 rule_unit     ::= 'rule' string_literal 'on' selector '{' body '}'
 
+/* 1. Selectors */
 selector      ::= term ('||' term)*
 term          ::= 'any' 
-                | 'role' '(' identifier ')' 
+                | 'role' '(' enum_ref ')' 
                 | 'type' '(' identifier ')' 
-                | 'kind' '(' identifier ')'
+                | 'kind' '(' enum_ref ')'
 
+enum_ref      ::= identifier '.' identifier   // e.g., Role.button
+
+/* 2. Body Structure */
 body          ::= meta? when? ensure report
 meta          ::= 'meta' '{' (identifier ':' string_literal)* '}'
 when          ::= 'when:' expression
 ensure        ::= 'ensure:' expression
 report        ::= 'report:' string_literal
 
+/* 3. Expressions & Logic */
 expression    ::= logical_or
 logical_or    ::= logical_and ('||' logical_and)*
 logical_and   ::= equality ('&&' equality)*
-equality      ::= relational (('==' | '!=' | '~=') relational)*
+
+/* 4. String Fluent Matching */
+equality      ::= relational (('==' | '!=' ) relational)*
+                | string_expr '.' 'matches' '(' string_literal ')'
+
+/* 5. Relational & Primitives */
 relational    ::= additive (('<' | '>' | '<=' | '>=') additive)*
 additive      ::= primitive
+state_check   ::= primitive 'is' 'defined'  // The "is defined" Check
 
 primitive     ::= '(' expression ')'
                 | traversal
-                | prop_access
+                | index_access
+                | widget_access
                 | literal
-                | identifier (Context State)
+                | identifier        // Implicit 'this' property
+                | 'this'            // Explicit 'this' reference
 
+/* 6. Traversal, Indexing, & Source Access */
 traversal     ::= relation '.' ('length' | aggregator '(' expression ')')
-prop_access   ::= 'prop' '(' string_literal ')' cast?
-cast          ::= 'as' ('string' | 'int' | 'bool') | '.is_resolved'
+                | 'closest' '(' selector ')'
+                | 'this' '.' relation // Explicit navigation
+
+index_access  ::= identifier '[' integer ']'
+
+// Source Code Access
+widget_access ::= 'widget' '<' type_param '>' '(' string_literal ')'
+
+relation      ::= 'children' | 'descendants' | 'ancestors' | 'siblings' 
+                | 'parent'   | 'firstChild'  | 'lastChild' | 'onlyChild'
+
+type_param    ::= 'int' | 'string' | 'bool'
 ```
 
 -----
@@ -90,130 +109,138 @@ cast          ::= 'as' ('string' | 'int' | 'bool') | '.is_resolved'
 
 ### 4.1 Selectors
 
-Selectors define the scope of the rule.
+Selectors define the scope using strict Enum references.
 
-  * `on any`: Matches all nodes.
-  * `on role(id)`: Matches `SemanticsFlag` (e.g., `button`, `textField`).
-  * `on type(id)`: Matches the Widget class name (e.g., `InkWell`).
-  * `on kind(id)`: Matches a macro group of roles.
-      * *Implementation Note:* The compiler must maintain a lookup table for kinds (e.g., `kind(input)` $\rightarrow$ `textField || slider || switch`).
+* `on role(Role.button)`: Matches semantic roles.
+* `on type(InkWell)`: Matches the specific Widget class name.
+* `on kind(Kind.input)`: Matches a macro group (e.g., text fields, sliders).
 
 ### 4.2 Context State (Variables)
 
-These keywords resolve to boolean properties of the current `Node` (`this`).
+These keywords resolve to properties of the current Semantics Node (`this`).
 
-| Keyword | Mapping |
-| :--- | :--- |
-| `focusable` | `isFocusable` |
-| `enabled` | `isEnabled` |
-| `checked` | `isChecked` |
-| `toggled` | `isToggled` |
-| `hidden` | `isHidden` |
-| `merges_descendants` | `isMergingSemanticsOfDescendants` |
-| `has_tap` | `onTap != null` |
-| `has_long_press` | `onLongPress != null` |
-
------
-
-## 5\. Tree Traversal
-
-### 5.1 Relations
-
-Relations return a `NodeList` representing graph edges.
-
-  * `children`: Immediate structural descendants.
-  * `siblings`: Nodes sharing the same parent (excluding `this`).
-  * `ancestors`: Path from parent up to root.
-  * `next_focus`: The next node in linear traversal order.
-  * `prev_focus`: The previous node in linear traversal order.
-
-### 5.2 Aggregators
-
-Aggregators operate on a `NodeList`.
-
-  * `.any(expression)`: Returns `true` if *at least one* node satisfies the expression.
-  * `.all(expression)`: Returns `true` if *all* nodes satisfy the expression.
-  * `.none(expression)`: Returns `true` if *zero* nodes satisfy the expression.
-  * `.length`: Returns the count of nodes as an `Int`.
+| Keyword | Type | Mapping |
+| :--- | :--- | :--- |
+| `focusable` | `Bool` | `this.isFocusable` |
+| `enabled` | `Bool` | `this.isEnabled` |
+| `checked` | `Bool` | `this.isChecked` |
+| `toggled` | `Bool` | `this.isToggled` |
+| `hidden` | `Bool` | `this.isHidden` |
+| `label` | `String` | `this.semanticsLabel` |
+| `hint` | `String` | `this.semanticsHint` |
+| `value` | `String` | `this.semanticsValue` |
 
 -----
 
-## 6\. Operators
+## 5\. Tree Traversal & Relations
 
-### 6.1 Operator Precedence
+Relations allow navigation through the **Semantics Graph**.
 
-(Highest to Lowest)
+| Relation | Type | Description |
+| :--- | :--- | :--- |
+| **Singular** | | |
+| `parent` | `Node?` | The immediate semantic container. |
+| `firstChild` | `Node?` | Alias for `children[0]`. |
+| `lastChild` | `Node?` | Alias for `children[last]`. |
+| `onlyChild` | `Node?` | Returns node **iff** count is exactly 1. |
+| `closest(sel)`| `Node?` | Finds first ancestor matching the selector. |
+| **Collections** | | |
+| `children` | `List` | Immediate direct items (Depth 1). |
+| `descendants`| `List` | **Recursive** subtree items (Depth N). |
+| `ancestors` | `List` | Path from parent to root. |
+| `siblings` | `List` | Nodes sharing the same parent. |
 
-1.  `()` Grouping, `.` Access, `prop()`
-2.  `!` Not, `-` Negation
-3.  `*`, `/`
-4.  `+`, `-`
-5.  `<`, `<=`, `>`, `>=`
-6.  `==`, `!=`, `~=`
-7.  `&&`
-8.  `||`
+### 5.2 Aggregators & Scoping
 
-### 6.2 Comparison Operators
+Aggregators operate on lists. Loops use an **explicit scope variable `it`**.
 
-  * `==` / `!=`: Strict equality.
-  * `~=`: **Loose Match**.
-      * If operands are strings: Case-insensitive, trimmed equality check.
-      * Otherwise: Returns `false`.
+* `.any( it.role == ... )`
+* `.all( it.enabled )`
+* `.none( ... )`
+* `.filter( ... )`
 
 -----
 
-## 7\. AST Property Access
+## 6\. Context Resolution: Semantics vs. Source
 
-The `prop` function bridges the gap between the Semantic Tree and the raw Widget AST.
+FAQL provides two distinct keywords to handle the separation between the Accessibility Tree (Result) and the Widget Tree (Source).
 
-### 7.1 Syntax
+### 6.1 The Semantic Context (`this`)
 
-`prop("parameterName")`
+* **Target:** The `SemanticsNode` (Runtime/Graph representation).
+* **Usage:** Used to check relationships, computed labels, and accessibility roles.
+* **Implicit:** The keyword `this` is optional.
+  * `ensure: label == "Go"` is equivalent to `ensure: this.label == "Go"`.
 
-### 7.2 Resolution & Casting
+### 6.2 The Source Context (`widget`)
 
-Since the AST is untyped at this level, explicit casting is required.
+* **Target:** The Widget AST (Source Code representation).
+* **Usage:** Used to check hardcoded configuration parameters.
+* **Syntax:** `widget<Type>("paramName")`
 
-  * **Resolution Check:** `.is_resolved` returns `true` if the value is a static constant.
-  * **Casting:** `as string`, `as int`, `as bool`.
+### 6.3 Static Definition Check (`is defined`)
 
-### Example
+The `is defined` operator is a special postfix operator designed for static analysis. It distinguishes between a value that is **explicitly set in code** versus a value that is **default/null**.
 
-```kotlin
-// Check if 'divisions' is set to 5
-when: prop("divisions").is_resolved
-ensure: prop("divisions") as int == 5
-```
+* **Syntax:** `<expression> is defined`
+* **Returns:** `Bool` (`true` if the AST contains an explicit assignment, `false` otherwise).
+
+**Truth Table:**
+
+| Code Example | Expression | Result |
+| :--- | :--- | :--- |
+| `Slider(min: 0)` | `widget<int>("min") is defined` | **`true`** |
+| `Slider(min: 0)` | `widget<int>("max") is defined` | **`false`** |
+| `Slider(min: null)` | `widget<int>("min") is defined` | **`true`** (It is defined as null) |
+| `Slider(/* empty */)` | `widget<int>("min") is defined` | **`false`** |
+
+**Why this is needed:**
+In accessibility testing, we often need to know if the developer *forgot* to set a label (undefined), or if they deliberately set it to empty (defined but empty). `is defined` captures this intent.
+
+-----
+
+## 7\. Operators & Precedence
+
+1. `widget<>()`, `[]` (Indexing), `()` (Grouping)
+2. `.` (Dot Access)
+3. `.matches()` (String Fluent Match)
+4. `*`, `/`
+5. `+`, `-`
+6. `<`, `<=`, `>`, `>=`
+7. `is defined` (State Check)
+8. `==`, `!=`
+9. `&&`
+10. `||`
 
 -----
 
 ## 8\. Examples
 
-### 8.1 Basic Attribute Check
+### 8.1 Usage of `is defined`
 
 ```kotlin
-rule "button-label" on role(button) {
-    meta { severity: "error" }
-    ensure: is_not_empty
-    report: "Buttons must have a semantic label."
+rule "explicit-semantic-label" on role(Role.button) {
+    // We only want to check buttons where the developer TRIED to add a label
+    // If they didn't define it at all, a different rule handles that.
+    
+    when: widget<string>("semanticsLabel") is defined
+
+    ensure: label.matches("Submit")
+    report: "If you define a label manually, it must match the standard 'Submit'."
 }
 ```
 
-### 8.2 Complex Traversal
+### 8.2 Explicit `this` vs `widget`
 
 ```kotlin
-rule "no-nested-interactables" on role(button) {
-    // Ensure no ancestor is also a button
-    ensure: ancestors.none( role == "button" )
-    report: "Interactive elements cannot be nested."
-}
-```
+rule "custom-button-config" on type(MyCustomButton) {
+    // Check Source: Did the dev set the danger flag in code?
+    when: widget<bool>("isDangerous") == true
 
-### 8.3 List Validation
+    // Check Semantics: Does the node reflect that danger?
+    ensure: this.label.matches("Delete") 
+         || this.hint.matches("Irreversible")
 
-```kotlin
-rule "bottom-nav-items" on type(BottomNavigationBar) {
-    ensure: children.length >= 2 && children.length <= 5
-    report: "Bottom Navigation must have between 2 and 5 items."
+    report: "Dangerous buttons must have clear warning labels."
 }
 ```

@@ -29,6 +29,14 @@ Then run:
 dart pub get
 ```
 
+## Changelog (recent highlights)
+
+- **v0.6.0 — FAQL Integration Release**: The project integrates the FAQL engine, migrated many rules to `.faql` format, added multi-rule support, and improved CLI features (`--fail-on-warnings`, `--reporter`, `--rules-dir`, `--list-rules`, `--validate-faql`, and `--init`).
+- **v0.5.0 — Foundation Release**: Introduced the FAQL specification, parser & interpreter, and reorganized tests to support the new language architecture.
+- **Earlier releases**: Added many accessibility rules (images, composite controls, minimum tap targets), improved semantic IR accuracy, and initial CLI `a11y` tool.
+
+For full historical details see `CHANGELOG.md`.
+
 ## Usage
 
 ### Command Line
@@ -279,29 +287,73 @@ dart test
 
 Note: Tests require proper Flutter package resolution, so they work best when testing against actual Flutter projects rather than isolated code snippets.
 
+
 ## Integration with CI/CD
 
-### GitHub Actions
+This repository includes a GitHub Actions workflow at `.github/workflows/ci.yml` (workflow name: `CI`). The workflow runs on `push` and `pull_request` events for the `main` and `develop` branches and contains three jobs:
 
-```yaml
-- name: Run Flutter A11y Analyzer
-  run: |
-    cd semantic_ir_linter
-    dart pub get
-    dart run bin/a11y.dart ../your_app/lib/
+- **analyze** — Runs on `ubuntu-latest` and performs:
+  - `dart pub get`
+  - `dart format --set-exit-if-changed` (format check)
+  - `dart analyze --fatal-infos`
+  - `dart test`
+  - coverage reporting via `coverage:test_with_coverage`
+- **test-with-flutter** — Boots Flutter on the runner and:
+  - `dart pub get` (plugin)
+  - `flutter pub get` inside the `a11y_test_app` test app
+  - `flutter analyze` in `a11y_test_app`
+- **publish-dry-run** — Runs `dart pub publish --dry-run` to validate package publishability.
+
+Run the same CI steps locally to reproduce checks before pushing. Example PowerShell commands (from the repo root):
+
+```powershell
+# Install dependencies
+dart pub get
+
+# 1) Formatting and analysis (analyze job)
+dart format --output=none --set-exit-if-changed .
+dart analyze --fatal-infos
+dart test
+
+# Optional: run coverage script (workflow uses a coverage helper)
+dart pub global activate coverage
+dart pub global run coverage:test_with_coverage
+
+# 2) Test with the bundled Flutter test app (requires Flutter SDK on PATH)
+pushd a11y_test_app
+flutter pub get
+flutter analyze
+popd
+
+# 3) Publish dry-run (optional)
+dart pub publish --dry-run
 ```
 
-### Pre-commit Hook
+Notes and tips:
+
+- The CI workflow runs on `ubuntu-latest`, so Linux-specific behavior may differ from Windows/macOS. Use the same Flutter and Dart SDK channel (stable) as the workflow to avoid discrepancies.
+- If you want a pre-commit hook that blocks commits when accessibility issues are found, you can wrap the analyzer command in a hook. Example (POSIX shell):
 
 ```bash
-#!/bin/bash
-cd semantic_ir_linter
+#!/bin/sh
+dart pub get
 dart run bin/a11y.dart ../your_app/lib/
 if [ $? -ne 0 ]; then
   echo "❌ Accessibility issues found. Please fix before committing."
   exit 1
 fi
 ```
+
+Or a simple PowerShell pre-commit script for developers on Windows (`.husky` or similar can invoke this):
+
+```powershell
+# pwsh pre-commit snippet
+dart pub get
+dart run bin/a11y.dart ../your_app/lib/
+if ($LASTEXITCODE -ne 0) { Write-Error 'Accessibility issues found'; exit $LASTEXITCODE }
+```
+
+For CI configuration changes, edit `.github/workflows/ci.yml`. The jobs are intentionally small and explicit so they can be reproduced locally.
 
 ## Comparison with custom_lint
 

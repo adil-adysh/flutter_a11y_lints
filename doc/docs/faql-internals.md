@@ -1,162 +1,356 @@
-# FAQL Implementation Guide (Internals)
+# FAQL v3.4 Implementation Guide
 
-**Target:** Compiler Engineers & Linter Maintainers
-**Scope:** Architecture, Interfaces, and Error Handling Strategy
+**Target System:** Dart / Flutter Analysis Server
+**Architecture:** Tree-Walking Interpreter (Visitor Pattern)
+**Dependencies:** `petitparser`, `yaml`
 
-## 1\. Architecture Overview
+## 1\. System Architecture
 
-The FAQL Linter operates as a decoupled module. It does not know about Flutter directly; instead, it talks to a generic abstraction layer (`FaqlContext`).
+The FAQL engine is a decoupled library. It does not import `package:flutter`. Instead, it relies on an Abstract Interface (`FaqlNode`) that the host application (the Linter) must implement.
 
 ```mermaid
-graph LR
-    A[FAQL Rule File] -- PetitParser --> B[Rule AST]
-    C[Flutter Code] -- Analyzer --> D[Semantic IR]
-    B -- Interpreter --> E{Compliance Check}
-    D -- Implements --> F[FaqlContext]
-    F -- Feeds --> E
-    E --> G[Linter Report]
+graph TD
+    Config[definitions.yaml] -->|Load| SymbolTable[Symbol Table]
+    RuleFile[rules.faql] -->|Parse| Parser[PetitParser]
+    SymbolTable -->|Validate Enums| Parser
+    Parser -->|Generate| AST[Rule AST]
+    
+    Flutter[Flutter Widget Tree] -->|Map| Bridge[Bridge Implementation]
+    Bridge -->|Implements| Interface[FaqlNode & SourceContext]
+    
+    AST -->|Visit| Interpreter[Interpreter / Visitor]
+    Interface -->|Provide Data| Interpreter
+    Interpreter -->|Result| Report[Violation Report]
 ```
-
-### 1.1 Components
-
-1.  **Grammar Definition (`grammar.dart`):** Defines the syntax rules using PetitParser.
-2.  **Parser Definition (`parser.dart`):** Converts the parse result into strong Dart objects (`FaqlRule`, `Selector`, `LogicNode`).
-3.  **Interpreter (`interpreter.dart`):** Traverses the Rule AST and calls methods on the `FaqlContext`.
-4.  **Context Bridge (`ir_bridge.dart`):** The implementation of `FaqlContext` that wraps your specific Semantic IR.
 
 -----
 
-## 2\. The Context Interface (The Contract)
+## 2\. The Data Layer (Configuration)
 
-To evaluate a rule, the Interpreter needs a standard way to ask questions about a node. This interface abstracts away the complexities of the Flutter Analyzer.
+FAQL v3.4 requires strict Enum validation. You must load valid roles and kinds from an external schema before parsing begins.
 
-**File:** `lib/src/faql/context.dart`
+**File:** `definitions.yaml`
+
+```yaml
+# Used to validate 'role(Role.button)'
+roles:
+  button: [SemanticsFlag.isButton]
+  toggle: [SemanticsFlag.isToggled]
+  textField: [SemanticsFlag.isTextField]
+  slider: [SemanticsFlag.isSlider]
+  header: [SemanticsFlag.isHeader]
+
+# Used to validate 'kind(Kind.input)'
+kinds:
+  input: [textField, slider, switch, checkbox]
+  action: [button, toggle, link]
+```
+
+**Class:** `SymbolTable`
 
 ```dart
-/// The bridge between the FAQL Interpreter and the Semantic IR.
-/// Implement this class to wrap your specific SemanticNode representation.
-abstract class FaqlContext {
-  // --- Identity ---
+class SymbolTable {
+  final Set<String> _validRoles = {};
+  final Map<String, List<String>> _kinds = {};
+
+  void load(String yamlContent) {
+    // Parse YAML and populate sets
+  }
+
+  bool isValidRole(String name) => _validRoles.contains(name);
+  bool isValidKind(String name) => _kinds.containsKey(name);
   
-  /// The generic role of this node (e.g., 'button', 'textField').
-  /// Mapped from SemanticsFlag or Widget Type.
+  /// Resolves a macro kind into a list of generic roles
+  List<String> resolveKind(String kindName) => _kinds[kindName] ?? [];
+}
+```
+
+-----
+
+## 3\. The Runtime Type System (`SafeValue`)
+
+FAQL uses a "Monad-like" wrapper to handle `null` safely (Safe Navigation) and provide distinct behavior for Lists vs Primitives.
+
+**File:** `src/runtime/safe_value.dart`
+
+```dart
+enum ValueType { string, int, bool, list, node, nullValue }
+
+class SafeValue<T> {
+  final T? _value;
+  final ValueType type;
+
+  SafeValue(this._value) : type = _determineType(T);
+  SafeValue.nullValue() : _value = null, type = ValueType.nullValue;
+
+  bool get isNull => type == ValueType.nullValue;
+
+  /// 1. Equality (Standard)
+  /// null == null -> True
+  /// null == "a"  -> False
+  bool equals(SafeValue other) {
+    if (this.isNull && other.isNull) return true;
+    if (this.isNull || other.isNull) return false;
+    return _value == other._value;
+  }
+
+  /// 2. String Matching (Fluent)
+  /// Implements: label.matches("text")
+  bool matches(String pattern) {
+    if (isNull || type != ValueType.string) return false;
+    final str = _value as String;
+    return str.trim().toLowerCase() == pattern.trim().toLowerCase();
+  }
+
+  /// 3. Indexing
+  /// Implements: ancestors[0] OR label[0]
+  SafeValue operator [](int index) {
+    if (isNull) return SafeValue.nullValue();
+    
+    if (type == ValueType.list) {
+      final list = _value as List;
+      if (index < 0 || index >= list.length) return SafeValue.nullValue();
+      return SafeValue(list[index]); // Return the Node/Item
+    }
+    
+    if (type == ValueType.string) {
+      final str = _value as String;
+      if (index < 0 || index >= str.length) return SafeValue.nullValue();
+      return SafeValue(str[index]); // Return 1-char String
+    }
+    
+    return SafeValue.nullValue();
+  }
+}
+```
+
+-----
+
+## 4\. The Bridge Interfaces (The Contract)
+
+This is the most critical part. Your Linter must implement these two interfaces to bridge the **Semantic Graph** and the **Widget AST**.
+
+**File:** `src/bridge/interfaces.dart`
+
+### 4.1 The Semantic Node (`this`)
+
+Used for Traversal and Computed Properties.
+
+```dart
+abstract class FaqlNode {
+  // --- Identity ---
+  /// The resolved role string (e.g., 'button').
   String get role;
   
-  /// The raw Dart class name of the originating Widget (e.g., 'InkWell').
-  String get widgetType;
-
-  // --- State Booleans ---
-  
+  // --- State Variables ---
   bool get isFocusable;
   bool get isEnabled;
+  bool get isChecked;
+  bool get isToggled;
   bool get isHidden;
-  bool get mergesDescendants;
   
-  /// True if the node has a tap handler (onTap is not null).
-  bool get hasTap;
-  bool get hasLongPress;
+  String? get label;
+  String? get hint;
+  String? get value;
 
-  // --- Graph Relations ---
+  // --- Graph Navigation ---
+  /// Immediate parent. Returns null if root.
+  FaqlNode? get parent;
   
-  /// Immediate children in the generic context wrapper.
-  List<FaqlContext> get children;
+  /// Immediate children (Depth 1).
+  List<FaqlNode> get children;
   
-  /// The path from the root down to the parent of this node.
-  List<FaqlContext> get ancestors;
+  /// Recursive flat list of all nodes below this one.
+  List<FaqlNode> get descendants;
   
-  /// Other children of the same parent (excluding self).
-  List<FaqlContext> get siblings;
+  /// Siblings (children of parent, excluding self).
+  List<FaqlNode> get siblings;
 
-  // --- AST Access ---
+  // --- Helpers (Can be default implemented) ---
+  FaqlNode? get firstChild => children.isNotEmpty ? children.first : null;
+  FaqlNode? get lastChild => children.isNotEmpty ? children.last : null;
+  FaqlNode? get onlyChild => children.length == 1 ? children.first : null;
 
-  /// Retrieves a named argument from the widget constructor AST.
-  /// Returns [null] if the property is missing or cannot be resolved.
-  ///
-  /// Example: prop("divisions") on Slider -> 5
-  Object? getProperty(String name);
-  
-  /// Returns true if the property exists and is statically resolvable.
-  bool isPropertyResolved(String name);
+  // --- Bridge to Source ---
+  /// Returns the Source Context for the widget that created this node.
+  SourceContext get source;
+}
+```
+
+### 4.2 The Source Context (`widget`)
+
+Used for AST Configuration Checks.
+
+```dart
+abstract class SourceContext {
+  /// Implements: widget<T>("name")
+  /// Must return SafeValue.nullValue() if the param is missing or wrong type.
+  SafeValue<T> getParameter<T>(String name);
+
+  /// Implements: ... is defined
+  /// Must return true ONLY if the parameter is explicitly present in the AST.
+  bool isParameterDefined(String name);
 }
 ```
 
 -----
 
-## 3\. Selector Mapping Strategy
+## 5\. Parser Strategy (PetitParser)
 
-The interpreter will match rules based on string identifiers. The implementation must map these strings to Flutter's internal types.
+You need to parse generic syntax `widget<int>` and method calls `.matches()`.
 
-### 3.1 Role Mapping
-
-When the rule says `on role(button)`, the bridge checks:
+**File:** `src/grammar/faql_grammar.dart`
 
 ```dart
-// Pseudo-code implementation in Bridge
-String get role {
-  if (flags.contains(SemanticsFlag.isButton)) return 'button';
-  if (flags.contains(SemanticsFlag.isTextField)) return 'textField';
-  if (flags.contains(SemanticsFlag.isHeader)) return 'header';
-  // ... default
-  return 'generic';
+// Snippet of the grammar definition
+class FaqlGrammar extends GrammarDefinition {
+  @override
+  Parser start() => ref0(ruleUnit).end();
+
+  // ... (Standard rules for rule_unit, body, etc) ...
+
+  // 1. Parsing 'widget<type>("name")'
+  Parser widgetAccess() =>
+      string('widget') &
+      char('<') & typeParam() & char('>') &
+      char('(') & stringLiteral() & char(')');
+
+  // 2. Parsing 'label.matches("text")'
+  Parser fluentMatch() =>
+      string('matches') & char('(') & stringLiteral() & char(')');
+
+  // 3. Parsing 'list[index]'
+  Parser indexAccess() =>
+      identifier() & char('[') & digit().plus() & char(']');
+      
+  // 4. Parsing 'role(Role.name)'
+  Parser roleSelector() =>
+      string('role') & char('(') & 
+      string('Role.') & identifier() & // Validate identifier against SymbolTable here if possible
+      char(')');
 }
 ```
 
-### 3.2 Kind Mapping (Macros)
+-----
 
-The `kind` selector is a macro. The generic implementation should handle this via a static lookup map to avoid hardcoding "kinds" into the grammar.
+## 6\. The Interpreter (Visitor Pattern)
+
+This is the engine that executes the logic. It maintains the state of "Current Context".
+
+**File:** `src/runtime/interpreter.dart`
 
 ```dart
-static final Map<String, List<String>> kindDefinitions = {
-  'input': ['textField', 'slider', 'switch', 'checkbox'],
-  'action': ['button', 'toggle'],
-  'text': ['label', 'header', 'link'],
-};
+class Interpreter implements FaqlVisitor<SafeValue> {
+  final FaqlNode currentNode; // 'this'
+  final SymbolTable symbols;
+
+  Interpreter(this.currentNode, this.symbols);
+
+  /// Main Entry Point
+  bool evaluateRule(RuleAST ast) {
+    // 1. Check Scope
+    if (!matchesSelector(ast.selector, currentNode)) return true; // Skip
+    
+    // 2. Check Guard (When)
+    if (ast.whenClause != null) {
+      final guard = visit(ast.whenClause);
+      if (!guard.isTruthy) return true; // Skip
+    }
+
+    // 3. Check Assertion (Ensure)
+    final result = visit(ast.ensureClause);
+    return result.isTruthy; // False = Violation
+  }
+
+  // --- Visitor Methods ---
+
+  @override
+  SafeValue visitWidgetAccess(WidgetAccessNode node) {
+    // SWITCH CONTEXT: Use currentNode.source
+    final src = currentNode.source;
+    
+    // Handle Generic Casting at Runtime
+    switch (node.genericType) {
+      case 'int': return src.getParameter<int>(node.paramName);
+      case 'bool': return src.getParameter<bool>(node.paramName);
+      case 'string': return src.getParameter<String>(node.paramName);
+      default: return SafeValue.nullValue();
+    }
+  }
+
+  @override
+  SafeValue visitStateCheck(StateCheckNode node) {
+    // Implements 'is defined'
+    final isDef = currentNode.source.isParameterDefined(node.paramName);
+    return SafeValue(isDef);
+  }
+
+  @override
+  SafeValue visitTraversal(TraversalNode node) {
+    // 1. Resolve the Base (children, ancestors, etc)
+    List<FaqlNode> collection = _resolveRelation(node.relation);
+
+    // 2. Handle Aggregators (.any, .none)
+    if (node.aggregator != null) {
+      return _evaluateAggregator(collection, node.aggregator!);
+    }
+    
+    // 3. Handle Closest (Special Case)
+    if (node.relation == 'closest') {
+      return _findClosest(currentNode, node.selector);
+    }
+
+    return SafeValue(collection);
+  }
+
+  // --- Logic Helpers ---
+
+  SafeValue _findClosest(FaqlNode start, SelectorAST selector) {
+    FaqlNode? pointer = start.parent;
+    while (pointer != null) {
+      if (matchesSelector(selector, pointer)) {
+        return SafeValue(pointer);
+      }
+      pointer = pointer.parent;
+    }
+    return SafeValue.nullValue();
+  }
+
+  SafeValue _evaluateAggregator(List<FaqlNode> items, AggregatorAST agg) {
+    for (var item in items) {
+      // Create a sub-interpreter for the scope variable 'it'
+      // Note: In real impl, pass a Scope map to the Visitor
+      final subInterp = Interpreter(item, symbols);
+      final result = subInterp.visit(agg.expression);
+      
+      if (agg.type == 'any' && result.isTruthy) return SafeValue(true);
+      if (agg.type == 'none' && result.isTruthy) return SafeValue(false);
+      // ... handle .all
+    }
+    // Default returns
+    return SafeValue(agg.type == 'none' ? true : false);
+  }
+}
 ```
 
 -----
 
-## 4\. Error Handling Strategy
+## 7\. Error Handling Strategy
 
-### 4.1 Parser Errors (Invalid Rule File)
+### 7.1 Compiler Errors (Parse Time)
 
-If the user writes invalid FAQL syntax:
+These prevent the linter from starting.
 
-  * **Action:** The linter must catch `ParserException`.
-  * **Report:** Log a "Configuration Error" to the console.
-  * **Safety:** Do not crash the entire analysis. Skip the broken rule file.
+* **Unknown Enum:** User types `Role.btn`. -\> *Action: Throw ParseException.*
+* **Syntax Error:** User misses a closing brace. -\> *Action: Throw ParseException.*
 
-### 4.2 Runtime Errors (Type Mismatches)
+### 7.2 Logic Failures (Runtime)
 
-If a rule tries to do something illegal (e.g., `ensure: "string" > 5`):
+These cause a rule to fail (violation) or skip, but do not crash the linter.
 
-  * **Action:** The Interpreter evaluates this expression to `false`.
-  * **Philosophy:** "Safe Failure". A badly written rule should fail the check (reporting a violation) or return "Not Applicable," but it must never throw an exception that stops the linter.
+* **Type Mismatch:** `widget<int>("val")` returns a String in reality. -\> *Action: Return `SafeValue.null`.*
+* **Index Out of Bounds:** `children[5]`. -\> *Action: Return `SafeValue.null`.*
 
-### 4.3 Infinite Loops
+### 7.3 Infinite Loop Protection
 
-  * **Risk:** `next_focus` or circular graph references.
-  * **Mitigation:** The Interpreter must enforce a **Traversal Depth Limit** (e.g., 50 hops). If the limit is reached, return an empty list or stop traversal.
-
------
-
-## 5\. Development Roadmap
-
-1.  **Phase 1: The Skeleton**
-
-      * Set up `petitparser`.
-      * Implement the `FaqlGrammar` (Syntax only).
-      * Verify it parses the `examples/` string.
-
-2.  **Phase 2: The Bridge**
-
-      * Implement `FaqlContext` in your Linter package.
-      * Map the existing IR to this interface.
-
-3.  **Phase 3: The Interpreter**
-
-      * Write the recursive AST walker.
-      * Connect the parsed Rule AST to the `FaqlContext`.
-
-4.  **Phase 4: Standard Library**
-
-      * Implement the `prop()` lookup logic using the Analyzer's `ConstantEvaluator`.
+* **Cycle Detection:** When traversing `descendants` in a graph that might have cycles (unlikely in Flutter, but possible in custom implementations), keep a `Set<FaqlNode> visited`. If a node is revisited, stop recursion.
