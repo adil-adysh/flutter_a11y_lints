@@ -2,9 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
-import '../src/bridge/semantic_faql_adapter.dart';
-import '../src/faql/parser.dart';
-import '../src/faql/validator.dart';
+import '../src/query/faql4.dart';
 import 'builtin_faql_rules.g.dart' as builtin;
 import 'faql_rule_runner.dart';
 
@@ -14,19 +12,15 @@ typedef RuleLoadLogger = void Function(String message);
 /// Loads FAQL rules from the embedded bundle and optional user directories.
 class FaqlRuleCatalog {
   FaqlRuleCatalog({
-    FaqlParser? parser,
-    FaqlSemanticValidator? validator,
+    Faql4Compiler? compiler,
     this.logger,
-  })  : _parser = parser ?? FaqlParser(),
-        _validator = validator ??
-            FaqlSemanticValidator(faqlAllowedIdentifiers);
+  }) : _compiler = compiler ?? Faql4Compiler();
 
-  final FaqlParser _parser;
-  final FaqlSemanticValidator _validator;
+  final Faql4Compiler _compiler;
   final RuleLoadLogger? logger;
 
-  Map<String, FaqlRuleSpec> load({String? customRulesDir}) {
-    final collected = <String, FaqlRuleSpec>{};
+  List<FaqlRuleSpec> load({String? customRulesDir}) {
+    final collected = <FaqlRuleSpec>[];
 
     for (final entry in builtin.builtinFaqlRules.entries) {
       _tryAddRule(
@@ -38,14 +32,14 @@ class FaqlRuleCatalog {
     }
 
     if (customRulesDir == null || customRulesDir.trim().isEmpty) {
-      return collected;
+      return List.unmodifiable(collected);
     }
 
     final normalizedDir = p.normalize(customRulesDir);
     final dir = Directory(normalizedDir);
     if (!dir.existsSync()) {
       _log('Rules directory "$normalizedDir" does not exist.');
-      return collected;
+      return List.unmodifiable(collected);
     }
 
     for (final entity in dir.listSync()) {
@@ -61,24 +55,21 @@ class FaqlRuleCatalog {
       );
     }
 
-    return collected;
+    return List.unmodifiable(collected);
   }
 
   void _tryAddRule({
     required String content,
     required String sourceDescriptor,
     String? sourcePath,
-    required Map<String, FaqlRuleSpec> collection,
+    required List<FaqlRuleSpec> collection,
   }) {
     try {
-      final rule = _parser.parseRule(content);
-      _validator.validate(rule);
-      final spec = FaqlRuleSpec.fromRule(
-        rule,
-        sourcePath: sourcePath,
-        source: content,
-      );
-      collection[spec.code] = spec;
+      final spec = _compiler.compile(content);
+      if (collection.any((existing) => existing.queryId == spec.queryId)) {
+        throw Faql4ValidationError('Duplicate query id ${spec.queryId}.');
+      }
+      collection.add(spec);
     } catch (error) {
       _log('Failed to load rule "$sourceDescriptor": $error');
     }

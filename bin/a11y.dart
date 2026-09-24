@@ -105,37 +105,24 @@ void main(List<String> args) async {
       print('No active FAQL rules.');
       exit(0);
     }
-    final sortedRules = activeRules.values.toList()
-      ..sort((a, b) => a.code.compareTo(b.code));
+    final sortedRules = [...activeRules]
+      ..sort((a, b) => a.queryId.compareTo(b.queryId));
     print('Active FAQL Rules:');
     for (final rule in sortedRules) {
-      final sourceLabel = rule.sourcePath != null ? 'custom' : 'builtin';
-      print(
-          ' - ${rule.code} (${rule.severity}) [$sourceLabel] • ${rule.message}');
+      print(' - ${rule.queryId} (${rule.severity}) • ${rule.message}');
     }
     exit(0);
   }
 
   if (argResults['show-rule'] != null) {
     final code = argResults['show-rule'] as String;
-    final rule = activeRules[code];
+    final matches = activeRules.where((item) => item.queryId == code);
+    final rule = matches.isEmpty ? null : matches.first;
     if (rule == null) {
       _printError('Rule "$code" not found.');
       exit(2);
     }
-    if (rule.source != null) {
-      print(rule.source);
-      exit(0);
-    }
-    if (rule.sourcePath != null) {
-      try {
-        print(File(rule.sourcePath!).readAsStringSync());
-        exit(0);
-      } catch (_) {
-        // ignore and fall through
-      }
-    }
-    print('// Source not available');
+    print('${rule.queryId} (${rule.ruleId})');
     exit(0);
   }
 
@@ -163,7 +150,7 @@ void main(List<String> args) async {
 
   final analyzer = FlutterA11yAnalyzer(
     faqlRunner: activeRules.isNotEmpty
-        ? FaqlRuleRunner(rules: activeRules.values.toList())
+        ? FaqlRuleRunner(rules: activeRules)
         : null,
     verbose: verbose,
     excludes: excludes, // Pass excludes to analyzer
@@ -289,7 +276,7 @@ class FlutterA11yAnalyzer {
         final violations = faqlRunner!.run(tree);
         for (final v in violations) {
           issues.add(_mapViolation(unit, v.node.astNode.offset, v.spec.severity,
-              v.spec.code, v.spec.message, v.spec.correctionMessage));
+              v.spec.ruleId, v.spec.message, v.spec.message));
         }
       }
     }

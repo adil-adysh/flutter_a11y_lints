@@ -6,8 +6,7 @@ import 'package:path/path.dart' as p;
 void main() async {
   // 1. Define paths
   final rulesDir = Directory(p.join('lib', 'rules'));
-  final outputFile =
-      File(p.join('lib', 'src', 'rules', 'builtin_faql_rules.g.dart'));
+  final outputFile = File(p.join('lib', 'rules', 'builtin_faql_rules.g.dart'));
 
   if (!rulesDir.existsSync()) {
     print('Error: Rules directory not found at ${rulesDir.path}');

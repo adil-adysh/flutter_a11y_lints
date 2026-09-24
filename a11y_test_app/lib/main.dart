@@ -155,7 +155,7 @@ class A03Examples extends StatelessWidget {
         // ✅ Correct: exclude decorative image from semantics
         const Text('Properly excluded decorative background:'),
         const SizedBox(height: 8),
-        const ExcludeSemantics(
+        ExcludeSemantics(
           child: Image.asset(
             'assets/bg_wallpaper.png', // contains "bg"
             fit: BoxFit.cover,
@@ -203,7 +203,7 @@ class A04Examples extends StatelessWidget {
         // ✅ CircleAvatar wrapped in Semantics with label
         const Text('Labeled avatar (correct):'),
         const SizedBox(height: 8),
-        const Semantics(
+        Semantics(
           label: 'Profile picture of Alex Chen',
           child: CircleAvatar(
             radius: 24,
@@ -250,7 +250,7 @@ class A04Examples extends StatelessWidget {
         const Text('ListTile with avatar labeled via Semantics (correct):'),
         const SizedBox(height: 8),
         ListTile(
-          leading: const Semantics(
+          leading: Semantics(
             label: 'Profile picture of Sara',
             child: CircleAvatar(
               radius: 20,
