@@ -18,8 +18,7 @@ import 'package:flutter_a11y_lints/src/utils/flutter_utils.dart';
 import 'package:flutter_a11y_lints/src/utils/method_utils.dart';
 import 'package:flutter_a11y_lints/rules/faql_rule_catalog.dart';
 import 'package:flutter_a11y_lints/rules/faql_rule_runner.dart';
-import 'package:flutter_a11y_lints/src/faql/parser.dart';
-import 'package:flutter_a11y_lints/src/faql/validator.dart';
+import 'package:flutter_a11y_lints/src/query/faql4.dart';
 import 'package:flutter_a11y_lints/src/bridge/semantic_faql_adapter.dart'
     show faqlAllowedIdentifiers;
 import 'package:flutter_a11y_lints/src/version.g.dart' show kPackageVersion;
@@ -306,12 +305,9 @@ Future<void> _validateFaqlFile(String path) async {
   }
   try {
     final content = await file.readAsString();
-    final parser = FaqlParser();
-    final rule = parser.parseRule(content);
-    final validator = FaqlSemanticValidator(faqlAllowedIdentifiers);
-    validator.validate(rule);
+    final rule = Faql4Compiler().compile(content);
     print('SUCCESS: "$path" is a valid FAQL rule.');
-    print('Code: ${rule.name}');
+    print('Query ID: ${rule.queryId}');
     print('Structure: Valid');
   } catch (e) {
     _printError('VALIDATION FAILED:\n$e');
@@ -328,15 +324,13 @@ void _scaffoldRulesDirectory() {
   dir.createSync();
   final sampleFile = File(p.join(dir.path, 'custom_label.faql'));
   sampleFile.writeAsStringSync(r'''
-rule "custom_buttons_must_have_labels" on role("button") {
-  meta {
-    severity: "error"
-    author: "Your Name"
-  }
-  // Ensure all buttons have resolved text labels
-  ensure: label.is_resolved
-  report: "All buttons must have a semantic label."
-}
+@id custom/buttons-must-have-labels
+@rule-id custom_buttons_must_have_labels
+@severity error
+@mode conservative
+from InteractiveControl control
+where control.isDefinitelyEnabled() and control.isDefinitelyUnlabeled()
+select control, "All buttons must have a semantic label."
 ''');
   print('Created "a11y_rules/" with a sample rule.');
   print('Run with: a11y --rules-dir a11y_rules lib/');
