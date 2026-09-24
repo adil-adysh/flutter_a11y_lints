@@ -1,6 +1,6 @@
 # CLI: flutter_a11y_lints
 
-This document describes how to use the `a11y` CLI and the FAQL rules generator.
+This document describes how to use the `a11y` CLI and the FAQL 4 rules generator.
 
 ## Install
 
@@ -26,7 +26,10 @@ a11y --help
 
 ## Embedding FAQL rules
 
-When building or compiling the CLI to a single binary, the analyzer needs the FAQL rule sources embedded into the package. Use the provided generator script to embed every `.faql` file from `lib/rules` into `lib/src/rules/builtin_faql_rules.g.dart`.
+When building or compiling the CLI to a single binary, the analyzer needs the
+FAQL rule sources embedded into the package. Use the generator to embed every
+`.faql` file from `lib/rules` into the canonical
+`lib/rules/builtin_faql_rules.g.dart` bundle.
 
 ### Generate embedded rules
 
@@ -34,19 +37,31 @@ When building or compiling the CLI to a single binary, the analyzer needs the FA
 # Ensure you have rules in lib\rules (create if needed)
 mkdir -Force lib\rules
 
-# Optional: add a sample rule
-Set-Content -Path lib\rules\sample.faql -Value "rule \"test_rule\" on role(\"button\") { ensure: label.is_resolved report: \"Test\" }" -NoNewline
+# Optional: add a FAQL 4 sample rule
+@'
+@id example/unlabeled-control
+@rule-id example_unlabeled_control
+@severity warning
+@mode conservative
+from InteractiveControl control
+where control.isDefinitelyEnabled() and control.isDefinitelyUnlabeled()
+select control, "Interactive control must have an accessible label."
+'@ | Set-Content -Path lib\rules\sample.faql -NoNewline
 
 # Run the generator
 dart run tool\generate_rules.dart
 ```
 
-This will create or overwrite `lib/src/rules/builtin_faql_rules.g.dart` containing a `const Map<String, String> builtinFaqlRules` mapping filenames to their FAQL source.
+This creates or overwrites `lib/rules/builtin_faql_rules.g.dart`, containing a
+`const Map<String, String> builtinFaqlRules` mapping filenames to FAQL 4
+source. Do not edit that generated file manually.
 
 ## Notes
 
 - The generator is deterministic (it sorts files) so generated output is stable for commits.
 - If you add or modify `.faql` files, re-run the generator before compiling or publishing.
+- FAQL 4 is a breaking language change. For the query format and migration
+  guidance, see [FAQL 4 migration](docs/faql4_migration.md).
 
 ## Troubleshooting
 

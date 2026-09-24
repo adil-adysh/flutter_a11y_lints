@@ -33,6 +33,10 @@ dart pub get
 
 - **v0.6.0 — FAQL Integration Release**: The project integrates the FAQL engine, migrated many rules to `.faql` format, added multi-rule support, and improved CLI features (`--fail-on-warnings`, `--reporter`, `--rules-dir`, `--list-rules`, `--validate-faql`, and `--init`).
 - **v0.5.0 — Foundation Release**: Introduced the FAQL specification, parser & interpreter, and reorganized tests to support the new language architecture.
+- **FAQL 4 (in progress)**: Replaces the selector/`ensure` DSL with typed
+  relational queries over explicit semantic facts. See
+  [FAQL 4 Core](doc/docs/faql4_core_design.md) and the
+  [migration guide](doc/docs/faql4_migration.md).
 - **Earlier releases**: Added many accessibility rules (images, composite controls, minimum tap targets), improved semantic IR accuracy, and initial CLI `a11y` tool.
 
 For full historical details see `CHANGELOG.md`.
@@ -266,8 +270,11 @@ The analyzer works in several phases:
 1. **AST Parsing**: Standard Dart analyzer parses source files
 2. **Widget Tree Building**: Constructs `WidgetNode` tree from AST
 3. **Semantic Tree Building**: Converts to `SemanticNode` tree using KnownSemantics metadata (v2.6)
-4. **Rule Execution**: Runs accessibility rules against semantic tree
-5. **Reporting**: Outputs violations with file locations
+4. **Fact Extraction**: Materializes typed structural and semantic facts with
+   explicit provenance and unknown states
+5. **Rule Execution**: Runs FAQL 4 queries against conservative or expanded
+   fact views
+6. **Reporting**: Outputs violations with file locations
 
 ### Key Components
 
@@ -275,7 +282,8 @@ The analyzer works in several phases:
 - **WidgetTreeBuilder**: Builds widget tree from expressions
 - **SemanticBuilder**: Derives semantic properties and labels
 - **SemanticTree**: Final IR with accessibility-focusable nodes
-- **Rules**: Individual accessibility checkers
+- **Facts and FAQL 4**: Typed facts, standard-library views, and declarative
+  accessibility queries
 
 ## Testing
 
@@ -403,7 +411,9 @@ flutter_a11y_lints/
 
 ## Related Documentation
 
-- [Semantic IR Architecture](docs/semantic_ir_architecture.md)
+- [FAQL 4 Core](doc/docs/faql4_core_design.md)
+- [FAQL 4 migration](doc/docs/faql4_migration.md)
+- [Semantic IR Architecture](doc/docs/semantic_ir_architecture.md)
 - [Accessibility Rules Reference](docs/accessibility_rules_reference.md)
 - [Implementation Summary](docs/IMPLEMENTATION_SUMMARY.md)
 - [Flutter Accessibility Guide](https://docs.flutter.dev/development/accessibility-and-localization/accessibility)
