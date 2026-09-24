@@ -17,9 +17,21 @@ select control, "Interactive control must have an accessible label."
       final query = Faql4Compiler().compile(source);
       final facts = AccessibilityFactStore.empty()
           .addNode(const FactNode(id: 1, widgetType: 'IconButton'))
-          .add(const SemanticFact(nodeId: 1, name: 'tap', value: true, provenance: FactProvenance.exact))
-          .add(const SemanticFact(nodeId: 1, name: 'enabled', value: true, provenance: FactProvenance.exact))
-          .add(const SemanticFact(nodeId: 1, name: 'labelState', value: 'absent', provenance: FactProvenance.exact));
+          .add(const SemanticFact(
+              nodeId: 1,
+              name: 'tap',
+              value: true,
+              provenance: FactProvenance.exact))
+          .add(const SemanticFact(
+              nodeId: 1,
+              name: 'enabled',
+              value: true,
+              provenance: FactProvenance.exact))
+          .add(const SemanticFact(
+              nodeId: 1,
+              name: 'labelState',
+              value: 'absent',
+              provenance: FactProvenance.exact));
 
       expect(Faql4Evaluator().evaluate(query, facts), hasLength(1));
     });
@@ -35,10 +47,12 @@ where not node.hasAccessibleLabel()
 select node, "unsafe"
 ''';
 
-      expect(() => Faql4Compiler().compile(source), throwsA(isA<Faql4ValidationError>()));
+      expect(() => Faql4Compiler().compile(source),
+          throwsA(isA<Faql4ValidationError>()));
     });
 
-    test('supports typed equality comparisons on standard-library accessors', () {
+    test('supports typed equality comparisons on standard-library accessors',
+        () {
       const source = '''
 @id example/icon-button
 @rule-id example_icon_button
