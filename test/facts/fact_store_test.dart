@@ -32,6 +32,27 @@ void main() {
       expect(store.compatible(2, 3), isFalse);
     });
 
+    test('does not combine nested alternatives with different outer paths', () {
+      final store = AccessibilityFactStore.empty()
+          .addNode(const FactNode(
+              id: 1,
+              widgetType: 'IconButton',
+              branchPath: BranchPath([Branch(10, 0), Branch(20, 0)])))
+          .addNode(const FactNode(
+              id: 2,
+              widgetType: 'IconButton',
+              branchPath: BranchPath([Branch(10, 1), Branch(30, 0)])))
+          .addNode(const FactNode(
+              id: 3,
+              widgetType: 'IconButton',
+              branchPath: BranchPath([Branch(10, 0), Branch(20, 1)])))
+          .addNode(const FactNode(id: 4, widgetType: 'IconButton'));
+
+      expect(store.compatible(1, 2), isFalse);
+      expect(store.compatible(1, 3), isFalse);
+      expect(store.compatible(1, 4), isTrue);
+    });
+
     test('indexes semantic relationships without incompatible bindings', () {
       final store = AccessibilityFactStore.empty()
           .addNode(const FactNode(id: 1, widgetType: 'Column'))

@@ -10,12 +10,36 @@ class Branch {
   final int value;
 }
 
+class BranchPath {
+  const BranchPath(this.constraints);
+  final List<Branch> constraints;
+
+  bool compatibleWith(BranchPath other) {
+    for (final left in constraints) {
+      for (final right in other.constraints) {
+        if (left.group == right.group && left.value != right.value)
+          return false;
+      }
+    }
+    return true;
+  }
+}
+
 class FactNode {
-  const FactNode({required this.id, required this.widgetType, this.branch});
+  const FactNode({
+    required this.id,
+    required this.widgetType,
+    this.branch,
+    this.branchPath,
+  });
 
   final int id;
   final String widgetType;
   final Branch? branch;
+  final BranchPath? branchPath;
+  BranchPath get effectiveBranchPath =>
+      branchPath ??
+      (branch == null ? const BranchPath([]) : BranchPath([branch!]));
 }
 
 class SemanticFact {
@@ -92,12 +116,11 @@ class AccessibilityFactStore {
   }
 
   bool compatible(int leftId, int rightId) {
-    final left = _nodes[leftId]?.branch;
-    final right = _nodes[rightId]?.branch;
+    final left = _nodes[leftId];
+    final right = _nodes[rightId];
     return left == null ||
         right == null ||
-        left.group != right.group ||
-        left.value == right.value;
+        left.effectiveBranchPath.compatibleWith(right.effectiveBranchPath);
   }
 
   FactNode? parentOf(
