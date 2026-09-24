@@ -163,6 +163,20 @@ class _Binary extends _Expression {
   @override bool get hasUnsafePartialNegation => left.hasUnsafePartialNegation || right.hasUnsafePartialNegation;
 }
 
+class _Comparison extends _Expression {
+  _Comparison(this.variable, this.accessor, this.operator, this.literal);
+  final String variable;
+  final String accessor;
+  final String operator;
+  final Object literal;
+
+  @override
+  bool? evaluate(_EvaluationContext context) {
+    final actual = context.property(variable, accessor);
+    return operator == '=' ? actual == literal : actual != literal;
+  }
+}
+
 /// Parser intentionally accepts only Core predicate calls and Boolean logic.
 class _ExpressionParser {
   _ExpressionParser(this.source, this.variable);
@@ -172,6 +186,16 @@ class _ExpressionParser {
     final or = _split(parts, ' or '); if (or != null) return _Binary(_ExpressionParser(or.$1, variable).parse(), 'or', _ExpressionParser(or.$2, variable).parse());
     final and = _split(parts, ' and '); if (and != null) return _Binary(_ExpressionParser(and.$1, variable).parse(), 'and', _ExpressionParser(and.$2, variable).parse());
     if (parts.startsWith('not ')) return _Not(_ExpressionParser(parts.substring(4), variable).parse());
+    final comparison = RegExp(r'^(\w+)\.(\w+)\(\)\s*(=|!=)\s*(?:"([^"]*)"|(true|false)|(\d+))$').firstMatch(parts);
+    if (comparison != null && comparison[1] == variable) {
+      final literal = comparison[4] ?? comparison[5] ?? comparison[6];
+      final value = comparison[4] != null
+          ? comparison[4]
+          : comparison[5] != null
+              ? comparison[5] == 'true'
+              : int.parse(comparison[6]!);
+      return _Comparison(comparison[1]!, comparison[2]!, comparison[3]!, value!);
+    }
     final match = RegExp(r'^(\w+)\.(\w+)\(\)$').firstMatch(parts);
     if (match == null || match[1] != variable) throw Faql4ValidationError('Invalid Core expression: $parts');
     return _Predicate(match[1]!, match[2]!);

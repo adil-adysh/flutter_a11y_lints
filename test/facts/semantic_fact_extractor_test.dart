@@ -26,5 +26,32 @@ void main() {
       expect(facts.labelStateFor(childIds[1]), LabelState.dynamic);
       expect(facts.labelStateFor(childIds[2]), LabelState.static);
     });
+
+    test('extracts named slots and literal primitive properties', () async {
+      final tree = await buildTestSemanticTree('''
+ListTile(
+  leading: const Icon('avatar'),
+  title: const Text('Account'),
+  trailing: const IconButton(icon: Icon('delete'), tooltip: 'Delete'),
+)
+''');
+
+      final facts = SemanticFactExtractor().extract(tree);
+      final rootId = tree.root.id!;
+
+      expect(facts.slotsFor(rootId).keys, containsAll(['leading', 'title', 'trailing']));
+      expect(facts.propertyValueFor(rootId, 'title'), isNull);
+      expect(facts.propertyValueFor(tree.root.children.last.id!, 'tooltip'), 'Delete');
+    });
+
+    test('emits visibility only for explicit hiding widgets', () async {
+      final tree = await buildTestSemanticTree('''
+Offstage(offstage: true, child: const IconButton(icon: Icon('delete')))
+''');
+
+      final facts = SemanticFactExtractor().extract(tree);
+
+      expect(facts.propertyValueFor(tree.root.id!, 'visibilityState'), 'hidden');
+    });
   });
 }

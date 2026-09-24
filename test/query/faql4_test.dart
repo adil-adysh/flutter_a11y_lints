@@ -37,5 +37,22 @@ select node, "unsafe"
 
       expect(() => Faql4Compiler().compile(source), throwsA(isA<Faql4ValidationError>()));
     });
+
+    test('supports typed equality comparisons on standard-library accessors', () {
+      const source = '''
+@id example/icon-button
+@rule-id example_icon_button
+@severity warning
+@mode conservative
+from SemanticNode node
+where node.getWidgetType() = "IconButton"
+select node, "Icon button"
+''';
+      final query = Faql4Compiler().compile(source);
+      final facts = AccessibilityFactStore.empty()
+          .addNode(const FactNode(id: 1, widgetType: 'IconButton'));
+
+      expect(Faql4Evaluator().evaluate(query, facts), hasLength(1));
+    });
   });
 }

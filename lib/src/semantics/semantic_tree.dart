@@ -100,7 +100,16 @@ class SemanticTree {
         childNodes.add(child);
       }
 
-      annotated = annotated.copyWith(children: childNodes);
+      final annotatedSlots = <String, SemanticNode>{};
+      for (final entry in node.slots.entries) {
+        final originalIndex = node.children.indexWhere(
+          (child) => identical(child, entry.value),
+        );
+        if (originalIndex >= 0) {
+          annotatedSlots[entry.key] = childNodes[originalIndex];
+        }
+      }
+      annotated = annotated.copyWith(children: childNodes, slots: annotatedSlots);
       if (focusInsertIndex != null) {
         focusable[focusInsertIndex] = annotated;
       }

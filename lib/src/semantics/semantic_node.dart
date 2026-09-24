@@ -61,6 +61,7 @@ class SemanticNode {
     required this.labelSource,
     required this.explicitChildLabel,
     required this.children,
+    Map<String, SemanticNode>? slots,
     this.branchGroupId,
     this.branchValue,
     this.id,
@@ -83,7 +84,8 @@ class SemanticNode {
     this.hasDismiss = false,
     Map<String, Expression>? rawAttributes,
     this.isHeuristic = false,
-  }) : _rawAttributes = rawAttributes ?? const {};
+  })  : slots = slots ?? const {},
+        _rawAttributes = rawAttributes ?? const {};
 
   final String widgetType;
   final AstNode astNode;
@@ -115,6 +117,9 @@ class SemanticNode {
   final String? value;
 
   final List<SemanticNode> children;
+
+  /// Named semantic children preserved from widget constructor slots.
+  final Map<String, SemanticNode> slots;
 
   /// Identifies mutually exclusive states originating from the same
   /// conditional in the widget tree. Nodes that share the same
@@ -179,6 +184,8 @@ class SemanticNode {
   /// GlobalSemanticContext or ExpressionEvaluator.
   Expression? getAttribute(String name) => _rawAttributes[name];
 
+  Iterable<String> get attributeNames => _rawAttributes.keys;
+
   String? get effectiveLabel {
     final pieces = <String>[];
     if (label != null && label!.isNotEmpty) {
@@ -220,6 +227,7 @@ class SemanticNode {
     LabelSource? labelSource,
     String? explicitChildLabel,
     List<SemanticNode>? children,
+    Map<String, SemanticNode>? slots,
     int? branchGroupId,
     int? branchValue,
     int? id,
@@ -267,6 +275,7 @@ class SemanticNode {
       labelSource: labelSource ?? this.labelSource,
       explicitChildLabel: explicitChildLabel ?? this.explicitChildLabel,
       children: children ?? this.children,
+      slots: slots ?? this.slots,
       branchGroupId: branchGroupId ?? this.branchGroupId,
       branchValue: branchValue ?? this.branchValue,
       id: id ?? this.id,

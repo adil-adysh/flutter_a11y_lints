@@ -1,3 +1,5 @@
+import 'package:analyzer/dart/ast/ast.dart';
+
 import '../semantics/semantic_node.dart';
 import '../semantics/semantic_tree.dart';
 import '../semantics/known_semantics.dart';
@@ -11,6 +13,8 @@ class SemanticFactExtractor {
   ExtractedSemanticFacts extract(SemanticTree tree) {
     var store = AccessibilityFactStore.empty();
     final labelStates = <int, LabelState>{};
+    final slots = <int, Map<String, int>>{};
+    final properties = <int, Map<String, Object?>>{};
 
     for (final node in tree.physicalNodes) {
       final id = node.id!;
@@ -35,8 +39,36 @@ class SemanticFactExtractor {
       if (node.parentId != null) {
         store = store.addParent(parentId: node.parentId!, childId: id);
       }
+      slots[id] = {
+        for (final entry in node.slots.entries)
+          if (entry.value.id != null) entry.key: entry.value.id!,
+      };
+      final nodeProperties = <String, Object?>{};
+      for (final name in node.attributeNames) {
+        final value = _literalValue(node.getAttribute(name));
+        if (value != null) {
+          nodeProperties[name] = value;
+          store = store.add(SemanticFact(
+            nodeId: id,
+            name: 'property:$name',
+            value: value,
+            provenance: FactProvenance.exact,
+          ));
+        }
+      }
+      final visibility = _visibilityState(node, nodeProperties);
+      if (visibility != null) {
+        nodeProperties['visibilityState'] = visibility;
+        store = store.add(SemanticFact(
+          nodeId: id,
+          name: 'visibilityState',
+          value: visibility,
+          provenance: FactProvenance.exact,
+        ));
+      }
+      properties[id] = nodeProperties;
     }
-    return ExtractedSemanticFacts(store, labelStates);
+    return ExtractedSemanticFacts(store, labelStates, slots, properties);
   }
 
   LabelState _labelState(SemanticNode node) {
@@ -51,13 +83,31 @@ class SemanticFactExtractor {
             : LabelState.absent;
     }
   }
+
+  Object? _literalValue(Expression? expression) {
+    if (expression is BooleanLiteral) return expression.value;
+    if (expression is IntegerLiteral) return expression.value;
+    if (expression is SimpleStringLiteral) return expression.value;
+    return null;
+  }
+
+  String? _visibilityState(SemanticNode node, Map<String, Object?> properties) {
+    if (node.excludesDescendants) return 'excluded';
+    if (node.widgetType == 'Offstage' && properties['offstage'] == true) return 'hidden';
+    if (node.widgetType == 'Visibility' && properties['visible'] == false) return 'hidden';
+    return null;
+  }
 }
 
 class ExtractedSemanticFacts {
-  const ExtractedSemanticFacts(this.store, this._labelStates);
+  const ExtractedSemanticFacts(this.store, this._labelStates, this._slots, this._properties);
 
   final AccessibilityFactStore store;
   final Map<int, LabelState> _labelStates;
+  final Map<int, Map<String, int>> _slots;
+  final Map<int, Map<String, Object?>> _properties;
 
   LabelState labelStateFor(int nodeId) => _labelStates[nodeId] ?? LabelState.unknown;
+  Map<String, int> slotsFor(int nodeId) => _slots[nodeId] ?? const {};
+  Object? propertyValueFor(int nodeId, String name) => _properties[nodeId]?[name];
 }

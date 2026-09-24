@@ -210,6 +210,7 @@ class SemanticBuilder {
       labelSource: labelSource,
       explicitChildLabel: explicitChildLabel,
       children: builtChildren.nodes,
+      slots: builtChildren.slotNodes,
       // Preserve branch metadata so later heuristics can determine
       // mutual-exclusion between nodes originating from different
       // conditional branches.
