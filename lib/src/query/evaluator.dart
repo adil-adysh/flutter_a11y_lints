@@ -75,7 +75,7 @@ class Faql4Evaluator {
     final id = bindings[v.variable]!;
     if (v.member == 'getWidgetType') return store.nodeById(id)?.widgetType;
     final relations = switch (v.member) {
-      'getParent' => [store.parentOf(id)?.id],
+      'getParent' => [store.parentOf(id, compatibleWith: bindings.values)?.id],
       'getAChild' =>
         store.childrenOf(id, compatibleWith: bindings.values).map((n) => n.id),
       'getAnAncestor' =>

@@ -100,9 +100,16 @@ class AccessibilityFactStore {
         left.value == right.value;
   }
 
-  FactNode? parentOf(int nodeId) {
+  FactNode? parentOf(
+    int nodeId, {
+    Iterable<int> compatibleWith = const [],
+  }) {
     final parentId = _parents[nodeId];
-    return parentId == null ? null : _nodes[parentId];
+    if (parentId == null ||
+        !_isCompatibleWithAll(parentId, [nodeId, ...compatibleWith])) {
+      return null;
+    }
+    return _nodes[parentId];
   }
 
   Iterable<FactNode> childrenOf(

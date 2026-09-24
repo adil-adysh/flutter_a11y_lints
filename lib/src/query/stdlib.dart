@@ -30,7 +30,11 @@ class Faql4StandardLibrary {
     'getADescendant',
     'getASibling'
   };
-  static bool isPartial(String member) => member == 'hasAccessibleLabel';
+
+  /// No Boolean member is total over unresolved widgets and dynamic state.
+  /// Conservative rules must use positive definite-state predicates rather
+  /// than deriving absence by negation.
+  static bool isPartial(String member) => booleanMembers.containsKey(member);
   static FaqlType? memberType(String member) =>
       booleanMembers.containsKey(member)
           ? FaqlType.boolean

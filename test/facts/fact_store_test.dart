@@ -47,6 +47,7 @@ void main() {
 
       expect(store.nodeById(4)?.widgetType, 'IconButton');
       expect(store.parentOf(4)?.id, 2);
+      expect(store.parentOf(4, compatibleWith: const [3]), isNull);
       expect(store.childrenOf(1).map((node) => node.id), [2, 3]);
       expect(store.ancestorsOf(4).map((node) => node.id), [2, 1]);
       expect(store.descendantsOf(1).map((node) => node.id), [2, 3, 4]);

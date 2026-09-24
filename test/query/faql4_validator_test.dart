@@ -32,4 +32,16 @@ select node, "x"
       throwsA(isA<Faql4ValidationError>()),
     );
   });
+
+  test('rejects conservative negation of unknown-capable state predicates', () {
+    expect(
+      () => Faql4Compiler().compile('''
+$_header
+from SemanticNode node
+where not node.isDefinitelyEnabled()
+select node, "x"
+'''),
+      throwsA(isA<Faql4ValidationError>()),
+    );
+  });
 }
