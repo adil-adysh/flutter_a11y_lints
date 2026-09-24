@@ -37,7 +37,7 @@ FAQL rule sources embedded into the package. Use the generator to embed every
 # Ensure you have rules in lib\rules (create if needed)
 mkdir -Force lib\rules
 
-# Optional: add a FAQL 4 sample rule
+# Optional: add a FAQL 4 sample rule after the built-in rule migration
 @'
 @id example/unlabeled-control
 @rule-id example_unlabeled_control
@@ -53,13 +53,15 @@ dart run tool\generate_rules.dart
 ```
 
 This creates or overwrites `lib/rules/builtin_faql_rules.g.dart`, containing a
-`const Map<String, String> builtinFaqlRules` mapping filenames to FAQL 4
-source. Do not edit that generated file manually.
+`const Map<String, String> builtinFaqlRules` mapping filenames to rule source.
+The current built-in sources are legacy syntax; do not regenerate this bundle
+as part of FAQL 4 work until replacement FAQL 4 sources and fixture tests are
+ready. Do not edit the generated file manually.
 
 ## Notes
 
 - The generator is deterministic (it sorts files) so generated output is stable for commits.
-- If you add or modify `.faql` files, re-run the generator before compiling or publishing.
+- Re-run the generator only after changing a coherent, validated rule corpus.
 - FAQL 4 is a breaking language change. For the query format and migration
   guidance, see [FAQL 4 migration](docs/faql4_migration.md).
 

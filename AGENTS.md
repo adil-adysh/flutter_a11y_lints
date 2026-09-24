@@ -7,10 +7,11 @@ This is a Dart static analyzer for Flutter accessibility. The current pipeline p
 - `README.md`: user-facing usage.
 - `lib/src/widget_tree/`: source-derived widgets, named slots, and conditional branches.
 - `lib/src/semantics/`: known widget semantics, semantic synthesis, and tree relationships.
-- `lib/src/faql/` and `lib/src/bridge/`: current FAQL parser, validator, evaluator, and Semantic IR adapter.
+- `lib/src/query/`: in-progress FAQL 4 Core parser, compiler, standard library, and evaluator.
+- `lib/src/faql/` and `lib/src/bridge/`: temporary legacy parser, evaluator, and Semantic IR adapter retained for migration parity.
 - `lib/rules/`: current rule sources, catalog, runner, and generated bundles.
 - `test/faql/`, `test/semantics/`, `test/rules/`: focused tests.
-- `doc/docs/faql4_core_design.md`: **proposed** next architecture and migration sequence. Its example query syntax, fact store, views, and directory layout are not implemented APIs.
+- `doc/docs/faql4_core_design.md`: target architecture and migration contract. Some facts and Core compiler pieces are implemented; bundled rules are not yet migrated.
 - Other files in `doc/docs/` may describe earlier designs. Resolve conflicts against the current code and the explicit proposal above; flag material uncertainty.
 
 ## Design constraints
@@ -36,6 +37,18 @@ Prioritize justified accessibility findings over rule count. Static analysis can
 4. When modifying fact extraction, test facts independently of query evaluation; when modifying queries, compare their findings against the existing rule behavior and explain any change.
 5. Keep `.faql` sources and generated bundles consistent. Inspect `tool/generate_rules.dart` and the catalog's actual import path before regenerating; there is existing path drift. Do not edit generated files by hand as a substitute for fixing generation.
 6. Do not refactor the project into the proposed FAQL 4 layout just to satisfy documentation. Follow the staged migration in the design.
+
+## FAQL 4 migration status
+
+- Typed facts and a FAQL 4 Core compiler exist, but the source-to-fact
+  `BranchPath` propagation is incomplete. Do not port conservative rules until
+  nested conditional alternatives are proven branch-safe through the pipeline.
+- Built-in `.faql` sources and `lib/rules/builtin_faql_rules.g.dart` still use
+  legacy rule syntax. The future canonical generated bundle remains
+  `lib/rules/builtin_faql_rules.g.dart`.
+- Do not regenerate the bundle from legacy sources as though they were FAQL 4,
+  delete legacy code before replacement fixtures pass, or claim branch safety
+  from scalar `branchGroupId`/`branchValue` metadata.
 
 ## Verification
 

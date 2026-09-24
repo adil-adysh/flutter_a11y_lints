@@ -1,7 +1,9 @@
 # Migrating to FAQL 4
 
 FAQL 4 is a breaking change. The selector-based `rule/on/when/ensure/report`
-format and its adapter-only properties are removed.
+format and its adapter-only properties will be removed at the final migration
+cutover. During migration, bundled rules still use legacy syntax and must not
+be treated as FAQL 4 queries.
 
 Rules now declare stable metadata and emit violation tuples:
 

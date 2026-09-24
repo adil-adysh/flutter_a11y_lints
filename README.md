@@ -272,8 +272,8 @@ The analyzer works in several phases:
 3. **Semantic Tree Building**: Converts to `SemanticNode` tree using KnownSemantics metadata (v2.6)
 4. **Fact Extraction**: Materializes typed structural and semantic facts with
    explicit provenance and unknown states
-5. **Rule Execution**: Runs FAQL 4 queries against conservative or expanded
-   fact views
+5. **Rule Execution**: Runs the current rule catalog; FAQL 4 Core query
+   execution is in migration and bundled rules remain legacy sources
 6. **Reporting**: Outputs violations with file locations
 
 ### Key Components
