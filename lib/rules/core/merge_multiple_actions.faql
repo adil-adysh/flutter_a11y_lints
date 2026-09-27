@@ -1,0 +1,8 @@
+@id flutter-a11y/merge/multiple-actions
+@rule-id merge_multiple_actions
+@severity warning
+@mode conservative
+from MergeSemanticsNode merge
+where count(InteractiveControl control |
+  control = merge.getADescendant()) >= 2
+select merge, "Merged semantics contain multiple independently actionable controls."

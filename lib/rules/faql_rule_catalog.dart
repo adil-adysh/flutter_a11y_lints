@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 
+import '../src/facts/fact_store.dart';
 import '../src/query/faql4.dart';
 import 'builtin_faql_rules.g.dart' as builtin;
 import 'faql_rule_runner.dart';
@@ -11,25 +12,16 @@ typedef RuleLoadLogger = void Function(String message);
 
 /// Loads FAQL rules from the embedded bundle and optional user directories.
 class FaqlRuleCatalog {
-  FaqlRuleCatalog({
-    Faql4Compiler? compiler,
-    this.logger,
-  }) : _compiler = compiler ?? Faql4Compiler();
+  FaqlRuleCatalog({Faql4Compiler? compiler, this.logger})
+      : _compiler = compiler ?? Faql4Compiler(),
+        _builtin = builtin.builtinFaqlRules;
 
+  final List<CompiledQuery> _builtin;
   final Faql4Compiler _compiler;
   final RuleLoadLogger? logger;
 
   List<FaqlRuleSpec> load({String? customRulesDir}) {
-    final collected = <FaqlRuleSpec>[];
-
-    for (final entry in builtin.builtinFaqlRules.entries) {
-      _tryAddRule(
-        content: entry.value,
-        sourceDescriptor: entry.key,
-        sourcePath: null,
-        collection: collected,
-      );
-    }
+    final collected = <FaqlRuleSpec>[..._builtin];
 
     if (customRulesDir == null || customRulesDir.trim().isEmpty) {
       return List.unmodifiable(collected);
@@ -57,6 +49,23 @@ class FaqlRuleCatalog {
 
     return List.unmodifiable(collected);
   }
+
+  Map<String, CompiledQuery> get byQueryId => Map.unmodifiable({
+        for (final query in _builtin) query.queryId: query,
+      });
+
+  Map<String, List<CompiledQuery>> get byRuleId => Map.unmodifiable({
+        for (final query in _builtin)
+          query.ruleId: [
+            ..._builtin.where((other) => other.ruleId == query.ruleId)
+          ],
+      });
+
+  Map<FactMode, List<CompiledQuery>> get byMode => Map.unmodifiable({
+        for (final mode in FactMode.values)
+          mode:
+              List.unmodifiable(_builtin.where((query) => query.mode == mode)),
+      });
 
   void _tryAddRule({
     required String content,
