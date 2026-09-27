@@ -14,6 +14,18 @@ void main() {
         contains('flutter-a11y/merge/multiple-actions'),
       );
     });
+
+    test('contains exactly the approved conservative query IDs', () {
+      expect(
+        builtin.builtinFaqlRules.map((query) => query.queryId).toSet(),
+        {
+          'flutter-a11y/a01/unlabeled-interactive',
+          'flutter-a11y/a04/list-tile-image-labeled',
+          'flutter-a11y/a22/respect-widget-semantic-boundaries',
+          'flutter-a11y/merge/multiple-actions',
+        },
+      );
+    });
     test('indexes a valid custom Core query', () {
       final directory = Directory.systemTemp.createTempSync('faql-catalog-');
       addTearDown(() => directory.deleteSync(recursive: true));
