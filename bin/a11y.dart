@@ -97,7 +97,7 @@ void main(List<String> args) async {
   final rulesDir = argResults['rules-dir'] as String?;
   final ruleLogger = (String msg) => stderr.writeln('[rules] $msg');
   final catalog = FaqlRuleCatalog(logger: ruleLogger);
-  final activeRules = catalog.load(customRulesDir: rulesDir);
+  final activeRules = catalog.load(customRulesDir: rulesDir).queries;
 
   if (argResults['list-rules'] as bool) {
     if (activeRules.isEmpty) {
@@ -148,9 +148,8 @@ void main(List<String> args) async {
   if (verbose) print('Analyzing: $targetPath');
 
   final analyzer = FlutterA11yAnalyzer(
-    faqlRunner: activeRules.isNotEmpty
-        ? FaqlRuleRunner(rules: activeRules)
-        : null,
+    faqlRunner:
+        activeRules.isNotEmpty ? FaqlRuleRunner(rules: activeRules) : null,
     verbose: verbose,
     excludes: excludes, // Pass excludes to analyzer
   );
