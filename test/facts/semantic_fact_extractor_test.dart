@@ -56,6 +56,59 @@ ListTile(
           'Delete');
     });
 
+    test('does not claim an explicitly excluded image is not excluded',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Image.network(
+  'https://example.com/avatar.png',
+  excludeFromSemantics: true,
+)
+''');
+
+      final facts = SemanticFactExtractor().extract(tree);
+      final image = tree.physicalNodes.singleWhere(
+        (node) => node.widgetType == 'Image',
+      );
+      final imageFacts = facts.store.conservative.factsFor(image.id!);
+
+      expect(
+        imageFacts.any(
+          (fact) =>
+              fact.name == 'isDefinitelyNotExcludedFromSemantics' &&
+              fact.value == true,
+        ),
+        isFalse,
+      );
+    });
+
+    test('proves default and explicit-false image semantics are not excluded',
+        () async {
+      final defaultTree = await buildTestSemanticTree('''
+Image.network('https://example.com/default.png')
+''');
+      final explicitFalseTree = await buildTestSemanticTree('''
+Image.network(
+  'https://example.com/explicit.png',
+  excludeFromSemantics: false,
+)
+''');
+
+      bool hasNotExcludedFact(SemanticTree tree) {
+        final extracted = SemanticFactExtractor().extract(tree);
+        final image = tree.physicalNodes.singleWhere(
+          (node) => node.widgetType == 'Image',
+        );
+        return extracted.store.conservative.factsFor(image.id!).any(
+              (fact) =>
+                  fact.name == 'isDefinitelyNotExcludedFromSemantics' &&
+                  fact.value == true,
+            );
+      }
+
+      expect(hasNotExcludedFact(defaultTree), isTrue);
+      expect(hasNotExcludedFact(explicitFalseTree), isTrue);
+    });
+
     test('emits visibility only for explicit hiding widgets', () async {
       final tree = await buildTestSemanticTree('''
 Offstage(offstage: true, child: const IconButton(icon: Icon('delete')))
