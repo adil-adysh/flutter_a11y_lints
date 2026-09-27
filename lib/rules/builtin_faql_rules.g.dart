@@ -10,7 +10,9 @@ final List<CompiledQuery> builtinFaqlRules = List.unmodifiable([
 @severity warning
 @mode conservative
 from InteractiveControl control
-where control.isDefinitelyEnabled() and control.isDefinitelyUnlabeled()
+where control.isDefinitelyExposed() and
+  control.isDefinitelyEnabled() and
+  control.isDefinitelyUnlabeled()
 select control, "Interactive control must have an accessible label."
 '''), // flutter-a11y/a01/unlabeled-interactive
   Faql4Compiler().compile(r'''@id flutter-a11y/a04/list-tile-image-labeled
@@ -18,18 +20,21 @@ select control, "Interactive control must have an accessible label."
 @severity warning
 @mode conservative
 from ImageNode image
-where image.isNetworkOrFileImage() and
+where image.isDefinitelyIncludedInSemantics() and
+  image.isNetworkOrFileImage() and
   image.isDefinitelyNotExcludedFromSemantics() and
   image.isDefinitelyEffectivelyUnlabeled() and
   exists(ListTileNode tile | image = tile.getSlot("leading"))
 select image, "Informative ListTile leading images must provide semantic labels."
 '''), // flutter-a11y/a04/list-tile-image-labeled
-  Faql4Compiler().compile(r'''@id flutter-a11y/a22/respect-widget-semantic-boundaries
+  Faql4Compiler()
+      .compile(r'''@id flutter-a11y/a22/respect-widget-semantic-boundaries
 @rule-id a22_respect_widget_semantic_boundaries
 @severity warning
 @mode conservative
 from MergeSemanticsNode merge
-where exists(ListTileNode tile | tile = merge.getAChild())
+where merge.isDefinitelyExposed() and
+  exists(ListTileNode tile | tile = merge.getAChild())
 select merge, "ListTile family widgets already merge semantics; remove the MergeSemantics wrapper."
 '''), // flutter-a11y/a22/respect-widget-semantic-boundaries
   Faql4Compiler().compile(r'''@id flutter-a11y/merge/multiple-actions
@@ -37,7 +42,8 @@ select merge, "ListTile family widgets already merge semantics; remove the Merge
 @severity warning
 @mode conservative
 from MergeSemanticsNode merge
-where count(InteractiveControl control |
+where merge.isDefinitelyExposed() and
+  count(InteractiveControl control |
   control = merge.getADescendant() and control.isDefinitelyEnabled()) >= 2
 select merge, "Merged semantics contain multiple independently actionable controls."
 '''), // flutter-a11y/merge/multiple-actions

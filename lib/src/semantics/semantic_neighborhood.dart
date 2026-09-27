@@ -60,18 +60,12 @@ class SemanticNeighborhood {
     return tree.accessibilityFocusNodes[prev];
   }
 
-  /// Returns true when the node is effectively hidden from assistive
-  /// technologies (i.e., it does not appear in the accessibility focus list).
-  bool isHidden(SemanticNode node) {
-    // Quick-path: if no focusOrderIndex assigned, it is not in the
-    // accessibility view.
-    if (node.focusOrderIndex == null) return true;
-    final idx = node.focusOrderIndex!;
-    if (idx < 0 || idx >= tree.accessibilityFocusNodes.length) return true;
-    // Ensure the focusOrderIndex actually points to this node in the
-    // accessibility list (defensive check).
-    return tree.accessibilityFocusNodes[idx] != node;
-  }
+  /// Returns true only when the model explicitly proves semantic exposure is
+  /// hidden. Absence from [SemanticTree.accessibilityFocusNodes] is not proof
+  /// of hidden content: it can also represent unknown composition or a node
+  /// that is not focusable.
+  bool isHidden(SemanticNode node) =>
+      node.exposureState == SemanticExposureState.hidden;
 
   Iterable<SemanticNode> neighborsInReadingOrder(
     SemanticNode node, {

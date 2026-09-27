@@ -16,6 +16,8 @@ class Faql4StandardLibrary {
   static const booleanMembers = {
     'isDefinitelyEnabled': 'enabledState',
     'isDefinitelyFocusable': 'focusableState',
+    'isDefinitelyExposed': 'semanticExposureState',
+    'isDefinitelyIncludedInSemantics': 'semanticInclusionState',
     'isDefinitelyUnlabeled': 'labelState',
     'isDefinitelyEffectivelyUnlabeled': 'effectiveNameState',
     'hasAccessibleLabel': 'labelState',

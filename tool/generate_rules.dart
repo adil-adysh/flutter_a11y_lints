@@ -71,6 +71,14 @@ void main() async {
   }
 
   await outputFile.writeAsString(buffer.toString());
+  final formatResult = await Process.run(
+    Platform.resolvedExecutable,
+    ['format', outputFile.path],
+  );
+  if (formatResult.exitCode != 0) {
+    stderr.write(formatResult.stderr);
+    exit(formatResult.exitCode);
+  }
 
   print('----------------------------------------------------------------');
   print('Success! Embedded $count rules into ${outputFile.path}');

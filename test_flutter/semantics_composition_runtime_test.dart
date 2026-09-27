@@ -1,3 +1,5 @@
+import 'dart:ui' show SemanticsAction;
+
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -5,100 +7,151 @@ void main() {
   testWidgets('a plain Semantics label may absorb descendant text',
       (tester) async {
     final handle = tester.ensureSemantics();
-    await tester.pumpWidget(
-      Directionality(
-        textDirection: TextDirection.ltr,
-        child: Semantics(label: 'Wrapper', child: const Text('Child content')),
-      ),
-    );
+    try {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child:
+              Semantics(label: 'Wrapper', child: const Text('Child content')),
+        ),
+      );
 
-    final labels = tester.semantics
-        .simulatedAccessibilityTraversal()
-        .map((node) => node.label);
-    expect(labels, contains('Wrapper\nChild content'));
-    handle.dispose();
+      final labels = tester.semantics
+          .simulatedAccessibilityTraversal()
+          .map((node) => node.label);
+      expect(labels, contains('Wrapper\nChild content'));
+    } finally {
+      handle.dispose();
+    }
   });
 
   testWidgets(
       'explicit child nodes keep container and child semantics separate',
       (tester) async {
     final handle = tester.ensureSemantics();
-    await tester.pumpWidget(
-      Directionality(
-        textDirection: TextDirection.ltr,
-        child: Semantics(
-          container: true,
-          explicitChildNodes: true,
-          label: 'Container',
-          child: const Text('Child content'),
+    try {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Semantics(
+            container: true,
+            explicitChildNodes: true,
+            label: 'Container',
+            child: const Text('Child content'),
+          ),
         ),
-      ),
-    );
+      );
 
-    final labels = tester.semantics
-        .simulatedAccessibilityTraversal()
-        .map((node) => node.label)
-        .toList();
-    expect(labels, containsAllInOrder(['Container', 'Child content']));
-    handle.dispose();
+      final labels = tester.semantics
+          .simulatedAccessibilityTraversal()
+          .map((node) => node.label)
+          .toList();
+      expect(labels, containsAllInOrder(['Container', 'Child content']));
+    } finally {
+      handle.dispose();
+    }
   });
 
   testWidgets(
       'replacement retains wrapper semantics and removes child semantics',
       (tester) async {
     final handle = tester.ensureSemantics();
-    await tester.pumpWidget(
-      Directionality(
-        textDirection: TextDirection.ltr,
-        child: Semantics(
-          excludeSemantics: true,
-          label: 'Replacement',
-          child: const Text('Child content'),
+    try {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Semantics(
+            excludeSemantics: true,
+            label: 'Replacement',
+            child: const Text('Child content'),
+          ),
         ),
-      ),
-    );
+      );
 
-    final labels = tester.semantics
-        .simulatedAccessibilityTraversal()
-        .map((node) => node.label);
-    expect(labels, contains('Replacement'));
-    expect(labels, isNot(contains('Child content')));
-    handle.dispose();
+      final labels = tester.semantics
+          .simulatedAccessibilityTraversal()
+          .map((node) => node.label);
+      expect(labels, contains('Replacement'));
+      expect(labels, isNot(contains('Child content')));
+    } finally {
+      handle.dispose();
+    }
+  });
+
+  testWidgets('replacement does not inherit a discarded child action',
+      (tester) async {
+    // Runtime contract: excludeSemantics removes a child's tap action.
+    // IR mapping: replacement nodes must not inherit child role/action facts.
+    // Conservative consequence: replacement-based rules use wrapper-local facts.
+    // Deliberate unknown boundary: dynamic exclusion does not expose child facts.
+    final handle = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Semantics(
+            excludeSemantics: true,
+            label: 'Delete item',
+            child: Semantics(
+              button: true,
+              label: 'Child action',
+              onTap: () {},
+              child: const Text('Child content'),
+            ),
+          ),
+        ),
+      );
+
+      final replacement = tester.getSemantics(find.byType(Semantics).first);
+      expect(replacement.label, 'Delete item');
+      expect(
+        replacement.getSemanticsData().hasAction(SemanticsAction.tap),
+        isFalse,
+      );
+    } finally {
+      handle.dispose();
+    }
   });
 
   testWidgets('ExcludeSemantics removes the descendant subtree',
       (tester) async {
     final handle = tester.ensureSemantics();
-    await tester.pumpWidget(
-      Directionality(
-        textDirection: TextDirection.ltr,
-        child: const ExcludeSemantics(child: Text('Hidden child')),
-      ),
-    );
+    try {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: const ExcludeSemantics(child: Text('Hidden child')),
+        ),
+      );
 
-    final labels = tester.semantics
-        .simulatedAccessibilityTraversal()
-        .map((node) => node.label);
-    expect(labels, isNot(contains('Hidden child')));
-    handle.dispose();
+      final labels = tester.semantics
+          .simulatedAccessibilityTraversal()
+          .map((node) => node.label);
+      expect(labels, isNot(contains('Hidden child')));
+    } finally {
+      handle.dispose();
+    }
   });
 
   testWidgets('MergeSemantics combines descendant text into one node',
       (tester) async {
     final handle = tester.ensureSemantics();
-    await tester.pumpWidget(
-      const Directionality(
-        textDirection: TextDirection.ltr,
-        child: MergeSemantics(
-          child: Row(children: [Text('First'), Text('Second')]),
+    try {
+      await tester.pumpWidget(
+        const Directionality(
+          textDirection: TextDirection.ltr,
+          child: MergeSemantics(
+            child: Row(children: [Text('First'), Text('Second')]),
+          ),
         ),
-      ),
-    );
+      );
 
-    final labels = tester.semantics
-        .simulatedAccessibilityTraversal()
-        .map((node) => node.label);
-    expect(labels, contains('First\nSecond'));
-    handle.dispose();
+      final labels = tester.semantics
+          .simulatedAccessibilityTraversal()
+          .map((node) => node.label);
+      expect(labels, contains('First\nSecond'));
+    } finally {
+      handle.dispose();
+    }
   });
 }

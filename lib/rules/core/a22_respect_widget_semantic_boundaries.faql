@@ -3,5 +3,6 @@
 @severity warning
 @mode conservative
 from MergeSemanticsNode merge
-where exists(ListTileNode tile | tile = merge.getAChild())
+where merge.isDefinitelyExposed() and
+  exists(ListTileNode tile | tile = merge.getAChild())
 select merge, "ListTile family widgets already merge semantics; remove the MergeSemantics wrapper."

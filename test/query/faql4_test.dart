@@ -11,7 +11,7 @@ void main() {
 @severity warning
 @mode conservative
 from InteractiveControl control
-where control.isDefinitelyEnabled() and control.isDefinitelyUnlabeled()
+where control.isDefinitelyExposed() and control.isDefinitelyEnabled() and control.isDefinitelyUnlabeled()
 select control, "Interactive control must have an accessible label."
 ''';
       final query = Faql4Compiler().compile(source);
@@ -26,6 +26,11 @@ select control, "Interactive control must have an accessible label."
               nodeId: 1,
               name: 'enabledState',
               value: 'enabled',
+              provenance: FactProvenance.exact))
+          .add(const SemanticFact(
+              nodeId: 1,
+              name: 'semanticExposureState',
+              value: 'exposed',
               provenance: FactProvenance.exact))
           .add(const SemanticFact(
               nodeId: 1,

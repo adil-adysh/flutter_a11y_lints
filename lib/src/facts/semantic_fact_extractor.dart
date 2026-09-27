@@ -25,6 +25,8 @@ class SemanticFactExtractor {
     final enabledStates = <int, EnabledState>{};
     final focusableStates = <int, FocusableState>{};
     final visibilityStates = <int, VisibilityState>{};
+    final exposureStates = <int, SemanticExposureState>{};
+    final inclusionStates = <int, SemanticInclusionState>{};
     final slots = <int, Map<String, int>>{};
     final properties = <int, Map<String, Object?>>{};
 
@@ -49,6 +51,8 @@ class SemanticFactExtractor {
           : node.isFocusable
               ? FocusableState.focusable
               : FocusableState.notFocusable;
+      exposureStates[id] = node.exposureState;
+      inclusionStates[id] = node.inclusionState;
       store = store
           .add(SemanticFact(
               nodeId: id,
@@ -94,6 +98,24 @@ class SemanticFactExtractor {
               name: 'focusableState',
               value: focusableStates[id]!.name,
               provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'semanticExposureState',
+              value: exposureStates[id]!.name,
+              provenance: node.isHeuristic
+                  ? FactProvenance.heuristic
+                  : exposureStates[id] == SemanticExposureState.unknown
+                      ? FactProvenance.derived
+                      : FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'semanticInclusionState',
+              value: inclusionStates[id]!.name,
+              provenance: node.isHeuristic
+                  ? FactProvenance.heuristic
+                  : inclusionStates[id] == SemanticInclusionState.unknown
+                      ? FactProvenance.derived
+                      : FactProvenance.exact))
           .add(SemanticFact(
               nodeId: id,
               name: 'tap',
@@ -290,8 +312,17 @@ class SemanticFactExtractor {
         provenance: effective.$2,
       ));
     }
-    return ExtractedSemanticFacts(store, labelStates, effectiveNameStates,
-        enabledStates, focusableStates, visibilityStates, slots, properties);
+    return ExtractedSemanticFacts(
+        store,
+        labelStates,
+        effectiveNameStates,
+        enabledStates,
+        focusableStates,
+        visibilityStates,
+        exposureStates,
+        inclusionStates,
+        slots,
+        properties);
   }
 
   (EffectiveNameState, FactProvenance) _effectiveNameState(
@@ -420,6 +451,8 @@ class ExtractedSemanticFacts {
       this._enabledStates,
       this._focusableStates,
       this._visibilityStates,
+      this._exposureStates,
+      this._inclusionStates,
       this._slots,
       this._properties);
 
@@ -429,6 +462,8 @@ class ExtractedSemanticFacts {
   final Map<int, EnabledState> _enabledStates;
   final Map<int, FocusableState> _focusableStates;
   final Map<int, VisibilityState> _visibilityStates;
+  final Map<int, SemanticExposureState> _exposureStates;
+  final Map<int, SemanticInclusionState> _inclusionStates;
   final Map<int, Map<String, int>> _slots;
   final Map<int, Map<String, Object?>> _properties;
 
@@ -442,6 +477,10 @@ class ExtractedSemanticFacts {
       _focusableStates[nodeId] ?? FocusableState.unknown;
   VisibilityState visibilityStateFor(int nodeId) =>
       _visibilityStates[nodeId] ?? VisibilityState.unknown;
+  SemanticExposureState exposureStateFor(int nodeId) =>
+      _exposureStates[nodeId] ?? SemanticExposureState.unknown;
+  SemanticInclusionState inclusionStateFor(int nodeId) =>
+      _inclusionStates[nodeId] ?? SemanticInclusionState.unknown;
   Map<String, int> slotsFor(int nodeId) => _slots[nodeId] ?? const {};
   Object? propertyValueFor(int nodeId, String name) =>
       _properties[nodeId]?[name];

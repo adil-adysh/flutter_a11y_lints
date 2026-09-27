@@ -3,6 +3,7 @@
 @severity warning
 @mode conservative
 from MergeSemanticsNode merge
-where count(InteractiveControl control |
+where merge.isDefinitelyExposed() and
+  count(InteractiveControl control |
   control = merge.getADescendant() and control.isDefinitelyEnabled()) >= 2
 select merge, "Merged semantics contain multiple independently actionable controls."

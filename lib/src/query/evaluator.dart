@@ -108,6 +108,8 @@ class Faql4Evaluator {
       'isDefinitelyEffectivelyUnlabeled' => fact == 'absent',
       'isDefinitelyEnabled' => fact == 'enabled',
       'isDefinitelyFocusable' => fact == 'focusable',
+      'isDefinitelyExposed' => fact == 'exposed',
+      'isDefinitelyIncludedInSemantics' => fact == 'included',
       'hasAccessibleLabel' => fact == 'static' || fact == 'dynamic',
       'hasStaticLabel' => fact == 'static',
       'isNetworkOrFileImage' => fact == 'network' || fact == 'file',

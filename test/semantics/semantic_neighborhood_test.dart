@@ -1,8 +1,8 @@
+import 'package:flutter_a11y_lints/src/semantics/semantic_neighborhood.dart';
+import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:test/test.dart';
 
 import '../rules/test_semantic_utils.dart';
-import 'package:flutter_a11y_lints/src/semantics/semantic_neighborhood.dart';
-// helpers available from test utilities
 
 void main() {
   test('neighbors, siblings and focus navigation behave as expected', () {
@@ -31,9 +31,11 @@ void main() {
     expect(focusNext, isNotNull);
     expect(focusPrev, isNotNull);
 
-    // hidden check: a node not in accessibilityFocusNodes is hidden
+    // Focus-list absence is not proof of hidden semantics. Only an explicit
+    // hidden exposure state supports that conclusion.
     final hiddenNode =
-        makeSemanticNode(widgetType: 'Hidden', isFocusable: false);
+        makeSemanticNode(widgetType: 'Hidden', isFocusable: false)
+            .copyWith(exposureState: SemanticExposureState.hidden);
     final hiddenRoot =
         makeSemanticNode(widgetType: 'R', children: [hiddenNode]);
     final hiddenTree = buildManualTree(hiddenRoot);
@@ -41,6 +43,17 @@ void main() {
     final hn =
         hiddenTree.physicalNodes.firstWhere((n) => n.widgetType == 'Hidden');
     expect(hiddenNb.isHidden(hn), isTrue);
+
+    final unknownNode =
+        makeSemanticNode(widgetType: 'Unknown', isFocusable: false)
+            .copyWith(exposureState: SemanticExposureState.unknown);
+    final unknownTree = buildManualTree(
+      makeSemanticNode(widgetType: 'UnknownRoot', children: [unknownNode]),
+    );
+    final unknownNb = SemanticNeighborhood(unknownTree);
+    final un = unknownTree.physicalNodes
+        .firstWhere((node) => node.widgetType == 'Unknown');
+    expect(unknownNb.isHidden(un), isFalse);
 
     // neighborsInReadingOrder yields nodes within radius
     final neighbors = nb.neighborsInReadingOrder(middle, radius: 1).toList();

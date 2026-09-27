@@ -73,6 +73,18 @@ enum DescendantReplacementState { unknown, preserved, replaced, excluded }
 
 enum SemanticMergeState { unknown, notMerged, merged }
 
+/// Whether this node is proven to be exposed to accessibility focus.
+///
+/// This is deliberately independent from focusability: a node can be
+/// focusable while an enclosing dynamic semantic wrapper leaves its exposure
+/// unknown. Only [exposed] nodes belong in the conservative focus view.
+enum SemanticExposureState { unknown, exposed, hidden }
+
+/// Whether this node's semantics are proven to participate in the resulting
+/// semantics tree. Inclusion is separate from focus exposure: merged children
+/// are included even though they are not individual focus targets.
+enum SemanticInclusionState { unknown, included, excluded }
+
 /// Simplified semantic IR node used by rules and the tree annotator.
 ///
 /// `SemanticNode` intentionally stores both raw discovery data (e.g. the
@@ -136,17 +148,31 @@ class SemanticNode {
     ChildContributionPolicy? childContribution,
     DescendantReplacementState? descendantReplacement,
     SemanticMergeState? mergeState,
+    SemanticExposureState? exposureState,
+    SemanticInclusionState? inclusionState,
   })  : nodeCreation = nodeCreation ?? SemanticNodeCreation.unknown,
         childContribution =
             childContribution ?? ChildContributionPolicy.unknown,
         descendantReplacement = descendantReplacement ??
-            (excludesDescendants == true
-                ? DescendantReplacementState.excluded
-                : DescendantReplacementState.preserved),
+            (isHeuristic
+                ? DescendantReplacementState.unknown
+                : excludesDescendants == true
+                    ? DescendantReplacementState.excluded
+                    : DescendantReplacementState.preserved),
         mergeState = mergeState ??
-            (mergesDescendants == true
-                ? SemanticMergeState.merged
-                : SemanticMergeState.notMerged),
+            (isHeuristic
+                ? SemanticMergeState.unknown
+                : mergesDescendants == true
+                    ? SemanticMergeState.merged
+                    : SemanticMergeState.notMerged),
+        exposureState = exposureState ??
+            (isHeuristic
+                ? SemanticExposureState.unknown
+                : SemanticExposureState.exposed),
+        inclusionState = inclusionState ??
+            (isHeuristic
+                ? SemanticInclusionState.unknown
+                : SemanticInclusionState.included),
         slots = slots ?? const {},
         _rawAttributes = rawAttributes ?? const {};
 
@@ -181,6 +207,8 @@ class SemanticNode {
   final ChildContributionPolicy childContribution;
   final DescendantReplacementState descendantReplacement;
   final SemanticMergeState mergeState;
+  final SemanticExposureState exposureState;
+  final SemanticInclusionState inclusionState;
   final bool blocksBehind;
 
   final String? label;
@@ -334,6 +362,8 @@ class SemanticNode {
     ChildContributionPolicy? childContribution,
     DescendantReplacementState? descendantReplacement,
     SemanticMergeState? mergeState,
+    SemanticExposureState? exposureState,
+    SemanticInclusionState? inclusionState,
   }) {
     return SemanticNode(
       widgetType: widgetType ?? this.widgetType,
@@ -393,6 +423,8 @@ class SemanticNode {
           (excludesDescendants == null ? this.descendantReplacement : null),
       mergeState:
           mergeState ?? (mergesDescendants == null ? this.mergeState : null),
+      exposureState: exposureState ?? this.exposureState,
+      inclusionState: inclusionState ?? this.inclusionState,
     );
   }
 }

@@ -7,18 +7,16 @@ import 'known_semantics.dart';
 /// `SemanticTree` that includes:
 /// - `physicalNodes`: the full DFS-ordered list of nodes (including merged
 ///    descendants). `preOrderIndex` corresponds to this ordering.
-/// - `accessibilityFocusNodes`: nodes that should be considered accessibility
-///    focus targets (skips children of nodes that `mergesDescendants` or
-///    `excludesDescendants`). This view models what a screen reader or
-///    assistive focus traversal would encounter.
+/// - `accessibilityFocusNodes`: nodes proven to be accessibility focus targets.
+///    Unknown composition is deliberately omitted rather than treated as
+///    exposed. This is not proof that an omitted node is hidden.
 /// - `byId`: lookup table used by rules to find annotated nodes quickly.
 ///
 /// Important behaviour:
-/// - When a node has `mergesDescendants` or `excludesDescendants` set, its
-///   children are still present in `physicalNodes` (so heuristics can inspect
-///   them), but they are not added to `accessibilityFocusNodes`. This mirrors
-///   run-time semantics where merged/excluded descendants are not individually
-///   focusable.
+/// - When composition proves descendants are merged, replaced, or excluded,
+///   children remain in `physicalNodes` but are not focus targets. When that
+///   composition is unknown, children are likewise omitted from this proven
+///   focus view without being classified as hidden.
 class SemanticTree {
   SemanticTree._({
     required this.root,
@@ -61,6 +59,9 @@ class SemanticTree {
       int depth = 0,
       int siblingIndex = 0,
       bool ancestorBlocksFocus = false,
+      SemanticExposureState ancestorExposure = SemanticExposureState.exposed,
+      SemanticInclusionState ancestorInclusion =
+          SemanticInclusionState.included,
     }) {
       // Assign a stable id and pre-order index based on the current physical
       // nodes list length. We add a placeholder entry into `physical` so that
@@ -77,6 +78,18 @@ class SemanticTree {
         siblingIndex: siblingIndex,
         preOrderIndex: preOrderIndex,
       );
+      final exposureState = switch (ancestorExposure) {
+        SemanticExposureState.hidden => SemanticExposureState.hidden,
+        SemanticExposureState.unknown => SemanticExposureState.unknown,
+        SemanticExposureState.exposed => annotated.exposureState,
+      };
+      annotated = annotated.copyWith(exposureState: exposureState);
+      final inclusionState = switch (ancestorInclusion) {
+        SemanticInclusionState.excluded => SemanticInclusionState.excluded,
+        SemanticInclusionState.unknown => SemanticInclusionState.unknown,
+        SemanticInclusionState.included => annotated.inclusionState,
+      };
+      annotated = annotated.copyWith(inclusionState: inclusionState);
 
       int? focusInsertIndex;
       // Decide whether this node itself should be included in the
@@ -86,6 +99,7 @@ class SemanticTree {
       // descendants still can be focus targets themselves — children are the
       // ones that get skipped from the accessibility list.
       if (!ancestorBlocksFocus &&
+          annotated.exposureState == SemanticExposureState.exposed &&
           annotated.isFocusable &&
           annotated.isEnabled) {
         annotated = annotated.copyWith(focusOrderIndex: nextFocusOrder++);
@@ -94,16 +108,29 @@ class SemanticTree {
       }
 
       final childNodes = <SemanticNode>[];
-      // If a node merges or excludes descendants, it hides its children from
-      // the accessibility-focused view; for the purposes of determining which
-      // nodes are assigned `focusOrderIndex`, we propagate `ancestorBlocksFocus`.
-      // `hidesDescendants` means children should not be individual focus
-      // targets even though they remain in `physicalNodes` for heuristic
-      // inspection.
+      // Descendants remain physical nodes regardless of composition. Only
+      // proven exposure may enter the focus view; unknown composition therefore
+      // propagates unknown exposure instead of assuming the child is exposed.
       final hidesDescendants = node.mergeState == SemanticMergeState.merged ||
           node.descendantReplacement == DescendantReplacementState.replaced ||
           node.descendantReplacement == DescendantReplacementState.excluded;
       final nextAncestorBlocksFocus = ancestorBlocksFocus || hidesDescendants;
+      final nextAncestorExposure = hidesDescendants
+          ? SemanticExposureState.hidden
+          : node.mergeState == SemanticMergeState.unknown ||
+                  node.descendantReplacement ==
+                      DescendantReplacementState.unknown
+              ? SemanticExposureState.unknown
+              : exposureState;
+      final nextAncestorInclusion = node.descendantReplacement ==
+                  DescendantReplacementState.replaced ||
+              node.descendantReplacement == DescendantReplacementState.excluded
+          ? SemanticInclusionState.excluded
+          : node.mergeState == SemanticMergeState.unknown ||
+                  node.descendantReplacement ==
+                      DescendantReplacementState.unknown
+              ? SemanticInclusionState.unknown
+              : inclusionState;
 
       for (var i = 0; i < node.children.length; i++) {
         final child = annotate(
@@ -112,6 +139,8 @@ class SemanticTree {
           depth: depth + 1,
           siblingIndex: i,
           ancestorBlocksFocus: nextAncestorBlocksFocus,
+          ancestorExposure: nextAncestorExposure,
+          ancestorInclusion: nextAncestorInclusion,
         );
         childNodes.add(child);
       }

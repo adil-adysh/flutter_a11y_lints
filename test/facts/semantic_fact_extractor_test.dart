@@ -197,6 +197,47 @@ Offstage(offstage: true, child: const IconButton(icon: Icon('delete')))
           facts.propertyValueFor(tree.root.id!, 'visibilityState'), 'hidden');
     });
 
+    test('keeps dynamically excluded descendant exposure unknown', () async {
+      final tree = await buildTestSemanticTree('''
+ExcludeSemantics(
+  excluding: purchasePending,
+  child: IconButton(
+    icon: const Icon('delete'),
+    tooltip: 'Delete',
+    onPressed: () {},
+  ),
+)
+''');
+      final facts = SemanticFactExtractor().extract(tree);
+      final child = tree.root.children.single;
+
+      expect(facts.exposureStateFor(child.id!), SemanticExposureState.unknown);
+      expect(
+        facts.inclusionStateFor(child.id!),
+        SemanticInclusionState.unknown,
+      );
+      final exposureFact = facts.store.conservative
+          .factsFor(child.id!)
+          .singleWhere((fact) => fact.name == 'semanticExposureState');
+      expect(exposureFact.value, 'unknown');
+      expect(exposureFact.provenance, FactProvenance.derived);
+    });
+
+    test('retains semantic inclusion for a ListTile leading image', () async {
+      final tree = await buildTestSemanticTree(
+        "ListTile(leading: Image.network('https://example.test/photo.png'))",
+      );
+      final facts = SemanticFactExtractor().extract(tree);
+      final image = tree.physicalNodes.singleWhere(
+        (node) => node.widgetType == 'Image',
+      );
+
+      expect(
+        facts.inclusionStateFor(image.id!),
+        SemanticInclusionState.included,
+      );
+    });
+
     test('preserves every nested branch constraint in facts', () {
       final branchChild = makeSemanticNode().copyWith(
         branchPath: BranchPath([Branch(1, 0), Branch(2, 1)]),

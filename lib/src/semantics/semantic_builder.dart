@@ -229,12 +229,22 @@ class SemanticBuilder {
       isChecked: known.isChecked,
       mergesDescendants: known.mergesDescendants,
       excludesDescendants: known.excludesDescendants,
-      mergeState: (known.mergesDescendants || known.implicitlyMergesSemantics)
-          ? SemanticMergeState.merged
-          : SemanticMergeState.notMerged,
-      descendantReplacement: known.excludesDescendants
-          ? DescendantReplacementState.excluded
-          : DescendantReplacementState.preserved,
+      mergeState: isHeuristic
+          ? SemanticMergeState.unknown
+          : (known.mergesDescendants || known.implicitlyMergesSemantics)
+              ? SemanticMergeState.merged
+              : SemanticMergeState.notMerged,
+      descendantReplacement: isHeuristic
+          ? DescendantReplacementState.unknown
+          : known.excludesDescendants
+              ? DescendantReplacementState.excluded
+              : DescendantReplacementState.preserved,
+      exposureState: isHeuristic
+          ? SemanticExposureState.unknown
+          : SemanticExposureState.exposed,
+      inclusionState: isHeuristic
+          ? SemanticInclusionState.unknown
+          : SemanticInclusionState.included,
       blocksBehind: known.blocksBehind,
       label: label,
       labelGuarantee: labelGuarantee,
@@ -260,7 +270,6 @@ class SemanticBuilder {
     // A Semantics annotation is not an implicit MergeSemantics wrapper.
     final builtChildren = _buildChildren(widget, ctx);
     final nodes = builtChildren.nodes;
-    final baseChild = nodes.isNotEmpty ? nodes.first : null;
     final labelInfo = _labelFromExpression(
       widget.props['label'],
       source: LabelSource.semanticsWidget,
@@ -268,6 +277,13 @@ class SemanticBuilder {
     final tooltip = ctx.evalString(widget.props['tooltip']);
     final value = ctx.evalString(widget.props['value']);
     final config = _semanticsConfig(widget, ctx);
+    // Flutter discards child semantics when replacement is enabled. When the
+    // value is dynamic, source analysis cannot prove whether child semantics
+    // contribute, so inheriting them would invent role/action evidence.
+    final baseChild =
+        config.excludeSemantics == KnownBool.no && nodes.isNotEmpty
+            ? nodes.first
+            : null;
 
     SemanticRole? roleOverride;
     if (ctx.evalBool(widget.props['button']) == true) {
@@ -310,6 +326,12 @@ class SemanticBuilder {
         KnownBool.unknown => DescendantReplacementState.unknown,
       },
       mergeState: SemanticMergeState.notMerged,
+      exposureState: config.excludeSemantics == KnownBool.unknown
+          ? SemanticExposureState.unknown
+          : SemanticExposureState.exposed,
+      inclusionState: config.excludeSemantics == KnownBool.unknown
+          ? SemanticInclusionState.unknown
+          : SemanticInclusionState.included,
     );
   }
 
@@ -365,6 +387,16 @@ class SemanticBuilder {
         KnownBool.yes => DescendantReplacementState.excluded,
         KnownBool.no => DescendantReplacementState.preserved,
         KnownBool.unknown => DescendantReplacementState.unknown,
+      },
+      exposureState: switch (excluding) {
+        KnownBool.yes => SemanticExposureState.hidden,
+        KnownBool.no => SemanticExposureState.exposed,
+        KnownBool.unknown => SemanticExposureState.unknown,
+      },
+      inclusionState: switch (excluding) {
+        KnownBool.yes => SemanticInclusionState.excluded,
+        KnownBool.no => SemanticInclusionState.included,
+        KnownBool.unknown => SemanticInclusionState.unknown,
       },
     );
   }
@@ -451,6 +483,8 @@ class SemanticBuilder {
     ChildContributionPolicy childContribution = ChildContributionPolicy.unknown,
     DescendantReplacementState? descendantReplacement,
     SemanticMergeState? mergeState,
+    SemanticExposureState? exposureState,
+    SemanticInclusionState? inclusionState,
   }) {
     final base = baseChild;
     // Compose semantic properties by overriding base child values with
@@ -518,6 +552,8 @@ class SemanticBuilder {
       childContribution: childContribution,
       descendantReplacement: descendantReplacement,
       mergeState: mergeState,
+      exposureState: exposureState,
+      inclusionState: inclusionState,
       blocksBehind: blocksBehind,
       label: labelOverride ?? base?.label,
       labelGuarantee: labelGuarantee,

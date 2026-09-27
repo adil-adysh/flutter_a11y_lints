@@ -103,6 +103,82 @@ Semantics(
       expect(tree.root.children.single.focusOrderIndex, isNull);
     });
 
+    test('Semantics replacement does not inherit discarded child actions',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Semantics(
+  excludeSemantics: true,
+  label: 'Delete item',
+  child: IconButton(
+    icon: const Icon('delete'),
+    tooltip: 'Delete',
+    onPressed: () {},
+  ),
+)
+''');
+
+      final replacement = tree.root;
+      expect(
+        replacement.descendantReplacement,
+        DescendantReplacementState.replaced,
+      );
+      expect(replacement.role, SemanticRole.group);
+      expect(replacement.controlKind, ControlKind.none);
+      expect(replacement.isFocusable, isFalse);
+      expect(replacement.hasTap, isFalse);
+      expect(replacement.label, 'Delete item');
+    });
+
+    test('dynamic Semantics replacement does not inherit child actions',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Semantics(
+  excludeSemantics: purchasePending,
+  child: IconButton(
+    icon: const Icon('delete'),
+    tooltip: 'Delete',
+    onPressed: () {},
+  ),
+)
+''');
+
+      final wrapper = tree.root;
+      expect(
+        wrapper.descendantReplacement,
+        DescendantReplacementState.unknown,
+      );
+      expect(wrapper.role, SemanticRole.group);
+      expect(wrapper.controlKind, ControlKind.none);
+      expect(wrapper.isFocusable, isFalse);
+      expect(wrapper.hasTap, isFalse);
+    });
+
+    test('unresolved widgets retain unknown composition states', () async {
+      final tree = await buildTestSemanticTree(
+        '''
+CustomAccessibilityWrapper(
+  child: IconButton(
+    icon: const Icon('delete'),
+    tooltip: 'Delete',
+    onPressed: () {},
+  ),
+)
+''',
+        extraDeclarations: '''
+class CustomAccessibilityWrapper extends Widget {
+  const CustomAccessibilityWrapper({required Widget child});
+}
+''',
+      );
+
+      expect(tree.root.isHeuristic, isTrue);
+      expect(tree.root.mergeState, SemanticMergeState.unknown);
+      expect(
+        tree.root.descendantReplacement,
+        DescendantReplacementState.unknown,
+      );
+    });
+
     test('ExcludeSemantics suppresses descendant focus nodes', () async {
       final tree = await buildTestSemanticTree('''
 ExcludeSemantics(
@@ -136,6 +212,27 @@ ExcludeSemantics(
       expect(tree.root.descendantReplacement,
           DescendantReplacementState.preserved);
       expect(tree.root.children.single.focusOrderIndex, isNotNull);
+    });
+
+    test('dynamic ExcludeSemantics leaves descendant exposure unknown',
+        () async {
+      final tree = await buildTestSemanticTree('''
+ExcludeSemantics(
+  excluding: purchasePending,
+  child: IconButton(
+    icon: const Icon('add'),
+    tooltip: 'Add',
+    onPressed: () {},
+  ),
+)
+''');
+
+      expect(
+        tree.root.descendantReplacement,
+        DescendantReplacementState.unknown,
+      );
+      expect(tree.root.children.single.focusOrderIndex, isNull);
+      expect(tree.accessibilityFocusNodes, isEmpty);
     });
 
     test('MergeSemantics aggregates child labels', () async {
