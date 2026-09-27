@@ -24,4 +24,13 @@ where image.isNetworkOrFileImage() and
   exists(ListTileNode tile | image = tile.getSlot("leading"))
 select image, "Informative ListTile leading images must provide semantic labels."
 '''), // flutter-a11y/a04/list-tile-image-labeled
+  Faql4Compiler()
+      .compile(r'''@id flutter-a11y/a22/respect-widget-semantic-boundaries
+@rule-id a22_respect_widget_semantic_boundaries
+@severity warning
+@mode conservative
+from MergeSemanticsNode merge
+where exists(ListTileNode tile | tile = merge.getAChild())
+select merge, "ListTile family widgets already merge semantics; remove the MergeSemantics wrapper."
+'''), // flutter-a11y/a22/respect-widget-semantic-boundaries
 ]);

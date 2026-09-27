@@ -56,4 +56,24 @@ select image, "Image needs a label."
 
     expect(runner.run(tree), hasLength(1));
   });
+
+  test('reports a ListTile directly wrapped by MergeSemantics', () async {
+    const source = '''
+@id example/a22
+@rule-id a22
+@severity warning
+@mode conservative
+from MergeSemanticsNode merge
+where exists(ListTileNode tile | tile = merge.getAChild())
+select merge, "ListTile already merges semantics."
+''';
+    final tree = await buildTestSemanticTree(
+      "MergeSemantics(child: ListTile(title: Text('Account')))",
+    );
+
+    expect(
+      FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]).run(tree),
+      hasLength(1),
+    );
+  });
 }
