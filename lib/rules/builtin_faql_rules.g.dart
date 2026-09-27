@@ -24,8 +24,7 @@ where image.isNetworkOrFileImage() and
   exists(ListTileNode tile | image = tile.getSlot("leading"))
 select image, "Informative ListTile leading images must provide semantic labels."
 '''), // flutter-a11y/a04/list-tile-image-labeled
-  Faql4Compiler()
-      .compile(r'''@id flutter-a11y/a22/respect-widget-semantic-boundaries
+  Faql4Compiler().compile(r'''@id flutter-a11y/a22/respect-widget-semantic-boundaries
 @rule-id a22_respect_widget_semantic_boundaries
 @severity warning
 @mode conservative
@@ -33,4 +32,13 @@ from MergeSemanticsNode merge
 where exists(ListTileNode tile | tile = merge.getAChild())
 select merge, "ListTile family widgets already merge semantics; remove the MergeSemantics wrapper."
 '''), // flutter-a11y/a22/respect-widget-semantic-boundaries
+  Faql4Compiler().compile(r'''@id flutter-a11y/merge/multiple-actions
+@rule-id merge_multiple_actions
+@severity warning
+@mode conservative
+from MergeSemanticsNode merge
+where count(InteractiveControl control |
+  control = merge.getADescendant() and control.isDefinitelyEnabled()) >= 2
+select merge, "Merged semantics contain multiple independently actionable controls."
+'''), // flutter-a11y/merge/multiple-actions
 ]);

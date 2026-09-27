@@ -23,7 +23,7 @@ select control, "Interactive control must have an accessible label."
   });
 
   test('merge rule excludes disabled interactive descendants', () {
-    final source = File('lib/rules/candidates/merge_multiple_actions.faql')
+    final source = File('lib/rules/core/merge_multiple_actions.faql')
         .readAsStringSync();
     final enabled = makeSemanticNode(widgetType: 'IconButton');
     final disabled = makeSemanticNode(
@@ -37,6 +37,23 @@ select control, "Interactive control must have an accessible label."
     final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
 
     expect(runner.run(tree), isEmpty);
+  });
+
+  test('reports two enabled independent actions under MergeSemantics',
+      () async {
+    final tree = await buildTestSemanticTree('''
+MergeSemantics(child: Column(children: [
+  IconButton(icon: Icon('edit'), tooltip: 'Edit'),
+  IconButton(icon: Icon('delete'), tooltip: 'Delete'),
+]))
+''');
+    final source = File('lib/rules/core/merge_multiple_actions.faql')
+        .readAsStringSync();
+
+    expect(
+      FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]).run(tree),
+      hasLength(1),
+    );
   });
 
   test('reports an effectively unnamed ListTile leading image', () async {
