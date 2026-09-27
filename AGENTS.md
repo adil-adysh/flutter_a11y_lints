@@ -40,9 +40,11 @@ Prioritize justified accessibility findings over rule count. Static analysis can
 
 ## FAQL 4 migration status
 
-- Typed facts and a FAQL 4 Core compiler exist, but the source-to-fact
-  `BranchPath` propagation is incomplete. Do not port conservative rules until
-  nested conditional alternatives are proven branch-safe through the pipeline.
+- Typed facts and a FAQL 4 Core compiler exist. Source-derived `BranchPath`
+  propagation is implemented through WidgetTree, Semantic IR, facts, and the
+  evaluator; focused fixtures prove nested conditional alternatives cannot
+  combine in relationships, `exists`, or `count`. Conservative rule ports may
+  rely on that proof, while still treating unknown evidence conservatively.
 - Built-in `.faql` sources and `lib/rules/builtin_faql_rules.g.dart` still use
   legacy rule syntax. The future canonical generated bundle remains
   `lib/rules/builtin_faql_rules.g.dart`.

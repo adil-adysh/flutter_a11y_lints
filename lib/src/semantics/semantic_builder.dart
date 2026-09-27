@@ -66,10 +66,17 @@ class SemanticBuilder {
       enableHeuristics: enableHeuristics,
       unit: unit,
     );
+    return _buildAllNodes(widget, ctx);
+  }
+
+  List<SemanticNode> _buildAllNodes(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
     if (widget.nodeType == WidgetNodeType.conditionalBranch) {
       return [
         for (final branch in widget.branchChildren)
-          if (_buildNode(branch, ctx) case final node?) node,
+          ..._buildAllNodes(branch, ctx),
       ];
     }
     final node = _buildNode(widget, ctx);

@@ -22,17 +22,32 @@ import 'known_semantics.dart';
 class SemanticTree {
   SemanticTree._({
     required this.root,
+    required this.roots,
     required this.physicalNodes,
     required this.accessibilityFocusNodes,
     required this.byId,
   });
 
   final SemanticNode root;
+
+  /// Every root in the semantic forest, in source order.
+  ///
+  /// A source-level conditional whose condition cannot be resolved has one
+  /// root per alternative. [root] remains the first item only for legacy
+  /// single-root callers; analysis must use the forest views below.
+  final List<SemanticNode> roots;
   final List<SemanticNode> physicalNodes;
   final List<SemanticNode> accessibilityFocusNodes;
   final Map<int, SemanticNode> byId;
 
-  static SemanticTree fromRoot(SemanticNode root) {
+  static SemanticTree fromRoot(SemanticNode root) => fromRoots([root]);
+
+  /// Annotates a complete semantic forest without discarding conditional
+  /// alternatives.
+  static SemanticTree fromRoots(List<SemanticNode> roots) {
+    if (roots.isEmpty) {
+      throw ArgumentError.value(roots, 'roots', 'must not be empty');
+    }
     final physical = <SemanticNode>[];
     final focusable = <SemanticNode>[];
     final byId = <int, SemanticNode>{};
@@ -109,7 +124,8 @@ class SemanticTree {
           annotatedSlots[entry.key] = childNodes[originalIndex];
         }
       }
-      annotated = annotated.copyWith(children: childNodes, slots: annotatedSlots);
+      annotated =
+          annotated.copyWith(children: childNodes, slots: annotatedSlots);
       if (focusInsertIndex != null) {
         focusable[focusInsertIndex] = annotated;
       }
@@ -119,7 +135,10 @@ class SemanticTree {
       return annotated;
     }
 
-    final annotatedRoot = annotate(root);
+    final annotatedRoots = <SemanticNode>[];
+    for (var i = 0; i < roots.length; i++) {
+      annotatedRoots.add(annotate(roots[i], siblingIndex: i));
+    }
     // Second pass: assign layout and list grouping ids using conservative
     // heuristics. This allows neighborhood queries to reason about siblings
     // that participate in the same visual row/column or represent list
@@ -201,7 +220,8 @@ class SemanticTree {
       return node.copyWith(children: newChildren);
     }
 
-    final processedRoot = processNode(annotatedRoot);
+    final processedRoots =
+        annotatedRoots.map(processNode).toList(growable: false);
 
     // Rebuild `physical` and `focusable` lists as well as the `byId` map to
     // reference the processed nodes.
@@ -218,10 +238,13 @@ class SemanticTree {
       }
     }
 
-    collect(processedRoot);
+    for (final processedRoot in processedRoots) {
+      collect(processedRoot);
+    }
 
     return SemanticTree._(
-      root: processedRoot,
+      root: processedRoots.first,
+      roots: processedRoots,
       physicalNodes: newPhysical,
       accessibilityFocusNodes: newFocusable,
       byId: newById,

@@ -35,7 +35,7 @@ class SemanticIrBuilder {
   // Note: `SemanticIrBuilder` is a thin orchestration layer used by the
   // CLI and tests. It composes the `WidgetTreeBuilder` (AST → WidgetNode)
   // with `SemanticBuilder` (WidgetNode → SemanticNode) and then annotates
-  // the resulting tree via `SemanticTree.fromRoot`.
+  // the resulting semantic forest via `SemanticTree.fromRoots`.
   //
   // Important behaviours to be aware of:
   // - A single `GlobalSemanticContext` is created per `SemanticIrBuilder`
@@ -54,11 +54,11 @@ class SemanticIrBuilder {
       constEval: (expr) => _globalContext.evalBoolInUnit(expr, unit),
     ).fromExpression(expression);
     if (widgetNode == null) return null;
-    final semanticNode = SemanticBuilder(
+    final semanticRoots = SemanticBuilder(
       unit: unit,
       globalContext: _globalContext,
-    ).build(widgetNode);
-    if (semanticNode == null) return null;
-    return SemanticTree.fromRoot(semanticNode);
+    ).buildAll(widgetNode);
+    if (semanticRoots.isEmpty) return null;
+    return SemanticTree.fromRoots(semanticRoots);
   }
 }

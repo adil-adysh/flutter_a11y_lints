@@ -1,4 +1,5 @@
 import 'package:flutter_a11y_lints/src/semantics/semantic_neighborhood.dart';
+import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
 // Tests for `SemanticTree` annotation and focus node extraction.
 //
 // `SemanticTree` contains both a `physicalNodes` view (full DFS walk of the
@@ -16,6 +17,36 @@ import 'package:test/test.dart';
 import '../rules/test_semantic_utils.dart';
 
 void main() {
+  group('SemanticTree.fromRoots', () {
+    test('retains every conditional root alternative', () {
+      final firstAlternative = makeSemanticNode(
+        widgetType: 'FirstAlternative',
+      ).copyWith(
+        branchPath: BranchPath([Branch(1, 0)]),
+      );
+      final secondAlternative = makeSemanticNode(
+        widgetType: 'SecondAlternative',
+      ).copyWith(
+        branchPath: BranchPath([Branch(1, 1)]),
+      );
+
+      final tree = SemanticTree.fromRoots([
+        firstAlternative,
+        secondAlternative,
+      ]);
+
+      expect(tree.roots.map((node) => node.widgetType), [
+        'FirstAlternative',
+        'SecondAlternative',
+      ]);
+      expect(tree.physicalNodes.map((node) => node.widgetType), [
+        'FirstAlternative',
+        'SecondAlternative',
+      ]);
+      expect(tree.root.widgetType, 'FirstAlternative');
+    });
+  });
+
   group('SemanticTree.fromRoot', () {
     test('annotates traversal metadata', () {
       final childA = makeSemanticNode(widgetType: 'A');
@@ -79,6 +110,46 @@ void main() {
       final parentNode = tree.accessibilityFocusNodes
           .firstWhere((node) => node.widgetType == 'Parent');
       expect(parentNode.focusOrderIndex, 1);
+    });
+  });
+
+  group('Semantic IR pipeline', () {
+    test('retains both unresolved top-level conditional alternatives',
+        () async {
+      final tree = await buildTestSemanticTree(
+        '''purchasePending
+            ? IconButton(icon: Icon('cancel'), tooltip: 'Cancel')
+            : IconButton(icon: Icon('buy'), tooltip: 'Buy')''',
+      );
+
+      expect(tree.roots, hasLength(2));
+      expect(
+        tree.roots.map((node) => node.branchPath.constraints.single.value),
+        [0, 1],
+      );
+      expect(tree.physicalNodes, hasLength(4));
+    });
+
+    test('retains nested conditional root alternatives with full paths',
+        () async {
+      final tree = await buildTestSemanticTree(
+        '''purchasePending
+            ? (secondaryPending
+                ? IconButton(icon: Icon('cancel'), tooltip: 'Cancel')
+                : IconButton(icon: Icon('hold'), tooltip: 'Hold'))
+            : IconButton(icon: Icon('buy'), tooltip: 'Buy')''',
+        extraDeclarations: 'bool secondaryPending = DateTime.now().isUtc;',
+      );
+
+      expect(tree.roots, hasLength(3));
+      expect(
+        tree.roots
+            .map((node) => node.branchPath.constraints
+                .map((constraint) => '${constraint.group}:${constraint.value}')
+                .join(','))
+            .toList(),
+        ['0:0,1:0', '0:0,1:1', '0:1'],
+      );
     });
   });
 
