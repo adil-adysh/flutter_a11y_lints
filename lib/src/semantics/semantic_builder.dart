@@ -49,13 +49,31 @@ class SemanticBuilder {
     /// a `SemanticNode` tree. Returns `null` when the input is null or cannot
     /// be converted. `enableHeuristics` may be used to enable conservative
     /// heuristic labeling during the build.
-    if (widget == null) return null;
+    final nodes = buildAll(widget, enableHeuristics: enableHeuristics);
+    return nodes.isEmpty ? null : nodes.first;
+  }
+
+  /// Builds every possible root semantic node. Callers that analyze a source
+  /// expression must use this instead of silently selecting one unresolved
+  /// conditional alternative.
+  List<SemanticNode> buildAll(
+    WidgetNode? widget, {
+    bool enableHeuristics = false,
+  }) {
+    if (widget == null) return const [];
     final ctx = BuildSemanticContext(
       global: globalContext,
       enableHeuristics: enableHeuristics,
       unit: unit,
     );
-    return _buildNode(widget, ctx);
+    if (widget.nodeType == WidgetNodeType.conditionalBranch) {
+      return [
+        for (final branch in widget.branchChildren)
+          if (_buildNode(branch, ctx) case final node?) node,
+      ];
+    }
+    final node = _buildNode(widget, ctx);
+    return node == null ? const [] : [node];
   }
 
   /// Internal dispatch: handle conditional branch nodes and route special
