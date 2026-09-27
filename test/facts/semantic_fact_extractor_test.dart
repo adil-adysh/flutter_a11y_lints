@@ -28,6 +28,15 @@ void main() {
       expect(facts.labelStateFor(childIds[2]), LabelState.static);
     });
 
+    test('keeps heuristic nodes with no label evidence unknown', () {
+      final heuristic = makeSemanticNode().copyWith(isHeuristic: true);
+      final tree = SemanticTree.fromRoot(heuristic);
+
+      final facts = SemanticFactExtractor().extract(tree);
+
+      expect(facts.labelStateFor(tree.root.id!), LabelState.unknown);
+    });
+
     test('extracts named slots and literal primitive properties', () async {
       final tree = await buildTestSemanticTree('''
 ListTile(
