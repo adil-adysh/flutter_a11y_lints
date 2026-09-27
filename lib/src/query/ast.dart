@@ -5,13 +5,31 @@ class SourceSpan {
 }
 
 class Faql4ValidationError implements Exception {
-  const Faql4ValidationError(this.message, {this.span});
+  const Faql4ValidationError(this.message, {this.span, this.source});
   final String message;
   final SourceSpan? span;
+  final String? source;
+
+  int? get line => _location?.$1;
+  int? get column => _location?.$2;
+
+  (int, int)? get _location {
+    if (source == null || span == null) return null;
+    final before = source!.substring(0, span!.start);
+    final line = '\n'.allMatches(before).length + 1;
+    final lastNewline = before.lastIndexOf('\n');
+    return (line, span!.start - lastNewline);
+  }
+
+  Faql4ValidationError withSource(String source) =>
+      Faql4ValidationError(message, span: span, source: source);
+
   @override
-  String toString() => span == null
-      ? 'Faql4ValidationError: $message'
-      : 'Faql4ValidationError at ${span!.start}: $message';
+  String toString() => line != null
+      ? 'Faql4ValidationError at $line:$column: $message'
+      : span == null
+          ? 'Faql4ValidationError: $message'
+          : 'Faql4ValidationError at ${span!.start}: $message';
 }
 
 class Faql4QueryAst {

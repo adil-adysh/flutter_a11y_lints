@@ -44,4 +44,17 @@ select node, "x"
       throwsA(isA<Faql4ValidationError>()),
     );
   });
+
+  test('reports source line and column for compiler diagnostics', () {
+    expect(
+      () => Faql4Compiler().compile('''
+$_header
+from UnknownView node
+select node, "x"
+'''),
+      throwsA(isA<Faql4ValidationError>()
+          .having((error) => error.line, 'line', 6)
+          .having((error) => error.column, 'column', 1)),
+    );
+  });
 }
