@@ -19,13 +19,13 @@ class LoadedRuleCatalog {
         }),
         byRuleId = Map.unmodifiable({
           for (final query in queries)
-            query.ruleId: List.unmodifiable(
+            query.ruleId: List<CompiledQuery>.unmodifiable(
               queries.where((other) => other.ruleId == query.ruleId),
             ),
         }),
         byMode = Map.unmodifiable({
           for (final mode in FactMode.values)
-            mode: List.unmodifiable(
+            mode: List<CompiledQuery>.unmodifiable(
               queries.where((query) => query.mode == mode),
             ),
         });
@@ -60,15 +60,18 @@ class FaqlRuleCatalog {
       return LoadedRuleCatalog(collected);
     }
 
-    for (final entity in dir.listSync()) {
-      if (entity is! File) continue;
-      if (!entity.path.toLowerCase().endsWith('.faql')) continue;
+    final files = dir
+        .listSync()
+        .whereType<File>()
+        .where((file) => file.path.toLowerCase().endsWith('.faql'))
+        .toList()
+      ..sort((left, right) => left.path.compareTo(right.path));
 
+    for (final entity in files) {
       final content = entity.readAsStringSync();
       _tryAddRule(
         content: content,
         sourceDescriptor: p.basename(entity.path),
-        sourcePath: entity.path,
         collection: collected,
       );
     }
@@ -79,18 +82,23 @@ class FaqlRuleCatalog {
   void _tryAddRule({
     required String content,
     required String sourceDescriptor,
-    String? sourcePath,
     required List<FaqlRuleSpec> collection,
   }) {
+    late final CompiledQuery spec;
     try {
-      final spec = _compiler.compile(content);
-      if (collection.any((existing) => existing.queryId == spec.queryId)) {
-        throw Faql4ValidationError('Duplicate query id ${spec.queryId}.');
-      }
-      collection.add(spec);
+      spec = _compiler.compile(content);
     } catch (error) {
       _log('Failed to load rule "$sourceDescriptor": $error');
+      return;
     }
+
+    if (collection.any((existing) => existing.queryId == spec.queryId)) {
+      final error = Faql4ValidationError('Duplicate query id ${spec.queryId}.');
+      _log('Failed to load rule "$sourceDescriptor": $error');
+      throw error;
+    }
+
+    collection.add(spec);
   }
 
   void _log(String message) {
