@@ -1,7 +1,7 @@
 @id flutter-a11y/a04/circle-avatar-labeled
 @rule-id a04_informative_images_labeled
 @severity warning
-@mode conservative
+@mode expanded
 from ImageNode image
 where image.getWidgetType() = "CircleAvatar" and image.hasImageContent() and image.isDefinitelyUnlabeled()
 select image, "Informative images must provide semantic labels."

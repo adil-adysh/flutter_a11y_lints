@@ -133,10 +133,9 @@ class SemanticFactExtractor {
   Iterable<(String, Object)> _imageFacts(SemanticNode node) sync* {
     if (node.widgetType == 'CircleAvatar') {
       final background = node.getAttribute('backgroundImage');
-      yield (
-        'hasImageContent',
-        background != null && background is! NullLiteral
-      );
+      // A variable or property expression may evaluate to null at runtime.
+      // Only a directly constructed provider establishes image presence.
+      yield ('hasImageContent', background is InstanceCreationExpression);
       return;
     }
     if (node.widgetType != 'Image' ||
@@ -176,8 +175,9 @@ class SemanticFactExtractor {
       case LabelGuarantee.hasLabelButDynamic:
         return LabelState.dynamic;
       case LabelGuarantee.none:
-        return node.role == SemanticRole.unknown &&
-                node.controlKind == ControlKind.none
+        return node.isHeuristic ||
+                (node.role == SemanticRole.unknown &&
+                    node.controlKind == ControlKind.none)
             ? LabelState.unknown
             : LabelState.absent;
     }
