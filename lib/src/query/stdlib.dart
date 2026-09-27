@@ -17,6 +17,7 @@ class Faql4StandardLibrary {
     'isDefinitelyEnabled': 'enabled',
     'isDefinitelyFocusable': 'focusable',
     'isDefinitelyUnlabeled': 'labelState',
+    'isDefinitelyEffectivelyUnlabeled': 'effectiveNameState',
     'hasAccessibleLabel': 'labelState',
     'hasStaticLabel': 'labelState',
     'hasTapAction': 'tap',

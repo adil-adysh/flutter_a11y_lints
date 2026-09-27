@@ -38,4 +38,22 @@ select control, "Interactive control must have an accessible label."
 
     expect(runner.run(tree), isEmpty);
   });
+
+  test('reports an effectively unnamed ListTile leading image', () async {
+    const source = '''
+@id example/a04-leading
+@rule-id a04
+@severity warning
+@mode conservative
+from ImageNode image
+where image.isNetworkOrFileImage() and image.isDefinitelyNotExcludedFromSemantics() and image.isDefinitelyEffectivelyUnlabeled() and exists(ListTileNode tile | image = tile.getSlot("leading"))
+select image, "Image needs a label."
+''';
+    final tree = await buildTestSemanticTree(
+      "ListTile(leading: Image.network('https://example.test/photo.png'))",
+    );
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(tree), hasLength(1));
+  });
 }

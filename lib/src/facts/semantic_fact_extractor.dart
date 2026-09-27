@@ -7,12 +7,15 @@ import 'fact_store.dart';
 
 enum LabelState { unknown, absent, dynamic, static }
 
+enum EffectiveNameState { unknown, absent, dynamic, static }
+
 /// Converts the semantic IR into general-purpose facts. Query code must not
 /// inspect analyzer nodes or widget constructor syntax directly.
 class SemanticFactExtractor {
   ExtractedSemanticFacts extract(SemanticTree tree) {
     var store = AccessibilityFactStore.empty();
     final labelStates = <int, LabelState>{};
+    final effectiveNameStates = <int, EffectiveNameState>{};
     final slots = <int, Map<String, int>>{};
     final properties = <int, Map<String, Object?>>{};
 
@@ -131,7 +134,52 @@ class SemanticFactExtractor {
         ));
       }
     }
-    return ExtractedSemanticFacts(store, labelStates, slots, properties);
+    for (final node in tree.physicalNodes) {
+      final id = node.id!;
+      final effective = _effectiveNameState(node, tree, labelStates);
+      effectiveNameStates[id] = effective.$1;
+      store = store.add(SemanticFact(
+        nodeId: id,
+        name: 'effectiveNameState',
+        value: effective.$1.name,
+        provenance: effective.$2,
+      ));
+    }
+    return ExtractedSemanticFacts(
+        store, labelStates, effectiveNameStates, slots, properties);
+  }
+
+  (EffectiveNameState, FactProvenance) _effectiveNameState(
+    SemanticNode node,
+    SemanticTree tree,
+    Map<int, LabelState> labels,
+  ) {
+    var ancestorId = node.parentId;
+    while (ancestorId != null) {
+      final ancestor = tree.byId[ancestorId];
+      if (ancestor == null) break;
+      if (ancestor.widgetType == 'Semantics') {
+        final state = labels[ancestorId] ?? LabelState.unknown;
+        if (state == LabelState.static || state == LabelState.dynamic) {
+          return (
+            state == LabelState.static
+                ? EffectiveNameState.static
+                : EffectiveNameState.dynamic,
+            FactProvenance.derived,
+          );
+        }
+      }
+      ancestorId = ancestor.parentId;
+    }
+    return (
+      switch (labels[node.id!]) {
+        LabelState.static => EffectiveNameState.static,
+        LabelState.dynamic => EffectiveNameState.dynamic,
+        LabelState.absent => EffectiveNameState.absent,
+        _ => EffectiveNameState.unknown,
+      },
+      FactProvenance.exact,
+    );
   }
 
   Iterable<(String, Object)> _imageFacts(SemanticNode node) sync* {
@@ -208,16 +256,19 @@ class SemanticFactExtractor {
 }
 
 class ExtractedSemanticFacts {
-  const ExtractedSemanticFacts(
-      this.store, this._labelStates, this._slots, this._properties);
+  const ExtractedSemanticFacts(this.store, this._labelStates,
+      this._effectiveNameStates, this._slots, this._properties);
 
   final AccessibilityFactStore store;
   final Map<int, LabelState> _labelStates;
+  final Map<int, EffectiveNameState> _effectiveNameStates;
   final Map<int, Map<String, int>> _slots;
   final Map<int, Map<String, Object?>> _properties;
 
   LabelState labelStateFor(int nodeId) =>
       _labelStates[nodeId] ?? LabelState.unknown;
+  EffectiveNameState effectiveNameStateFor(int nodeId) =>
+      _effectiveNameStates[nodeId] ?? EffectiveNameState.unknown;
   Map<String, int> slotsFor(int nodeId) => _slots[nodeId] ?? const {};
   Object? propertyValueFor(int nodeId, String name) =>
       _properties[nodeId]?[name];

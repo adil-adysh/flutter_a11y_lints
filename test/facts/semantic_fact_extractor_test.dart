@@ -8,6 +8,23 @@ import '../rules/test_semantic_utils.dart';
 
 void main() {
   group('SemanticFactExtractor', () {
+    test('derives an image effective name from a Semantics label', () async {
+      final tree = await buildTestSemanticTree(
+        "Semantics(label: 'Profile photo', child: Image.network('https://x'))",
+      );
+      final facts = SemanticFactExtractor().extract(tree);
+      final image =
+          tree.physicalNodes.singleWhere((node) => node.widgetType == 'Image');
+
+      expect(facts.effectiveNameStateFor(image.id!), EffectiveNameState.static);
+      expect(
+        facts.store.expanded
+            .factsFor(image.id!)
+            .singleWhere((fact) => fact.name == 'effectiveNameState')
+            .provenance,
+        FactProvenance.derived,
+      );
+    });
     test('distinguishes proven absence from dynamic and unknown labels', () {
       final absent = makeSemanticNode(labelGuarantee: LabelGuarantee.none);
       final dynamic = makeSemanticNode(

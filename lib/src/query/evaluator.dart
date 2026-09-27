@@ -105,6 +105,7 @@ class Faql4Evaluator {
     }
     return switch (v.member) {
       'isDefinitelyUnlabeled' => fact == 'absent',
+      'isDefinitelyEffectivelyUnlabeled' => fact == 'absent',
       'hasAccessibleLabel' => fact == 'static' || fact == 'dynamic',
       'hasStaticLabel' => fact == 'static',
       'isNetworkOrFileImage' => fact == 'network' || fact == 'file',
