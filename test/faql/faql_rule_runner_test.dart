@@ -1,6 +1,7 @@
 import 'package:flutter_a11y_lints/rules/faql_rule_runner.dart';
 import 'package:flutter_a11y_lints/src/query/faql4.dart';
 import 'package:test/test.dart';
+import 'dart:io';
 
 import '../rules/test_semantic_utils.dart';
 
@@ -19,5 +20,22 @@ select control, "Interactive control must have an accessible label."
     final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
 
     expect(runner.run(tree), hasLength(1));
+  });
+
+  test('merge rule excludes disabled interactive descendants', () {
+    final source = File('lib/rules/core/merge_multiple_actions.faql')
+        .readAsStringSync();
+    final enabled = makeSemanticNode(widgetType: 'IconButton');
+    final disabled = makeSemanticNode(
+      widgetType: 'IconButton',
+      isEnabled: false,
+    );
+    final tree = buildManualTree(makeSemanticNode(
+      widgetType: 'MergeSemantics',
+      children: [enabled, disabled],
+    ));
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(tree), isEmpty);
   });
 }

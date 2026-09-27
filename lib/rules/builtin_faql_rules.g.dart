@@ -43,7 +43,7 @@ select image, "Informative images must provide semantic labels."
 @mode conservative
 from MergeSemanticsNode merge
 where count(InteractiveControl control |
-  control = merge.getADescendant()) >= 2
+  control = merge.getADescendant() and control.isDefinitelyEnabled()) >= 2
 select merge, "Merged semantics contain multiple independently actionable controls."
 '''), // flutter-a11y/merge/multiple-actions
 ]);
