@@ -26,6 +26,22 @@ void main() {
       );
     });
 
+    test('extracts explicit literal Semantics wrapper intent', () async {
+      final tree = await buildTestSemanticTree(
+        "Semantics(label: 'Save', button: true, child: Text('Save'))",
+      );
+      final facts = SemanticFactExtractor().extract(tree);
+      final wrapper = tree.root;
+      final names = facts.store.conservative
+          .factsFor(wrapper.id!)
+          .map((fact) => fact.name)
+          .toSet();
+
+      expect(names, contains('hasExplicitSemanticsLabel'));
+      expect(names, contains('hasExplicitSemanticsButtonRole'));
+      expect(names, contains('isDefinitelyNotExcludingDescendants'));
+    });
+
     test('does not inherit a group Semantics label through an unrelated child',
         () async {
       final tree = await buildTestSemanticTree('''

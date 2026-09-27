@@ -143,6 +143,41 @@ class SemanticFactExtractor {
           ));
         }
       }
+      if (node.widgetType == 'Semantics') {
+        if (node.getAttribute('label') is SimpleStringLiteral) {
+          store = store.add(SemanticFact(
+            nodeId: id,
+            name: 'hasExplicitSemanticsLabel',
+            value: true,
+            provenance: FactProvenance.exact,
+          ));
+        }
+        final button = node.getAttribute('button');
+        if (button is BooleanLiteral && button.value) {
+          store = store.add(SemanticFact(
+            nodeId: id,
+            name: 'hasExplicitSemanticsButtonRole',
+            value: true,
+            provenance: FactProvenance.exact,
+          ));
+        }
+        if (!node.excludesDescendants) {
+          store = store.add(SemanticFact(
+            nodeId: id,
+            name: 'isDefinitelyNotExcludingDescendants',
+            value: true,
+            provenance: FactProvenance.exact,
+          ));
+        }
+      }
+      if (node.widgetType == 'ExcludeSemantics' && node.excludesDescendants) {
+        store = store.add(SemanticFact(
+          nodeId: id,
+          name: 'isDefinitelyExcludingDescendants',
+          value: true,
+          provenance: FactProvenance.exact,
+        ));
+      }
       final visibility = _visibilityState(node, nodeProperties);
       visibilityStates[id] = node.isHeuristic
           ? VisibilityState.unknown

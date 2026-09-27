@@ -29,7 +29,11 @@ class Faql4StandardLibrary {
     'isNetworkOrFileImage': 'imageSourceKind',
     'isDefinitelyExcludedFromSemantics': 'excludesDescendants',
     'isDefinitelyNotExcludedFromSemantics':
-        'isDefinitelyNotExcludedFromSemantics'
+        'isDefinitelyNotExcludedFromSemantics',
+    'hasExplicitSemanticsLabel': 'hasExplicitSemanticsLabel',
+    'hasExplicitSemanticsButtonRole': 'hasExplicitSemanticsButtonRole',
+    'isDefinitelyExcludingDescendants': 'isDefinitelyExcludingDescendants',
+    'isDefinitelyNotExcludingDescendants': 'isDefinitelyNotExcludingDescendants'
   };
   static const relationshipMembers = {
     'getParent',
