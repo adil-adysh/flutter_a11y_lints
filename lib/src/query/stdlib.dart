@@ -1,4 +1,5 @@
 import '../facts/fact_store.dart';
+import 'ast.dart';
 
 enum FaqlType { boolean, integer, string, node }
 
@@ -34,7 +35,8 @@ class Faql4StandardLibrary {
     'getAChild',
     'getAnAncestor',
     'getADescendant',
-    'getASibling'
+    'getASibling',
+    'getSlot'
   };
 
   /// No Boolean member is total over unresolved widgets and dynamic state.
@@ -49,6 +51,10 @@ class Faql4StandardLibrary {
               : member == 'getWidgetType'
                   ? FaqlType.string
                   : null;
+  static bool validArguments(String member, List<LiteralAst> arguments) =>
+      member == 'getSlot'
+          ? arguments.length == 1 && arguments.single.value is String
+          : arguments.isEmpty;
   static bool matchesView(String view, FactNode node, FactStoreView facts) {
     final values = {
       for (final fact in facts.factsFor(node.id)) fact.name: fact.value

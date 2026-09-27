@@ -37,7 +37,12 @@ class Faql4Validator {
       return _bad('Unknown variable.', value.span);
     }
     final type = Faql4StandardLibrary.memberType(value.member);
-    return type ?? _bad('Unknown member ${value.member}.', value.span);
+    if (type == null)
+      return _bad('Unknown member ${value.member}.', value.span);
+    if (!Faql4StandardLibrary.validArguments(value.member, value.arguments)) {
+      return _bad('Invalid arguments for ${value.member}.', value.span);
+    }
+    return type;
   }
 
   FaqlType _not(NotAst value) {

@@ -65,9 +65,10 @@ class VariableAst extends ExpressionAst {
 }
 
 class MemberCallAst extends ExpressionAst {
-  const MemberCallAst(this.variable, this.member, super.span);
+  const MemberCallAst(this.variable, this.member, this.arguments, super.span);
   final String variable;
   final String member;
+  final List<LiteralAst> arguments;
 }
 
 class LiteralAst extends ExpressionAst {

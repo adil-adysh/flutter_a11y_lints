@@ -85,6 +85,12 @@ class Faql4Evaluator {
           .map((n) => n.id),
       'getASibling' =>
         store.siblingsOf(id, compatibleWith: bindings.values).map((n) => n.id),
+      'getSlot' => [
+          store
+              .slotOf(id, v.arguments.single.value as String,
+                  compatibleWith: bindings.values)
+              ?.id,
+        ],
       _ => null,
     };
     if (relations != null) {

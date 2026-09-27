@@ -93,5 +93,19 @@ void main() {
         throwsArgumentError,
       );
     });
+
+    test('looks up a named slot only on compatible branches', () {
+      final store = AccessibilityFactStore.empty()
+          .addNode(const FactNode(id: 1, widgetType: 'ListTile'))
+          .addNode(
+              const FactNode(id: 2, widgetType: 'Image', branch: Branch(7, 0)))
+          .addNode(
+              const FactNode(id: 3, widgetType: 'Image', branch: Branch(7, 1)))
+          .addSlot(parentId: 1, name: 'leading', childId: 2);
+
+      expect(store.slotOf(1, 'leading')?.id, 2);
+      expect(store.slotOf(1, 'trailing'), isNull);
+      expect(store.slotOf(1, 'leading', compatibleWith: const [3]), isNull);
+    });
   });
 }

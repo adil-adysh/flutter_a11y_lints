@@ -66,6 +66,7 @@ class AccessibilityFactStore {
     this._facts,
     this._children,
     this._parents,
+    this._slots,
   );
 
   factory AccessibilityFactStore.empty() => const AccessibilityFactStore._(
@@ -73,12 +74,14 @@ class AccessibilityFactStore {
         <int, List<SemanticFact>>{},
         <int, List<int>>{},
         <int, int>{},
+        <int, Map<String, int>>{},
       );
 
   final Map<int, FactNode> _nodes;
   final Map<int, List<SemanticFact>> _facts;
   final Map<int, List<int>> _children;
   final Map<int, int> _parents;
+  final Map<int, Map<String, int>> _slots;
 
   FactStoreView get conservative => FactStoreView(this, FactMode.conservative);
   FactStoreView get expanded => FactStoreView(this, FactMode.expanded);
@@ -93,13 +96,14 @@ class AccessibilityFactStore {
       _facts,
       _children,
       _parents,
+      _slots,
     );
   }
 
   AccessibilityFactStore add(SemanticFact fact) {
     final next = <int, List<SemanticFact>>{..._facts};
     next[fact.nodeId] = [...(next[fact.nodeId] ?? const []), fact];
-    return AccessibilityFactStore._(_nodes, next, _children, _parents);
+    return AccessibilityFactStore._(_nodes, next, _children, _parents, _slots);
   }
 
   AccessibilityFactStore addParent(
@@ -115,7 +119,28 @@ class AccessibilityFactStore {
       _facts,
       next,
       {..._parents, childId: parentId},
+      _slots,
     );
+  }
+
+  AccessibilityFactStore addSlot({
+    required int parentId,
+    required String name,
+    required int childId,
+  }) {
+    final next = <int, Map<String, int>>{..._slots};
+    next[parentId] = {...(next[parentId] ?? const {}), name: childId};
+    return AccessibilityFactStore._(_nodes, _facts, _children, _parents, next);
+  }
+
+  FactNode? slotOf(int parentId, String name,
+      {Iterable<int> compatibleWith = const []}) {
+    final childId = _slots[parentId]?[name];
+    if (childId == null ||
+        !_isCompatibleWithAll(childId, [parentId, ...compatibleWith])) {
+      return null;
+    }
+    return _nodes[childId];
   }
 
   bool compatible(int leftId, int rightId) {

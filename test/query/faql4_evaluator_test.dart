@@ -27,6 +27,16 @@ where exists(InteractiveControl other |
 select control, "Compatible sibling"
 ''';
 
+const _leadingImage = '''
+@id example/leading-image
+@rule-id leading_image
+@severity warning
+@mode conservative
+from ImageNode image
+where exists(ListTileNode tile | image = tile.getSlot("leading"))
+select image, "Leading image"
+''';
+
 AccessibilityFactStore _store({required bool sameBranch}) {
   return AccessibilityFactStore.empty()
       .addNode(const FactNode(id: 1, widgetType: 'MergeSemantics'))
@@ -86,5 +96,21 @@ void main() {
     );
     expect(Faql4Evaluator().evaluate(query, facts), isEmpty);
     expect(Faql4Evaluator().evaluate(siblingQuery, facts), isEmpty);
+  });
+
+  test('matches a direct named slot without crossing branches', () {
+    final store = AccessibilityFactStore.empty()
+        .addNode(const FactNode(id: 1, widgetType: 'ListTile'))
+        .addNode(
+            const FactNode(id: 2, widgetType: 'Image', branch: Branch(1, 0)))
+        .addNode(
+            const FactNode(id: 3, widgetType: 'Image', branch: Branch(1, 1)))
+        .addSlot(parentId: 1, name: 'leading', childId: 2);
+    final query = Faql4Compiler().compile(_leadingImage);
+
+    expect(
+      Faql4Evaluator().evaluate(query, store).map((hit) => hit.nodeId),
+      [2],
+    );
   });
 }

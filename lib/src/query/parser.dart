@@ -132,8 +132,15 @@ class _Parser {
     if (!accept(TokenKind.dot)) return VariableAst(name.lexeme, name.span);
     final member = take(TokenKind.identifier);
     take(TokenKind.lParen);
+    final arguments = <LiteralAst>[];
+    if (current.kind != TokenKind.rParen) {
+      arguments.add(literal());
+      while (accept(TokenKind.comma)) {
+        arguments.add(literal());
+      }
+    }
     take(TokenKind.rParen);
-    return MemberCallAst(name.lexeme, member.lexeme,
+    return MemberCallAst(name.lexeme, member.lexeme, arguments,
         SourceSpan(name.span.start, tokens[index - 1].span.end));
   }
 

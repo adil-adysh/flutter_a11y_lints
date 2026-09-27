@@ -94,6 +94,10 @@ class SemanticFactExtractor {
         for (final entry in node.slots.entries)
           if (entry.value.id != null) entry.key: entry.value.id!,
       };
+      for (final entry in slots[id]!.entries) {
+        store =
+            store.addSlot(parentId: id, name: entry.key, childId: entry.value);
+      }
       final nodeProperties = <String, Object?>{};
       for (final name in node.attributeNames) {
         final value = _literalValue(node.getAttribute(name));
