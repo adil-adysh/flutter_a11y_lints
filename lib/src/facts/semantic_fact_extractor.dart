@@ -149,9 +149,12 @@ class SemanticFactExtractor {
     yield ('hasImageContent', true);
     yield ('imageSourceKind', constructor!);
     final exclusion = node.getAttribute('excludeFromSemantics');
-    if (exclusion is BooleanLiteral && !exclusion.value) {
-      yield ('isDefinitelyNotExcludedFromSemantics', true);
-    } else if (constructor != 'asset') {
+    if (exclusion is BooleanLiteral) {
+      if (!exclusion.value) {
+        yield ('isDefinitelyNotExcludedFromSemantics', true);
+      }
+    } else if (exclusion == null) {
+      // Flutter Image constructors default excludeFromSemantics to false.
       yield ('isDefinitelyNotExcludedFromSemantics', true);
     }
     if (constructor == 'asset' && creation.argumentList.arguments.isNotEmpty) {
