@@ -36,13 +36,17 @@ select merge, "Multiple actions"
   });
 
   test('reports source locations for malformed comments and strings', () {
-    for (final source in ['/* unterminated', '@id "unterminated']) {
-      expect(
-        () => Faql4Compiler().compile(source),
-        throwsA(isA<Faql4ValidationError>()
-            .having((error) => error.line, 'line', 1)
-            .having((error) => error.column, 'column', 1)),
-      );
-    }
+    expect(
+      () => Faql4Compiler().compile('/* unterminated'),
+      throwsA(isA<Faql4ValidationError>()
+          .having((error) => error.line, 'line', 1)
+          .having((error) => error.column, 'column', 1)),
+    );
+    expect(
+      () => Faql4Compiler().compile('@id "unterminated'),
+      throwsA(isA<Faql4ValidationError>()
+          .having((error) => error.line, 'line', 1)
+          .having((error) => error.column, 'column', 5)),
+    );
   });
 }
