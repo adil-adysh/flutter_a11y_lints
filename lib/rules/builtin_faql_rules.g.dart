@@ -13,12 +13,4 @@ from InteractiveControl control
 where control.isDefinitelyEnabled() and control.isDefinitelyUnlabeled()
 select control, "Interactive control must have an accessible label."
 '''), // flutter-a11y/a01/unlabeled-interactive
-  Faql4Compiler().compile(r'''@id flutter-a11y/a04/list-tile-image-labeled
-@rule-id a04_informative_images_labeled
-@severity warning
-@mode conservative
-from ImageNode image
-where image.isNetworkOrFileImage() and image.isDefinitelyUnlabeled() and exists(ListTileNode ancestor | ancestor = image.getAnAncestor())
-select image, "Informative images must provide semantic labels."
-'''), // flutter-a11y/a04/list-tile-image-labeled
 ]);
