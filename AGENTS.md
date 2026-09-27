@@ -11,6 +11,8 @@ This is a Dart static analyzer for Flutter accessibility. The current pipeline p
 - `lib/src/faql/` and `lib/src/bridge/`: temporary legacy parser, evaluator, and Semantic IR adapter retained for migration parity.
 - `lib/rules/`: current rule sources, catalog, runner, and generated bundles.
 - `test/faql/`, `test/semantics/`, `test/rules/`: focused tests.
+- `test_flutter/`: focused runtime contract fixtures against Flutter's real
+  semantics tree.
 - `doc/docs/faql4_core_design.md`: target architecture and migration contract. Some facts and Core compiler pieces are implemented; bundled rules are not yet migrated.
 - Other files in `doc/docs/` may describe earlier designs. Resolve conflicts against the current code and the explicit proposal above; flag material uncertainty.
 
@@ -28,6 +30,109 @@ Prioritize justified accessibility findings over rule count. Static analysis can
 - Do not claim that a custom widget has known semantics when its implementation or relevant behavior is unresolved.
 - Give multiple queries distinct internal identities even when they report the same public rule ID.
 - Verify Flutter behavior for semantics-sensitive changes; the model is an approximation of runtime semantics.
+
+## Runtime-evidence workflow
+
+Flutter runtime tests are a bounded oracle for known framework behavior, not
+runtime input to the analyzer. They can establish how a documented Flutter
+constructor composes semantics; they cannot establish application-specific
+state, custom-widget behavior, rendered layout, timing, or what a screen
+reader will announce on a user's device.
+
+For a semantics-sensitive modeling decision, work through this evidence chain:
+
+1. Identify the relevant official Flutter contract and its exact scope.
+2. Add a minimal fixture under `test_flutter/` that observes that contract in
+   the supported Flutter SDK.
+3. Encode only the observed, documented contract in Semantic IR and fact tests.
+4. Let a conservative FAQL rule use the resulting fact only when its source
+   premises are complete and proven.
+
+Keep facts `unknown` when source behavior is dynamic, custom, version-sensitive,
+ambiguous, or outside the runtime fixture's scope. In particular, never infer
+hidden content from its absence in focus traversal, or a child's effective name
+solely from an ancestor label. A runtime contract confirms framework behavior;
+the analyzer remains source-based and must not imagine program-specific facts.
+
+Every new runtime fixture must include a reviewable decision record adjacent to
+the fixture:
+
+```dart
+// Runtime contract: ...
+// IR mapping: ...
+// Conservative consequence: ...
+// Deliberate unknown boundary: ...
+```
+
+### Flutter contract-test starter
+
+Use a narrow observable assertion and always dispose the semantics handle:
+
+```dart
+testWidgets('ExcludeSemantics removes its child from traversal', (tester) async {
+  // Runtime contract: ExcludeSemantics(excluding: true) excludes child semantics.
+  // IR mapping: descendantReplacement is excluded for this known widget.
+  // Conservative consequence: rules may use only the explicit exclusion fact.
+  // Deliberate unknown boundary: custom exclusion widgets remain unknown.
+  final handle = tester.ensureSemantics();
+  try {
+    await tester.pumpWidget(
+      const MaterialApp(
+        home: ExcludeSemantics(
+          child: Semantics(label: 'Private detail'),
+        ),
+      ),
+    );
+
+    final labels = tester.semantics
+        .simulatedAccessibilityTraversal()
+        .map((node) => node.label);
+    expect(labels, isNot(contains('Private detail')));
+  } finally {
+    handle.dispose();
+  }
+});
+```
+
+Run runtime contracts separately with:
+
+```sh
+flutter test test_flutter/
+```
+
+### Static-model starter
+
+After the runtime contract is established, test source modeling independently
+before adding a rule fixture. Use the repository's test helpers and assert the
+IR state, fact value, provenance, and unknown boundary directly:
+
+```dart
+final tree = await buildTestSemanticTree('''
+  ExcludeSemantics(child: Semantics(label: 'Private detail'))
+''');
+final facts = SemanticFactExtractor().extract(tree);
+final node = tree.root;
+final exclusionFact = facts.store.conservative
+    .factsFor(node.id!)
+    .singleWhere((fact) => fact.name == 'isDefinitelyExcludingDescendants');
+
+expect(node.descendantReplacement, DescendantReplacementState.excluded);
+expect(exclusionFact.value, isTrue);
+expect(exclusionFact.provenance, FactProvenance.exact);
+
+final dynamicTree = await buildTestSemanticTree(
+  'ExcludeSemantics(excluding: purchasePending, child: const Text("Private"))',
+);
+expect(
+  dynamicTree.root.descendantReplacement,
+  DescendantReplacementState.unknown,
+);
+```
+
+Adapt the fact accessors and enum names to the nearby implementation rather
+than adding a test-only abstraction. Add a rule fixture only after this fact
+contract passes; the rule test should prove a violation, valid counterexample,
+and relevant unknown and branch cases.
 
 ## Working in this repository
 
@@ -62,6 +167,11 @@ dart format --output=none --set-exit-if-changed lib test tool
 dart analyze
 dart test
 ```
+
+For a change that models Flutter runtime semantics, also run `flutter pub get`
+and `flutter test test_flutter/`. Keep those runtime checks separate from
+`dart test` so a framework-contract failure is distinguishable from a
+source-model or rule failure.
 
 If a check cannot run in the environment, state that plainly. For documentation-only changes, verify paths, links, Markdown structure, and the Git diff; Dart tests are unnecessary unless executable files changed.
 
