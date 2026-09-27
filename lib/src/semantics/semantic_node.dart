@@ -389,9 +389,10 @@ class SemanticNode {
           semanticsLabelArgumentState ?? this.semanticsLabelArgumentState,
       nodeCreation: nodeCreation ?? this.nodeCreation,
       childContribution: childContribution ?? this.childContribution,
-      descendantReplacement:
-          descendantReplacement ?? this.descendantReplacement,
-      mergeState: mergeState ?? this.mergeState,
+      descendantReplacement: descendantReplacement ??
+          (excludesDescendants == null ? this.descendantReplacement : null),
+      mergeState:
+          mergeState ?? (mergesDescendants == null ? this.mergeState : null),
     );
   }
 }

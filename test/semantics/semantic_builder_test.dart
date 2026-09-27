@@ -19,6 +19,20 @@ import '../rules/test_semantic_utils.dart';
 
 void main() {
   group('SemanticBuilder wrappers', () {
+    test('legacy composition overrides update their typed compatibility state',
+        () {
+      final merged = makeSemanticNode(mergesDescendants: true)
+          .copyWith(mergesDescendants: false);
+      final excluded = makeSemanticNode(excludesDescendants: true)
+          .copyWith(excludesDescendants: false);
+
+      expect(merged.mergeState, SemanticMergeState.notMerged);
+      expect(
+        excluded.descendantReplacement,
+        DescendantReplacementState.preserved,
+      );
+    });
+
     test('Semantics widget overrides label and role', () async {
       final tree = await buildTestSemanticTree('''
 Semantics(
