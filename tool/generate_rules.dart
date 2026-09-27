@@ -35,12 +35,22 @@ void main() async {
   files.sort((a, b) => a.path.compareTo(b.path));
 
   var count = 0;
+  final querySources = <String, String>{};
   for (final file in files) {
     if (!file.path.endsWith('.faql')) continue;
 
     final filename = p.basename(file.path);
     final content = await file.readAsString();
     final query = Faql4Compiler().compile(content);
+    final previous = querySources[query.queryId];
+    if (previous != null) {
+      stderr.writeln(
+        'Duplicate query id ${query.queryId} in $filename; first declared in $previous.',
+      );
+      exitCode = 1;
+      return;
+    }
+    querySources[query.queryId] = filename;
 
     // Sanitize content for raw string literal
     // We use r''' ... ''' so we only need to escape triple quotes if they exist
