@@ -18,24 +18,75 @@ class SemanticFactExtractor {
 
     for (final node in tree.physicalNodes) {
       final id = node.id!;
-      final branch = node.branchGroupId == null || node.branchValue == null
-          ? null
-          : Branch(node.branchGroupId!, node.branchValue!);
-      store = store.addNode(FactNode(id: id, widgetType: node.widgetType, branch: branch));
+      store = store.addNode(
+        FactNode(
+          id: id,
+          widgetType: node.widgetType,
+          branchPath: node.branchPath,
+        ),
+      );
       final labelState = _labelState(node);
       labelStates[id] = labelState;
       store = store
-          .add(SemanticFact(nodeId: id, name: 'labelState', value: labelState.name, provenance: FactProvenance.exact))
-          .add(SemanticFact(nodeId: id, name: 'labelSource', value: node.labelSource.name, provenance: FactProvenance.exact))
-          .add(SemanticFact(nodeId: id, name: 'role', value: node.role.name, provenance: node.isHeuristic ? FactProvenance.heuristic : FactProvenance.exact))
-          .add(SemanticFact(nodeId: id, name: 'controlKind', value: node.controlKind.name, provenance: node.isHeuristic ? FactProvenance.heuristic : FactProvenance.exact))
-          .add(SemanticFact(nodeId: id, name: 'enabled', value: node.isEnabled, provenance: FactProvenance.exact))
-          .add(SemanticFact(nodeId: id, name: 'focusable', value: node.isFocusable, provenance: FactProvenance.exact))
-          .add(SemanticFact(nodeId: id, name: 'tap', value: node.hasTap, provenance: FactProvenance.exact))
-          .add(SemanticFact(nodeId: id, name: 'longPress', value: node.hasLongPress, provenance: FactProvenance.exact))
-          .add(SemanticFact(nodeId: id, name: 'mergesDescendants', value: node.mergesDescendants, provenance: FactProvenance.exact))
-          .add(SemanticFact(nodeId: id, name: 'excludesDescendants', value: node.excludesDescendants, provenance: FactProvenance.exact))
-          .add(SemanticFact(nodeId: id, name: 'semanticBoundary', value: node.isSemanticBoundary, provenance: FactProvenance.exact));
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'labelState',
+              value: labelState.name,
+              provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'labelSource',
+              value: node.labelSource.name,
+              provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'role',
+              value: node.role.name,
+              provenance: node.isHeuristic
+                  ? FactProvenance.heuristic
+                  : FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'controlKind',
+              value: node.controlKind.name,
+              provenance: node.isHeuristic
+                  ? FactProvenance.heuristic
+                  : FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'enabled',
+              value: node.isEnabled,
+              provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'focusable',
+              value: node.isFocusable,
+              provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'tap',
+              value: node.hasTap,
+              provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'longPress',
+              value: node.hasLongPress,
+              provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'mergesDescendants',
+              value: node.mergesDescendants,
+              provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'excludesDescendants',
+              value: node.excludesDescendants,
+              provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'semanticBoundary',
+              value: node.isSemanticBoundary,
+              provenance: FactProvenance.exact));
       if (node.parentId != null) {
         store = store.addParent(parentId: node.parentId!, childId: id);
       }
@@ -78,7 +129,8 @@ class SemanticFactExtractor {
       case LabelGuarantee.hasLabelButDynamic:
         return LabelState.dynamic;
       case LabelGuarantee.none:
-        return node.role == SemanticRole.unknown && node.controlKind == ControlKind.none
+        return node.role == SemanticRole.unknown &&
+                node.controlKind == ControlKind.none
             ? LabelState.unknown
             : LabelState.absent;
     }
@@ -93,21 +145,26 @@ class SemanticFactExtractor {
 
   String? _visibilityState(SemanticNode node, Map<String, Object?> properties) {
     if (node.excludesDescendants) return 'excluded';
-    if (node.widgetType == 'Offstage' && properties['offstage'] == true) return 'hidden';
-    if (node.widgetType == 'Visibility' && properties['visible'] == false) return 'hidden';
+    if (node.widgetType == 'Offstage' && properties['offstage'] == true)
+      return 'hidden';
+    if (node.widgetType == 'Visibility' && properties['visible'] == false)
+      return 'hidden';
     return null;
   }
 }
 
 class ExtractedSemanticFacts {
-  const ExtractedSemanticFacts(this.store, this._labelStates, this._slots, this._properties);
+  const ExtractedSemanticFacts(
+      this.store, this._labelStates, this._slots, this._properties);
 
   final AccessibilityFactStore store;
   final Map<int, LabelState> _labelStates;
   final Map<int, Map<String, int>> _slots;
   final Map<int, Map<String, Object?>> _properties;
 
-  LabelState labelStateFor(int nodeId) => _labelStates[nodeId] ?? LabelState.unknown;
+  LabelState labelStateFor(int nodeId) =>
+      _labelStates[nodeId] ?? LabelState.unknown;
   Map<String, int> slotsFor(int nodeId) => _slots[nodeId] ?? const {};
-  Object? propertyValueFor(int nodeId, String name) => _properties[nodeId]?[name];
+  Object? propertyValueFor(int nodeId, String name) =>
+      _properties[nodeId]?[name];
 }

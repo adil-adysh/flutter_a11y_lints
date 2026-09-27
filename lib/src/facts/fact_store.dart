@@ -14,6 +14,9 @@ class BranchPath {
   const BranchPath(this.constraints);
   final List<Branch> constraints;
 
+  BranchPath withConstraint(Branch constraint) =>
+      BranchPath([...constraints, constraint]);
+
   bool compatibleWith(BranchPath other) {
     for (final left in constraints) {
       for (final right in other.constraints) {

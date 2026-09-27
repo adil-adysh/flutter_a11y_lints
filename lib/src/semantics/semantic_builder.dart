@@ -216,6 +216,7 @@ class SemanticBuilder {
       // conditional branches.
       branchGroupId: widget.branchGroupId,
       branchValue: widget.branchValue,
+      branchPath: widget.branchPath,
       rawAttributes: widget.props,
       isHeuristic: isHeuristic,
     );
@@ -466,6 +467,7 @@ class SemanticBuilder {
       // mutual-exclusion semantics are preserved through the semantic tree.
       branchGroupId: widget.branchGroupId,
       branchValue: widget.branchValue,
+      branchPath: widget.branchPath,
       tooltip: tooltipOverride ?? base?.tooltip,
       value: valueOverride ?? base?.value,
       semanticIndex: semanticIndex ?? base?.semanticIndex,

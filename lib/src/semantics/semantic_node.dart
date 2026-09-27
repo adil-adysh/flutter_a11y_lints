@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:meta/meta.dart';
 
+import '../facts/fact_store.dart' show BranchPath;
 import 'known_semantics.dart';
 
 export 'package:analyzer/dart/ast/ast.dart' show Expression;
@@ -64,6 +65,7 @@ class SemanticNode {
     Map<String, SemanticNode>? slots,
     this.branchGroupId,
     this.branchValue,
+    this.branchPath = const BranchPath([]),
     this.id,
     this.parentId,
     this.siblingIndex = 0,
@@ -130,6 +132,9 @@ class SemanticNode {
   /// Position within a conditional group (e.g. 0 for the "true" branch,
   /// 1 for the "false" branch).
   final int? branchValue;
+
+  /// Full nested conditional path, retained independently of legacy scalars.
+  final BranchPath branchPath;
 
   /// Unique identifier assigned when the semantic tree is annotated.
   final int? id;
@@ -230,6 +235,7 @@ class SemanticNode {
     Map<String, SemanticNode>? slots,
     int? branchGroupId,
     int? branchValue,
+    BranchPath? branchPath,
     int? id,
     int? parentId,
     int? siblingIndex,
@@ -278,6 +284,7 @@ class SemanticNode {
       slots: slots ?? this.slots,
       branchGroupId: branchGroupId ?? this.branchGroupId,
       branchValue: branchValue ?? this.branchValue,
+      branchPath: branchPath ?? this.branchPath,
       id: id ?? this.id,
       parentId: parentId ?? this.parentId,
       siblingIndex: siblingIndex ?? this.siblingIndex,

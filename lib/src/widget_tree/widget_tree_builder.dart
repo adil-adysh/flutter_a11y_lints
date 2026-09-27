@@ -2,6 +2,7 @@ import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/type.dart';
 
+import '../facts/fact_store.dart';
 import 'widget_node.dart';
 
 /// Builds [WidgetNode] trees directly from resolved AST nodes.
@@ -32,6 +33,7 @@ class WidgetTreeBuilder {
     Expression? expression, {
     int? branchGroupId,
     int? branchValue,
+    BranchPath branchPath = const BranchPath([]),
   }) {
     // Entry point to convert an `Expression` into a `WidgetNode`.
     // We strip parentheses, handle cascades by delegating to the target, and
@@ -46,6 +48,7 @@ class WidgetTreeBuilder {
         expression,
         branchGroupId: branchGroupId,
         branchValue: branchValue,
+        branchPath: branchPath,
       );
     }
 
@@ -54,6 +57,7 @@ class WidgetTreeBuilder {
         expression,
         branchGroupId: branchGroupId,
         branchValue: branchValue,
+        branchPath: branchPath,
       );
     }
 
@@ -62,6 +66,7 @@ class WidgetTreeBuilder {
         expression.target,
         branchGroupId: branchGroupId,
         branchValue: branchValue,
+        branchPath: branchPath,
       );
     }
 
@@ -72,6 +77,7 @@ class WidgetTreeBuilder {
     InstanceCreationExpression expression, {
     int? branchGroupId,
     int? branchValue,
+    BranchPath branchPath = const BranchPath([]),
   }) {
     // Build a `WidgetNode` for a constructor call. Extract positional args,
     // named props, recognize known slot names, and collect `children` when
@@ -96,6 +102,7 @@ class WidgetTreeBuilder {
             children,
             branchGroupId: branchGroupId,
             branchValue: branchValue,
+            branchPath: branchPath,
           );
           continue;
         }
@@ -105,6 +112,7 @@ class WidgetTreeBuilder {
             value,
             branchGroupId: branchGroupId,
             branchValue: branchValue,
+            branchPath: branchPath,
           );
           slots[name] = childNode;
         }
@@ -122,6 +130,7 @@ class WidgetTreeBuilder {
       children: children,
       branchGroupId: branchGroupId,
       branchValue: branchValue,
+      branchPath: branchPath,
     );
   }
 
@@ -130,6 +139,7 @@ class WidgetTreeBuilder {
     List<WidgetNode> children, {
     int? branchGroupId,
     int? branchValue,
+    BranchPath branchPath = const BranchPath([]),
   }) {
     // Collect children from a value that can either be a `ListLiteral` (the
     // common `children: [ ... ]` case) or a single widget expression.
@@ -140,6 +150,7 @@ class WidgetTreeBuilder {
           children,
           branchGroupId: branchGroupId,
           branchValue: branchValue,
+          branchPath: branchPath,
         );
       }
       return;
@@ -149,6 +160,7 @@ class WidgetTreeBuilder {
       expression,
       branchGroupId: branchGroupId,
       branchValue: branchValue,
+      branchPath: branchPath,
     );
     if (childNode != null) {
       children.add(childNode);
@@ -160,6 +172,7 @@ class WidgetTreeBuilder {
     List<WidgetNode> children, {
     int? branchGroupId,
     int? branchValue,
+    BranchPath branchPath = const BranchPath([]),
   }) {
     // Handle collection elements inside list literals. We support:
     // - plain Expression elements (widgets)
@@ -173,6 +186,7 @@ class WidgetTreeBuilder {
         element,
         branchGroupId: branchGroupId,
         branchValue: branchValue,
+        branchPath: branchPath,
       );
       if (childNode != null) {
         children.add(childNode);
@@ -190,6 +204,7 @@ class WidgetTreeBuilder {
             children,
             branchGroupId: branchGroupId,
             branchValue: branchValue,
+            branchPath: branchPath,
           );
         }
         return;
@@ -203,6 +218,7 @@ class WidgetTreeBuilder {
         children,
         branchGroupId: conditionalGroupId,
         branchValue: 0,
+        branchPath: branchPath.withConstraint(Branch(conditionalGroupId, 0)),
       );
       final elseElement = element.elseElement;
       if (elseElement != null) {
@@ -211,6 +227,7 @@ class WidgetTreeBuilder {
           children,
           branchGroupId: conditionalGroupId,
           branchValue: 1,
+          branchPath: branchPath.withConstraint(Branch(conditionalGroupId, 1)),
         );
       }
       return;
@@ -222,6 +239,7 @@ class WidgetTreeBuilder {
         children,
         branchGroupId: branchGroupId,
         branchValue: branchValue,
+        branchPath: branchPath,
       );
       return;
     }
@@ -232,6 +250,7 @@ class WidgetTreeBuilder {
         children,
         branchGroupId: branchGroupId,
         branchValue: branchValue,
+        branchPath: branchPath,
       );
     }
   }
@@ -240,6 +259,7 @@ class WidgetTreeBuilder {
     ConditionalExpression expression, {
     int? branchGroupId,
     int? branchValue,
+    BranchPath branchPath = const BranchPath([]),
   }) {
     // Convert a conditional expression (`cond ? then : else`) into either a
     // single chosen node (if the condition const-evaluates) or a
@@ -252,6 +272,7 @@ class WidgetTreeBuilder {
         chosen,
         branchGroupId: branchGroupId,
         branchValue: branchValue,
+        branchPath: branchPath,
       );
     }
 
@@ -261,6 +282,7 @@ class WidgetTreeBuilder {
       expression.thenExpression,
       branchGroupId: conditionalGroupId,
       branchValue: 0,
+      branchPath: branchPath.withConstraint(Branch(conditionalGroupId, 0)),
     );
     if (thenNode != null) {
       branches.add(thenNode);
@@ -270,6 +292,7 @@ class WidgetTreeBuilder {
       expression.elseExpression,
       branchGroupId: conditionalGroupId,
       branchValue: 1,
+      branchPath: branchPath.withConstraint(Branch(conditionalGroupId, 1)),
     );
     if (elseNode != null) {
       branches.add(elseNode);
@@ -289,6 +312,7 @@ class WidgetTreeBuilder {
       nodeType: WidgetNodeType.conditionalBranch,
       branchGroupId: branchGroupId,
       branchValue: branchValue,
+      branchPath: branchPath,
       branchChildren: branches,
     );
   }

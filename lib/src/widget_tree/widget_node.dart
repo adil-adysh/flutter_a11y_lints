@@ -1,5 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 
+import '../facts/fact_store.dart' show BranchPath;
+
 /// Classification for widget nodes so we can retain control-flow structure.
 enum WidgetNodeType { standard, conditionalBranch, loop }
 
@@ -15,6 +17,7 @@ class WidgetNode {
     this.nodeType = WidgetNodeType.standard,
     this.branchGroupId,
     this.branchValue,
+    this.branchPath = const BranchPath([]),
     List<WidgetNode>? branchChildren,
   }) : branchChildren = branchChildren ?? const <WidgetNode>[];
 
@@ -34,6 +37,9 @@ class WidgetNode {
 
   /// Branch slot within [branchGroupId] (e.g., 0 = then, 1 = else).
   final int? branchValue;
+
+  /// Every unresolved conditional enclosing this node, outermost first.
+  final BranchPath branchPath;
 
   /// Children that correspond to mutually exclusive branches for
   /// [WidgetNodeType.conditionalBranch]. Standard widget nodes leave this
