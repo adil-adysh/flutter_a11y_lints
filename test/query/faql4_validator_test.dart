@@ -57,4 +57,16 @@ select node, "x"
           .having((error) => error.column, 'column', 1)),
     );
   });
+
+  test('rejects duplicate metadata keys', () {
+    expect(
+      () => Faql4Compiler().compile('''
+$_header
+@mode expanded
+from SemanticNode node
+select node, "x"
+'''),
+      throwsA(isA<Faql4ValidationError>()),
+    );
+  });
 }

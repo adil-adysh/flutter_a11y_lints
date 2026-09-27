@@ -31,6 +31,10 @@ class _Parser {
       final value = current.kind == TokenKind.string
           ? take(TokenKind.string)
           : take(TokenKind.identifier);
+      if (metadata.containsKey(key.lexeme)) {
+        throw Faql4ValidationError('Duplicate @${key.lexeme} metadata.',
+            span: key.span);
+      }
       metadata[key.lexeme] = value.lexeme;
     }
     final fromStart = take(TokenKind.identifier, 'from').span.start;
