@@ -118,8 +118,49 @@ class SemanticFactExtractor {
         ));
       }
       properties[id] = nodeProperties;
+      for (final fact in _imageFacts(node)) {
+        store = store.add(SemanticFact(
+          nodeId: id,
+          name: fact.$1,
+          value: fact.$2,
+          provenance: FactProvenance.exact,
+        ));
+      }
     }
     return ExtractedSemanticFacts(store, labelStates, slots, properties);
+  }
+
+  Iterable<(String, Object)> _imageFacts(SemanticNode node) sync* {
+    if (node.widgetType == 'CircleAvatar') {
+      final background = node.getAttribute('backgroundImage');
+      yield (
+        'hasImageContent',
+        background != null && background is! NullLiteral
+      );
+      return;
+    }
+    if (node.widgetType != 'Image' ||
+        node.astNode is! InstanceCreationExpression) {
+      return;
+    }
+    final creation = node.astNode as InstanceCreationExpression;
+    final constructor = creation.constructorName.name?.name;
+    const kinds = {'asset', 'network', 'file', 'memory'};
+    if (!kinds.contains(constructor)) return;
+    yield ('hasImageContent', true);
+    yield ('imageSourceKind', constructor!);
+    if (constructor == 'asset' && creation.argumentList.arguments.isNotEmpty) {
+      final first = creation.argumentList.arguments.first;
+      final expression = first is NamedExpression ? first.expression : first;
+      final assetName = _literalValue(expression);
+      if (assetName is String) {
+        final decorative = RegExp(
+          r'(background|bg|backdrop|decor|decorative|pattern|wallpaper|divider|separator)',
+          caseSensitive: false,
+        ).hasMatch(assetName);
+        if (decorative) yield ('isDecorativeAssetName', true);
+      }
+    }
   }
 
   LabelState _labelState(SemanticNode node) {

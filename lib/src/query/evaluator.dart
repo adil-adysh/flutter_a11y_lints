@@ -101,6 +101,7 @@ class Faql4Evaluator {
       'isDefinitelyUnlabeled' => fact == 'absent',
       'hasAccessibleLabel' => fact == 'static' || fact == 'dynamic',
       'hasStaticLabel' => fact == 'static',
+      'isNetworkOrFileImage' => fact == 'network' || fact == 'file',
       _ => fact == true
     };
   }

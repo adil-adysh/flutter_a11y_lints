@@ -21,7 +21,11 @@ class Faql4StandardLibrary {
     'hasTapAction': 'tap',
     'hasLongPressAction': 'longPress',
     'mergesDescendants': 'mergesDescendants',
-    'excludesDescendants': 'excludesDescendants'
+    'excludesDescendants': 'excludesDescendants',
+    'hasImageContent': 'hasImageContent',
+    'isKnownDecorativeAsset': 'isDecorativeAssetName',
+    'isNetworkOrFileImage': 'imageSourceKind',
+    'isDefinitelyExcludedFromSemantics': 'excludesDescendants'
   };
   static const relationshipMembers = {
     'getParent',
