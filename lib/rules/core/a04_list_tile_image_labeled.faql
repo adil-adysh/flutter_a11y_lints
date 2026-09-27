@@ -1,0 +1,7 @@
+@id flutter-a11y/a04/list-tile-image-labeled
+@rule-id a04_informative_images_labeled
+@severity warning
+@mode conservative
+from ImageNode image
+where image.isNetworkOrFileImage() and image.isDefinitelyUnlabeled() and exists(ListTileNode ancestor | ancestor = image.getAnAncestor())
+select image, "Informative images must provide semantic labels."

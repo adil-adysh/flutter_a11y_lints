@@ -25,7 +25,9 @@ class Faql4StandardLibrary {
     'hasImageContent': 'hasImageContent',
     'isKnownDecorativeAsset': 'isDecorativeAssetName',
     'isNetworkOrFileImage': 'imageSourceKind',
-    'isDefinitelyExcludedFromSemantics': 'excludesDescendants'
+    'isDefinitelyExcludedFromSemantics': 'excludesDescendants',
+    'isDefinitelyNotExcludedFromSemantics':
+        'isDefinitelyNotExcludedFromSemantics'
   };
   static const relationshipMembers = {
     'getParent',

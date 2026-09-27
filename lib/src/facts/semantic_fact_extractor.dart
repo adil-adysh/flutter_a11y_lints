@@ -149,6 +149,12 @@ class SemanticFactExtractor {
     if (!kinds.contains(constructor)) return;
     yield ('hasImageContent', true);
     yield ('imageSourceKind', constructor!);
+    final exclusion = node.getAttribute('excludeFromSemantics');
+    if (exclusion is BooleanLiteral && !exclusion.value) {
+      yield ('isDefinitelyNotExcludedFromSemantics', true);
+    } else if (constructor != 'asset') {
+      yield ('isDefinitelyNotExcludedFromSemantics', true);
+    }
     if (constructor == 'asset' && creation.argumentList.arguments.isNotEmpty) {
       final first = creation.argumentList.arguments.first;
       final expression = first is NamedExpression ? first.expression : first;
