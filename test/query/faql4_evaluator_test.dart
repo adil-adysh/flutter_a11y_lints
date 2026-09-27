@@ -37,6 +37,19 @@ where exists(ListTileNode tile | image = tile.getSlot("leading"))
 select image, "Leading image"
 ''';
 
+const _semanticReplacement = '''
+@id example/semantic-replacement
+@rule-id semantic_replacement
+@severity warning
+@mode conservative
+from SemanticsNode wrapper
+where wrapper.createsSemanticContainer() and
+  wrapper.requiresExplicitChildNodes() and
+  wrapper.replacesDescendantSemantics() and
+  wrapper.blocksSemanticUserActions()
+select wrapper, "Explicit replacement"
+''';
+
 AccessibilityFactStore _store({required bool sameBranch}) {
   return AccessibilityFactStore.empty()
       .addNode(const FactNode(id: 1, widgetType: 'MergeSemantics'))
@@ -112,5 +125,37 @@ void main() {
       Faql4Evaluator().evaluate(query, store).map((hit) => hit.nodeId),
       [2],
     );
+  });
+
+  test('matches positive proven semantic composition predicates', () {
+    final store = AccessibilityFactStore.empty()
+        .addNode(const FactNode(id: 1, widgetType: 'Semantics'))
+        .add(const SemanticFact(
+          nodeId: 1,
+          name: 'createsSemanticContainer',
+          value: true,
+          provenance: FactProvenance.derived,
+        ))
+        .add(const SemanticFact(
+          nodeId: 1,
+          name: 'requiresExplicitChildNodes',
+          value: true,
+          provenance: FactProvenance.derived,
+        ))
+        .add(const SemanticFact(
+          nodeId: 1,
+          name: 'replacesDescendantSemantics',
+          value: true,
+          provenance: FactProvenance.derived,
+        ))
+        .add(const SemanticFact(
+          nodeId: 1,
+          name: 'blocksSemanticUserActions',
+          value: true,
+          provenance: FactProvenance.derived,
+        ));
+
+    final query = Faql4Compiler().compile(_semanticReplacement);
+    expect(Faql4Evaluator().evaluate(query, store), hasLength(1));
   });
 }

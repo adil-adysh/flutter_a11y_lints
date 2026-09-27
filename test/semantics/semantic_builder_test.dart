@@ -38,8 +38,55 @@ Semantics(
       expect(root.labelSource, LabelSource.semanticsWidget);
       expect(root.role, SemanticRole.button);
       expect(root.isSemanticBoundary, isTrue);
-      expect(root.mergesDescendants, isTrue);
+      expect(root.mergeState, SemanticMergeState.notMerged);
+      expect(root.nodeCreation, SemanticNodeCreation.noNewNode);
+      expect(
+        root.childContribution,
+        ChildContributionPolicy.mayContributeToParent,
+      );
+      expect(root.descendantReplacement, DescendantReplacementState.preserved);
       expect(root.children, hasLength(1));
+    });
+
+    test('Semantics container creates a node without merging descendants',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Semantics(
+  container: true,
+  label: 'Account',
+  child: IconButton(
+    icon: const Icon('add'),
+    tooltip: 'Add',
+    onPressed: () {},
+  ),
+)
+''');
+
+      final root = tree.root;
+      expect(root.nodeCreation, SemanticNodeCreation.createsNode);
+      expect(root.mergeState, SemanticMergeState.notMerged);
+      expect(root.mergesDescendants, isFalse);
+      expect(root.children.single.focusOrderIndex, isNotNull);
+    });
+
+    test('Semantics replacement hides descendants without excluding wrapper',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Semantics(
+  excludeSemantics: true,
+  label: 'Delete',
+  child: IconButton(
+    icon: const Icon('delete'),
+    tooltip: 'Delete',
+    onPressed: () {},
+  ),
+)
+''');
+
+      expect(
+          tree.root.descendantReplacement, DescendantReplacementState.replaced);
+      expect(tree.root.excludesDescendants, isFalse);
+      expect(tree.root.children.single.focusOrderIndex, isNull);
     });
 
     test('ExcludeSemantics suppresses descendant focus nodes', () async {
@@ -53,8 +100,28 @@ ExcludeSemantics(
 )
 ''');
 
+      expect(
+          tree.root.descendantReplacement, DescendantReplacementState.excluded);
       expect(tree.root.excludesDescendants, isTrue);
       expect(tree.accessibilityFocusNodes, isEmpty);
+    });
+
+    test('non-excluding ExcludeSemantics preserves descendant focus nodes',
+        () async {
+      final tree = await buildTestSemanticTree('''
+ExcludeSemantics(
+  excluding: false,
+  child: IconButton(
+    icon: const Icon('add'),
+    tooltip: 'Add',
+    onPressed: () {},
+  ),
+)
+''');
+
+      expect(tree.root.descendantReplacement,
+          DescendantReplacementState.preserved);
+      expect(tree.root.children.single.focusOrderIndex, isNotNull);
     });
 
     test('MergeSemantics aggregates child labels', () async {
@@ -73,6 +140,7 @@ MergeSemantics(
 )
 ''');
 
+      expect(tree.root.mergeState, SemanticMergeState.merged);
       expect(tree.root.mergesDescendants, isTrue);
       expect(tree.root.explicitChildLabel, contains('Item'));
       expect(tree.root.labelGuarantee, isNot(LabelGuarantee.none));

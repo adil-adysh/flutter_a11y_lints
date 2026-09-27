@@ -100,8 +100,9 @@ class SemanticTree {
       // `hidesDescendants` means children should not be individual focus
       // targets even though they remain in `physicalNodes` for heuristic
       // inspection.
-      final hidesDescendants =
-          node.mergesDescendants || node.excludesDescendants;
+      final hidesDescendants = node.mergeState == SemanticMergeState.merged ||
+          node.descendantReplacement == DescendantReplacementState.replaced ||
+          node.descendantReplacement == DescendantReplacementState.excluded;
       final nextAncestorBlocksFocus = ancestorBlocksFocus || hidesDescendants;
 
       for (var i = 0; i < node.children.length; i++) {

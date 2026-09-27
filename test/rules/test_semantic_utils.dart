@@ -311,7 +311,10 @@ class Semantics extends Widget {
     bool? checked,
     bool? focusable,
     bool? enabled,
-    bool? container,
+    bool container = false,
+    bool explicitChildNodes = false,
+    bool excludeSemantics = false,
+    bool blockUserActions = false,
     String? tooltip,
     String? value,
     required Widget child,
@@ -323,7 +326,7 @@ class MergeSemantics extends Widget {
 }
 
 class ExcludeSemantics extends Widget {
-  const ExcludeSemantics({required Widget child});
+  const ExcludeSemantics({bool excluding = true, required Widget child});
 }
 
 class BlockSemantics extends Widget {

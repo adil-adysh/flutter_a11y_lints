@@ -29,6 +29,50 @@ enum LabelSource {
   other,
 }
 
+/// A source boolean whose value may be statically unknown.
+enum KnownBool { unknown, yes, no }
+
+/// Where a [KnownBool] value came from.
+enum SemanticsArgumentOrigin { defaultValue, literal, resolved, dynamic }
+
+/// Exact raw configuration of a recognized Flutter [Semantics] constructor.
+@immutable
+class SemanticsCompositionConfig {
+  const SemanticsCompositionConfig({
+    this.container = KnownBool.unknown,
+    this.explicitChildNodes = KnownBool.unknown,
+    this.excludeSemantics = KnownBool.unknown,
+    this.blockUserActions = KnownBool.unknown,
+    this.containerOrigin = SemanticsArgumentOrigin.dynamic,
+    this.explicitChildNodesOrigin = SemanticsArgumentOrigin.dynamic,
+    this.excludeSemanticsOrigin = SemanticsArgumentOrigin.dynamic,
+    this.blockUserActionsOrigin = SemanticsArgumentOrigin.dynamic,
+  });
+
+  final KnownBool container;
+  final KnownBool explicitChildNodes;
+  final KnownBool excludeSemantics;
+  final KnownBool blockUserActions;
+  final SemanticsArgumentOrigin containerOrigin;
+  final SemanticsArgumentOrigin explicitChildNodesOrigin;
+  final SemanticsArgumentOrigin excludeSemanticsOrigin;
+  final SemanticsArgumentOrigin blockUserActionsOrigin;
+}
+
+enum SemanticsLabelArgumentState { absent, dynamic, static }
+
+enum SemanticNodeCreation { unknown, noNewNode, createsNode }
+
+enum ChildContributionPolicy {
+  unknown,
+  mayContributeToParent,
+  mustRemainExplicit,
+}
+
+enum DescendantReplacementState { unknown, preserved, replaced, excluded }
+
+enum SemanticMergeState { unknown, notMerged, merged }
+
 /// Simplified semantic IR node used by rules and the tree annotator.
 ///
 /// `SemanticNode` intentionally stores both raw discovery data (e.g. the
@@ -54,8 +98,8 @@ class SemanticNode {
     required this.hasDecrease,
     required this.isToggled,
     required this.isChecked,
-    required this.mergesDescendants,
-    required this.excludesDescendants,
+    bool? mergesDescendants,
+    bool? excludesDescendants,
     required this.blocksBehind,
     required this.label,
     required this.labelGuarantee,
@@ -86,7 +130,24 @@ class SemanticNode {
     this.hasDismiss = false,
     Map<String, Expression>? rawAttributes,
     this.isHeuristic = false,
-  })  : slots = slots ?? const {},
+    this.semanticsConfig = const SemanticsCompositionConfig(),
+    this.semanticsLabelArgumentState = SemanticsLabelArgumentState.absent,
+    SemanticNodeCreation? nodeCreation,
+    ChildContributionPolicy? childContribution,
+    DescendantReplacementState? descendantReplacement,
+    SemanticMergeState? mergeState,
+  })  : nodeCreation = nodeCreation ?? SemanticNodeCreation.unknown,
+        childContribution =
+            childContribution ?? ChildContributionPolicy.unknown,
+        descendantReplacement = descendantReplacement ??
+            (excludesDescendants == true
+                ? DescendantReplacementState.excluded
+                : DescendantReplacementState.preserved),
+        mergeState = mergeState ??
+            (mergesDescendants == true
+                ? SemanticMergeState.merged
+                : SemanticMergeState.notMerged),
+        slots = slots ?? const {},
         _rawAttributes = rawAttributes ?? const {};
 
   final String widgetType;
@@ -107,8 +168,19 @@ class SemanticNode {
   final bool isToggled;
   final bool isChecked;
 
-  final bool mergesDescendants;
-  final bool excludesDescendants;
+  /// Deprecated compatibility views. New code must use typed composition.
+  bool get mergesDescendants => mergeState == SemanticMergeState.merged;
+
+  /// Deprecated compatibility views. New code must use typed composition.
+  bool get excludesDescendants =>
+      descendantReplacement == DescendantReplacementState.excluded;
+
+  final SemanticsCompositionConfig semanticsConfig;
+  final SemanticsLabelArgumentState semanticsLabelArgumentState;
+  final SemanticNodeCreation nodeCreation;
+  final ChildContributionPolicy childContribution;
+  final DescendantReplacementState descendantReplacement;
+  final SemanticMergeState mergeState;
   final bool blocksBehind;
 
   final String? label;
@@ -256,6 +328,12 @@ class SemanticNode {
     bool? hasDismiss,
     Map<String, Expression>? rawAttributes,
     bool? isHeuristic,
+    SemanticsCompositionConfig? semanticsConfig,
+    SemanticsLabelArgumentState? semanticsLabelArgumentState,
+    SemanticNodeCreation? nodeCreation,
+    ChildContributionPolicy? childContribution,
+    DescendantReplacementState? descendantReplacement,
+    SemanticMergeState? mergeState,
   }) {
     return SemanticNode(
       widgetType: widgetType ?? this.widgetType,
@@ -306,6 +384,14 @@ class SemanticNode {
       hasDismiss: hasDismiss ?? this.hasDismiss,
       rawAttributes: rawAttributes ?? _rawAttributes,
       isHeuristic: isHeuristic ?? this.isHeuristic,
+      semanticsConfig: semanticsConfig ?? this.semanticsConfig,
+      semanticsLabelArgumentState:
+          semanticsLabelArgumentState ?? this.semanticsLabelArgumentState,
+      nodeCreation: nodeCreation ?? this.nodeCreation,
+      childContribution: childContribution ?? this.childContribution,
+      descendantReplacement:
+          descendantReplacement ?? this.descendantReplacement,
+      mergeState: mergeState ?? this.mergeState,
     );
   }
 }

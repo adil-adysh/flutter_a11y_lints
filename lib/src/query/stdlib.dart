@@ -31,9 +31,15 @@ class Faql4StandardLibrary {
     'isDefinitelyNotExcludedFromSemantics':
         'isDefinitelyNotExcludedFromSemantics',
     'hasExplicitSemanticsLabel': 'hasExplicitSemanticsLabel',
+    'hasStaticExplicitSemanticsLabel': 'hasExplicitSemanticsLabel',
     'hasExplicitSemanticsButtonRole': 'hasExplicitSemanticsButtonRole',
     'isDefinitelyExcludingDescendants': 'isDefinitelyExcludingDescendants',
-    'isDefinitelyNotExcludingDescendants': 'isDefinitelyNotExcludingDescendants'
+    'isDefinitelyNotExcludingDescendants':
+        'isDefinitelyNotExcludingDescendants',
+    'createsSemanticContainer': 'createsSemanticContainer',
+    'requiresExplicitChildNodes': 'requiresExplicitChildNodes',
+    'replacesDescendantSemantics': 'replacesDescendantSemantics',
+    'blocksSemanticUserActions': 'blocksSemanticUserActions',
   };
   static const relationshipMembers = {
     'getParent',

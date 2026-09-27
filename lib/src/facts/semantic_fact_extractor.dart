@@ -144,7 +144,45 @@ class SemanticFactExtractor {
         }
       }
       if (node.widgetType == 'Semantics') {
-        if (node.getAttribute('label') is SimpleStringLiteral) {
+        store = store
+            .add(SemanticFact(
+              nodeId: id,
+              name: 'semanticsContainerState',
+              value: node.semanticsConfig.container.name,
+              provenance: FactProvenance.exact,
+            ))
+            .add(SemanticFact(
+              nodeId: id,
+              name: 'semanticsExplicitChildNodesState',
+              value: node.semanticsConfig.explicitChildNodes.name,
+              provenance: FactProvenance.exact,
+            ))
+            .add(SemanticFact(
+              nodeId: id,
+              name: 'semanticsExcludeState',
+              value: node.semanticsConfig.excludeSemantics.name,
+              provenance: FactProvenance.exact,
+            ))
+            .add(SemanticFact(
+              nodeId: id,
+              name: 'semanticsBlockUserActionsState',
+              value: node.semanticsConfig.blockUserActions.name,
+              provenance: FactProvenance.exact,
+            ))
+            .add(SemanticFact(
+              nodeId: id,
+              name: 'semanticsLabelArgumentState',
+              value: node.semanticsLabelArgumentState.name,
+              provenance: FactProvenance.exact,
+            ))
+            .add(SemanticFact(
+              nodeId: id,
+              name: 'semanticsButtonState',
+              value: _nullableBoolState(node.getAttribute('button')),
+              provenance: FactProvenance.exact,
+            ));
+        if (node.semanticsLabelArgumentState ==
+            SemanticsLabelArgumentState.static) {
           store = store.add(SemanticFact(
             nodeId: id,
             name: 'hasExplicitSemanticsLabel',
@@ -152,8 +190,7 @@ class SemanticFactExtractor {
             provenance: FactProvenance.exact,
           ));
         }
-        final button = node.getAttribute('button');
-        if (button is BooleanLiteral && button.value) {
+        if (_nullableBoolState(node.getAttribute('button')) == 'true') {
           store = store.add(SemanticFact(
             nodeId: id,
             name: 'hasExplicitSemanticsButtonRole',
@@ -161,12 +198,45 @@ class SemanticFactExtractor {
             provenance: FactProvenance.exact,
           ));
         }
-        if (!node.excludesDescendants) {
+        if (node.semanticsConfig.excludeSemantics == KnownBool.no) {
           store = store.add(SemanticFact(
             nodeId: id,
             name: 'isDefinitelyNotExcludingDescendants',
             value: true,
             provenance: FactProvenance.exact,
+          ));
+        }
+        if (node.nodeCreation == SemanticNodeCreation.createsNode) {
+          store = store.add(SemanticFact(
+            nodeId: id,
+            name: 'createsSemanticContainer',
+            value: true,
+            provenance: FactProvenance.derived,
+          ));
+        }
+        if (node.childContribution ==
+            ChildContributionPolicy.mustRemainExplicit) {
+          store = store.add(SemanticFact(
+            nodeId: id,
+            name: 'requiresExplicitChildNodes',
+            value: true,
+            provenance: FactProvenance.derived,
+          ));
+        }
+        if (node.descendantReplacement == DescendantReplacementState.replaced) {
+          store = store.add(SemanticFact(
+            nodeId: id,
+            name: 'replacesDescendantSemantics',
+            value: true,
+            provenance: FactProvenance.derived,
+          ));
+        }
+        if (node.semanticsConfig.blockUserActions == KnownBool.yes) {
+          store = store.add(SemanticFact(
+            nodeId: id,
+            name: 'blocksSemanticUserActions',
+            value: true,
+            provenance: FactProvenance.derived,
           ));
         }
       }
@@ -234,12 +304,13 @@ class SemanticFactExtractor {
     if (parent?.widgetType == 'Semantics') {
       final state = labels[parentId] ?? LabelState.unknown;
       if (state == LabelState.static || state == LabelState.dynamic) {
-        return (
-          state == LabelState.static
-              ? EffectiveNameState.static
-              : EffectiveNameState.dynamic,
-          FactProvenance.derived,
-        );
+        // A wrapper label is evidence about the wrapper itself, not proof that
+        // this physical child has the same final accessible name.
+        return (EffectiveNameState.unknown, FactProvenance.derived);
+      }
+      if (parent!.descendantReplacement !=
+          DescendantReplacementState.preserved) {
+        return (EffectiveNameState.unknown, FactProvenance.derived);
       }
     } else if (parentId != null) {
       var ancestorId = parent?.parentId;
@@ -323,6 +394,12 @@ class SemanticFactExtractor {
     if (expression is IntegerLiteral) return expression.value;
     if (expression is SimpleStringLiteral) return expression.value;
     return null;
+  }
+
+  String _nullableBoolState(Expression? expression) {
+    if (expression is BooleanLiteral)
+      return expression.value ? 'true' : 'false';
+    return 'unknown';
   }
 
   String? _visibilityState(SemanticNode node, Map<String, Object?> properties) {

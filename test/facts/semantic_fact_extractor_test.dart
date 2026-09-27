@@ -8,7 +8,8 @@ import '../rules/test_semantic_utils.dart';
 
 void main() {
   group('SemanticFactExtractor', () {
-    test('derives an image effective name from a Semantics label', () async {
+    test('does not treat a non-replacing Semantics label as a child name',
+        () async {
       final tree = await buildTestSemanticTree(
         "Semantics(label: 'Profile photo', child: Image.network('https://x'))",
       );
@@ -16,7 +17,8 @@ void main() {
       final image =
           tree.physicalNodes.singleWhere((node) => node.widgetType == 'Image');
 
-      expect(facts.effectiveNameStateFor(image.id!), EffectiveNameState.static);
+      expect(
+          facts.effectiveNameStateFor(image.id!), EffectiveNameState.unknown);
       expect(
         facts.store.expanded
             .factsFor(image.id!)
@@ -40,6 +42,10 @@ void main() {
       expect(names, contains('hasExplicitSemanticsLabel'));
       expect(names, contains('hasExplicitSemanticsButtonRole'));
       expect(names, contains('isDefinitelyNotExcludingDescendants'));
+      expect(names, contains('semanticsContainerState'));
+      expect(names, contains('semanticsExplicitChildNodesState'));
+      expect(names, contains('semanticsExcludeState'));
+      expect(names, contains('semanticsLabelArgumentState'));
     });
 
     test('does not inherit a group Semantics label through an unrelated child',

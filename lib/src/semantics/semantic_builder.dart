@@ -229,6 +229,12 @@ class SemanticBuilder {
       isChecked: known.isChecked,
       mergesDescendants: known.mergesDescendants,
       excludesDescendants: known.excludesDescendants,
+      mergeState: (known.mergesDescendants || known.implicitlyMergesSemantics)
+          ? SemanticMergeState.merged
+          : SemanticMergeState.notMerged,
+      descendantReplacement: known.excludesDescendants
+          ? DescendantReplacementState.excluded
+          : DescendantReplacementState.preserved,
       blocksBehind: known.blocksBehind,
       label: label,
       labelGuarantee: labelGuarantee,
@@ -251,9 +257,7 @@ class SemanticBuilder {
     WidgetNode widget,
     BuildSemanticContext ctx,
   ) {
-    // Handle `Semantics(...)` widgets which may override role/label and
-    // can mark a semantic boundary. This wrapper may set `mergesDescendants`
-    // when `container: true` or when a `label` is provided.
+    // A Semantics annotation is not an implicit MergeSemantics wrapper.
     final builtChildren = _buildChildren(widget, ctx);
     final nodes = builtChildren.nodes;
     final baseChild = nodes.isNotEmpty ? nodes.first : null;
@@ -263,9 +267,7 @@ class SemanticBuilder {
     );
     final tooltip = ctx.evalString(widget.props['tooltip']);
     final value = ctx.evalString(widget.props['value']);
-    final mergesDescendants =
-        (ctx.evalBool(widget.props['container']) ?? false) || labelInfo != null;
-    final mergedChildLabels = _mergeChildLabels(nodes);
+    final config = _semanticsConfig(widget, ctx);
 
     SemanticRole? roleOverride;
     if (ctx.evalBool(widget.props['button']) == true) {
@@ -278,13 +280,10 @@ class SemanticBuilder {
       widget: widget,
       children: nodes,
       baseChild: baseChild,
-      mergesDescendants: mergesDescendants,
       isSemanticBoundary: true,
       labelOverride: labelInfo?.value,
       labelGuaranteeOverride: labelInfo?.guarantee,
       labelSourceOverride: labelInfo?.source,
-      explicitChildLabelOverride: mergedChildLabels.text,
-      explicitChildLabelGuarantee: mergedChildLabels.guarantee,
       tooltipOverride: tooltip,
       valueOverride: value,
       isFocusableOverride: ctx.evalBool(widget.props['focusable']),
@@ -292,6 +291,25 @@ class SemanticBuilder {
       isToggledOverride: ctx.evalBool(widget.props['toggled']),
       isCheckedOverride: ctx.evalBool(widget.props['checked']),
       roleOverride: roleOverride,
+      semanticsConfig: config,
+      semanticsLabelArgumentState:
+          _semanticsLabelArgumentState(widget, labelInfo),
+      nodeCreation: switch (config.container) {
+        KnownBool.yes => SemanticNodeCreation.createsNode,
+        KnownBool.no => SemanticNodeCreation.noNewNode,
+        KnownBool.unknown => SemanticNodeCreation.unknown,
+      },
+      childContribution: switch (config.explicitChildNodes) {
+        KnownBool.yes => ChildContributionPolicy.mustRemainExplicit,
+        KnownBool.no => ChildContributionPolicy.mayContributeToParent,
+        KnownBool.unknown => ChildContributionPolicy.unknown,
+      },
+      descendantReplacement: switch (config.excludeSemantics) {
+        KnownBool.yes => DescendantReplacementState.replaced,
+        KnownBool.no => DescendantReplacementState.preserved,
+        KnownBool.unknown => DescendantReplacementState.unknown,
+      },
+      mergeState: SemanticMergeState.notMerged,
     );
   }
 
@@ -311,10 +329,11 @@ class SemanticBuilder {
       widget: widget,
       children: builtChildren.nodes,
       baseChild: builtChildren.nodes.first,
-      mergesDescendants: true,
       isSemanticBoundary: true,
       explicitChildLabelOverride: merged.text,
       explicitChildLabelGuarantee: merged.guarantee,
+      nodeCreation: SemanticNodeCreation.createsNode,
+      mergeState: SemanticMergeState.merged,
     );
   }
 
@@ -322,12 +341,12 @@ class SemanticBuilder {
     WidgetNode widget,
     BuildSemanticContext ctx,
   ) {
-    // `ExcludeSemantics` temporarily marks built descendants as excluded from
-    // accessibility. We track `excludeDepth` in the context in case of nested
-    // exclusions.
-    ctx.excludeDepth++;
+    // ExcludeSemantics defaults to excluding, but an explicit false leaves
+    // descendants exposed. Dynamic state is preserved as unknown.
+    final excluding = _excludeSemanticsState(widget.props['excluding'], ctx);
+    if (excluding == KnownBool.yes) ctx.excludeDepth++;
     final builtChildren = _buildChildren(widget, ctx);
-    ctx.excludeDepth--;
+    if (excluding == KnownBool.yes) ctx.excludeDepth--;
     if (builtChildren.nodes.isEmpty) {
       return null;
     }
@@ -335,14 +354,18 @@ class SemanticBuilder {
       widget: widget,
       children: builtChildren.nodes,
       baseChild: null,
-      excludesDescendants: true,
       isSemanticBoundary: true,
-      isFocusableOverride: false,
-      isEnabledOverride: false,
-      hasTapOverride: false,
-      hasLongPressOverride: false,
-      hasIncreaseOverride: false,
-      hasDecreaseOverride: false,
+      isFocusableOverride: excluding == KnownBool.yes ? false : null,
+      isEnabledOverride: excluding == KnownBool.yes ? false : null,
+      hasTapOverride: excluding == KnownBool.yes ? false : null,
+      hasLongPressOverride: excluding == KnownBool.yes ? false : null,
+      hasIncreaseOverride: excluding == KnownBool.yes ? false : null,
+      hasDecreaseOverride: excluding == KnownBool.yes ? false : null,
+      descendantReplacement: switch (excluding) {
+        KnownBool.yes => DescendantReplacementState.excluded,
+        KnownBool.no => DescendantReplacementState.preserved,
+        KnownBool.unknown => DescendantReplacementState.unknown,
+      },
     );
   }
 
@@ -420,6 +443,14 @@ class SemanticBuilder {
     bool? hasDismissOverride,
     ControlKind? controlKindOverride,
     SemanticRole? roleOverride,
+    SemanticsCompositionConfig semanticsConfig =
+        const SemanticsCompositionConfig(),
+    SemanticsLabelArgumentState semanticsLabelArgumentState =
+        SemanticsLabelArgumentState.absent,
+    SemanticNodeCreation nodeCreation = SemanticNodeCreation.unknown,
+    ChildContributionPolicy childContribution = ChildContributionPolicy.unknown,
+    DescendantReplacementState? descendantReplacement,
+    SemanticMergeState? mergeState,
   }) {
     final base = baseChild;
     // Compose semantic properties by overriding base child values with
@@ -481,6 +512,12 @@ class SemanticBuilder {
       isChecked: isChecked,
       mergesDescendants: mergesDescendants,
       excludesDescendants: excludesDescendants,
+      semanticsConfig: semanticsConfig,
+      semanticsLabelArgumentState: semanticsLabelArgumentState,
+      nodeCreation: nodeCreation,
+      childContribution: childContribution,
+      descendantReplacement: descendantReplacement,
+      mergeState: mergeState,
       blocksBehind: blocksBehind,
       label: labelOverride ?? base?.label,
       labelGuarantee: labelGuarantee,
@@ -890,6 +927,72 @@ class SemanticBuilder {
     return expression is SimpleStringLiteral ||
         expression is AdjacentStrings ||
         expression is StringInterpolation;
+  }
+
+  SemanticsCompositionConfig _semanticsConfig(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
+    final container = _semanticsBool(widget.props['container'], ctx);
+    final explicitChildren =
+        _semanticsBool(widget.props['explicitChildNodes'], ctx);
+    final exclude = _semanticsBool(widget.props['excludeSemantics'], ctx);
+    final blockActions = _semanticsBool(widget.props['blockUserActions'], ctx);
+    return SemanticsCompositionConfig(
+      container: container.$1,
+      containerOrigin: container.$2,
+      explicitChildNodes: explicitChildren.$1,
+      explicitChildNodesOrigin: explicitChildren.$2,
+      excludeSemantics: exclude.$1,
+      excludeSemanticsOrigin: exclude.$2,
+      blockUserActions: blockActions.$1,
+      blockUserActionsOrigin: blockActions.$2,
+    );
+  }
+
+  (KnownBool, SemanticsArgumentOrigin) _semanticsBool(
+    Expression? expression,
+    BuildSemanticContext ctx,
+  ) {
+    if (expression == null) {
+      return (KnownBool.no, SemanticsArgumentOrigin.defaultValue);
+    }
+    final value = ctx.evalBool(expression);
+    if (value == null) {
+      return (KnownBool.unknown, SemanticsArgumentOrigin.dynamic);
+    }
+    return (
+      value ? KnownBool.yes : KnownBool.no,
+      expression is BooleanLiteral
+          ? SemanticsArgumentOrigin.literal
+          : SemanticsArgumentOrigin.resolved,
+    );
+  }
+
+  KnownBool _excludeSemanticsState(
+    Expression? expression,
+    BuildSemanticContext ctx,
+  ) {
+    if (expression == null) return KnownBool.yes;
+    final value = ctx.evalBool(expression);
+    return switch (value) {
+      true => KnownBool.yes,
+      false => KnownBool.no,
+      null => KnownBool.unknown,
+    };
+  }
+
+  SemanticsLabelArgumentState _semanticsLabelArgumentState(
+    WidgetNode widget,
+    _LabelInfo? labelInfo,
+  ) {
+    if (!widget.props.containsKey('label') ||
+        widget.props['label'] is NullLiteral) {
+      return SemanticsLabelArgumentState.absent;
+    }
+    return labelInfo?.guarantee == LabelGuarantee.hasStaticLabel
+        ? SemanticsLabelArgumentState.static
+        : SemanticsLabelArgumentState.dynamic;
   }
 
   String? _instanceTypeName(InstanceCreationExpression expression) {
