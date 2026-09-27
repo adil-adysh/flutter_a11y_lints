@@ -14,8 +14,8 @@ class Faql4StandardLibrary {
     'ListTileNode'
   };
   static const booleanMembers = {
-    'isDefinitelyEnabled': 'enabled',
-    'isDefinitelyFocusable': 'focusable',
+    'isDefinitelyEnabled': 'enabledState',
+    'isDefinitelyFocusable': 'focusableState',
     'isDefinitelyUnlabeled': 'labelState',
     'isDefinitelyEffectivelyUnlabeled': 'effectiveNameState',
     'hasAccessibleLabel': 'labelState',

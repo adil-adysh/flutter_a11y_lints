@@ -26,6 +26,26 @@ void main() {
       );
     });
 
+    test('does not inherit a group Semantics label through an unrelated child',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Semantics(
+  label: 'Account settings',
+  child: Column(children: [
+    ListTile(leading: Image.network('https://example.test/profile.png')),
+  ]),
+)
+''');
+      final facts = SemanticFactExtractor().extract(tree);
+      final image =
+          tree.physicalNodes.singleWhere((node) => node.widgetType == 'Image');
+
+      expect(
+        facts.effectiveNameStateFor(image.id!),
+        EffectiveNameState.unknown,
+      );
+    });
+
     test('emits typed states for verified semantic nodes', () async {
       final tree = buildManualTree(makeSemanticNode());
       final facts = SemanticFactExtractor().extract(tree);
@@ -34,6 +54,14 @@ void main() {
       expect(facts.enabledStateFor(node.id!), EnabledState.enabled);
       expect(facts.focusableStateFor(node.id!), FocusableState.focusable);
       expect(facts.visibilityStateFor(node.id!), VisibilityState.visible);
+      expect(
+        facts.store.conservative
+            .factsFor(node.id!)
+            .where((fact) => fact.name == 'enabledState')
+            .single
+            .value,
+        'enabled',
+      );
     });
     test('distinguishes proven absence from dynamic and unknown labels', () {
       final absent = makeSemanticNode(labelGuarantee: LabelGuarantee.none);

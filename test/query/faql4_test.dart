@@ -24,8 +24,8 @@ select control, "Interactive control must have an accessible label."
               provenance: FactProvenance.exact))
           .add(const SemanticFact(
               nodeId: 1,
-              name: 'enabled',
-              value: true,
+              name: 'enabledState',
+              value: 'enabled',
               provenance: FactProvenance.exact))
           .add(const SemanticFact(
               nodeId: 1,

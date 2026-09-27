@@ -81,8 +81,18 @@ class SemanticFactExtractor {
               provenance: FactProvenance.exact))
           .add(SemanticFact(
               nodeId: id,
+              name: 'enabledState',
+              value: enabledStates[id]!.name,
+              provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
               name: 'focusable',
               value: node.isFocusable,
+              provenance: FactProvenance.exact))
+          .add(SemanticFact(
+              nodeId: id,
+              name: 'focusableState',
+              value: focusableStates[id]!.name,
               provenance: FactProvenance.exact))
           .add(SemanticFact(
               nodeId: id,
@@ -139,6 +149,12 @@ class SemanticFactExtractor {
           : visibility == null
               ? VisibilityState.visible
               : VisibilityState.hidden;
+      store = store.add(SemanticFact(
+        nodeId: id,
+        name: 'visibilityStateTyped',
+        value: visibilityStates[id]!.name,
+        provenance: FactProvenance.exact,
+      ));
       if (visibility != null) {
         nodeProperties['visibilityState'] = visibility;
         store = store.add(SemanticFact(
@@ -178,22 +194,27 @@ class SemanticFactExtractor {
     SemanticTree tree,
     Map<int, LabelState> labels,
   ) {
-    var ancestorId = node.parentId;
-    while (ancestorId != null) {
-      final ancestor = tree.byId[ancestorId];
-      if (ancestor == null) break;
-      if (ancestor.widgetType == 'Semantics') {
-        final state = labels[ancestorId] ?? LabelState.unknown;
-        if (state == LabelState.static || state == LabelState.dynamic) {
-          return (
-            state == LabelState.static
-                ? EffectiveNameState.static
-                : EffectiveNameState.dynamic,
-            FactProvenance.derived,
-          );
-        }
+    final parentId = node.parentId;
+    final parent = parentId == null ? null : tree.byId[parentId];
+    if (parent?.widgetType == 'Semantics') {
+      final state = labels[parentId] ?? LabelState.unknown;
+      if (state == LabelState.static || state == LabelState.dynamic) {
+        return (
+          state == LabelState.static
+              ? EffectiveNameState.static
+              : EffectiveNameState.dynamic,
+          FactProvenance.derived,
+        );
       }
-      ancestorId = ancestor.parentId;
+    } else if (parentId != null) {
+      var ancestorId = parent?.parentId;
+      while (ancestorId != null) {
+        final ancestor = tree.byId[ancestorId];
+        if (ancestor?.widgetType == 'Semantics') {
+          return (EffectiveNameState.unknown, FactProvenance.derived);
+        }
+        ancestorId = ancestor?.parentId;
+      }
     }
     return (
       switch (labels[node.id!]) {
