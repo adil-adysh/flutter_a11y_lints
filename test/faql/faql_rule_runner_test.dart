@@ -23,7 +23,7 @@ select control, "Interactive control must have an accessible label."
   });
 
   test('merge rule excludes disabled interactive descendants', () {
-    final source = File('lib/rules/core/merge_multiple_actions.faql')
+    final source = File('lib/rules/candidates/merge_multiple_actions.faql')
         .readAsStringSync();
     final enabled = makeSemanticNode(widgetType: 'IconButton');
     final disabled = makeSemanticNode(

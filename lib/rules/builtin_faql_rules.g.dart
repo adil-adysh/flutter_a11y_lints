@@ -37,13 +37,4 @@ from ImageNode image
 where image.isNetworkOrFileImage() and image.isDefinitelyUnlabeled() and exists(ListTileNode ancestor | ancestor = image.getAnAncestor())
 select image, "Informative images must provide semantic labels."
 '''), // flutter-a11y/a04/list-tile-image-labeled
-  Faql4Compiler().compile(r'''@id flutter-a11y/merge/multiple-actions
-@rule-id merge_multiple_actions
-@severity warning
-@mode conservative
-from MergeSemanticsNode merge
-where count(InteractiveControl control |
-  control = merge.getADescendant() and control.isDefinitelyEnabled()) >= 2
-select merge, "Merged semantics contain multiple independently actionable controls."
-'''), // flutter-a11y/merge/multiple-actions
 ]);
