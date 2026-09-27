@@ -25,6 +25,16 @@ void main() {
         FactProvenance.derived,
       );
     });
+
+    test('emits typed states for verified semantic nodes', () async {
+      final tree = buildManualTree(makeSemanticNode());
+      final facts = SemanticFactExtractor().extract(tree);
+      final node = tree.root;
+
+      expect(facts.enabledStateFor(node.id!), EnabledState.enabled);
+      expect(facts.focusableStateFor(node.id!), FocusableState.focusable);
+      expect(facts.visibilityStateFor(node.id!), VisibilityState.visible);
+    });
     test('distinguishes proven absence from dynamic and unknown labels', () {
       final absent = makeSemanticNode(labelGuarantee: LabelGuarantee.none);
       final dynamic = makeSemanticNode(
