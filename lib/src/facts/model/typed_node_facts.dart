@@ -4,6 +4,7 @@ import 'image_facts.dart';
 import 'naming_facts.dart';
 import 'role_action_facts.dart';
 import 'state_facts.dart';
+import 'value_input_facts.dart';
 
 /// Typed, authoritative semantic facts associated with one source node.
 ///
@@ -18,6 +19,7 @@ class TypedNodeFacts {
     this.exposure,
     this.role,
     this.image,
+    this.valueInput,
     this.actions = const [],
   });
 
@@ -27,6 +29,7 @@ class TypedNodeFacts {
   final ExposureFact? exposure;
   final RoleFact? role;
   final ImageFact? image;
+  final ValueInputFact? valueInput;
   final List<SemanticActionFact> actions;
 
   SemanticActionFact? action(ActionKind kind) {

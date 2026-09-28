@@ -7,6 +7,7 @@ import 'package:flutter_a11y_lints/src/facts/model/composition_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/naming_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/state_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/typed_node_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/value_input_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
 import 'package:test/test.dart';
 
@@ -128,6 +129,25 @@ void main() {
 
     expect(role.role, AccessibilityRole.image);
     expect(image.sourceKind, ImageSourceKind.network);
+  });
+
+  test('value and input facts retain static and unknown text separately', () {
+    const evidence = FactEvidence(
+      provenance: FactProvenance.exact,
+      knowledge: KnowledgeState.known,
+    );
+    const input = ValueInputFact(
+      value: TextFact(state: TextState.static, value: '42', evidence: evidence),
+      hint: TextFact(state: TextState.unknown, evidence: evidence),
+      inputKind: InputKind.number,
+      validation: ValidationState.unknown,
+      minValue: 0,
+      maxValue: 100,
+      evidence: evidence,
+    );
+
+    expect(input.value.value, '42');
+    expect(input.hint.state, TextState.unknown);
   });
 
   test('composition, names, and control states retain unknown explicitly', () {
