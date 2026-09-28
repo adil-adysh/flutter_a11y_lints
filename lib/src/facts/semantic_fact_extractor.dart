@@ -348,19 +348,11 @@ class SemanticFactExtractor {
               ? VisibilityState.visible
               : VisibilityState.hidden;
       nameFacts[id] = _nameFact(node, labelState, nodeProvenance);
-      controlStateFacts[id] = typed_states.ControlStateFact(
-        enabled: switch (enabledStates[id]!) {
-          EnabledState.enabled => typed_states.EnabledState.enabled,
-          EnabledState.disabled => typed_states.EnabledState.disabled,
-          EnabledState.unknown => typed_states.EnabledState.unknown,
-        },
-        focusable: switch (focusableStates[id]!) {
-          FocusableState.focusable => typed_states.FocusableState.focusable,
-          FocusableState.notFocusable =>
-            typed_states.FocusableState.notFocusable,
-          FocusableState.unknown => typed_states.FocusableState.unknown,
-        },
-        evidence: evidence,
+      controlStateFacts[id] = _controlStateFact(
+        node,
+        evidence,
+        enabledStates[id]!,
+        focusableStates[id]!,
       );
       actionFacts[id] = _actionFacts(node, evidence);
       exposureFacts[id] = typed_exposure.ExposureFact(
@@ -927,6 +919,155 @@ class SemanticFactExtractor {
       maxValue: integer('maxValue') ?? integer('max'),
       currentValueLength: integer('currentValueLength'),
       maxValueLength: integer('maxLength'),
+      evidence: evidence,
+    );
+  }
+
+  typed_states.ControlStateFact _controlStateFact(
+    SemanticNode node,
+    FactEvidence nodeEvidence,
+    EnabledState inheritedEnabled,
+    FocusableState inheritedFocusable,
+  ) {
+    bool? literalBool(String name) {
+      final expression = node.getAttribute(name);
+      return expression is BooleanLiteral ? expression.value : null;
+    }
+
+    final stateNames = const [
+      'enabled',
+      'checked',
+      'mixed',
+      'selected',
+      'toggled',
+      'expanded',
+      'focusable',
+      'focused',
+      'isRequired',
+      'readOnly',
+      'obscured',
+      'multiline',
+    ];
+    final hasDynamicArgument = node.widgetType == 'Semantics' &&
+        stateNames.any((name) {
+          final expression = node.getAttribute(name);
+          return expression != null && expression is! BooleanLiteral;
+        });
+    final evidence = hasDynamicArgument
+        ? FactEvidence(
+            provenance: nodeEvidence.provenance,
+            knowledge: KnowledgeState.dynamic,
+            sources: nodeEvidence.sources,
+            inputs: nodeEvidence.inputs,
+          )
+        : nodeEvidence;
+
+    typed_states.EnabledState enabled() {
+      if (node.widgetType == 'Semantics' &&
+          node.getAttribute('enabled') != null) {
+        return switch (literalBool('enabled')) {
+          true => typed_states.EnabledState.enabled,
+          false => typed_states.EnabledState.disabled,
+          null => typed_states.EnabledState.unknown,
+        };
+      }
+      return switch (inheritedEnabled) {
+        EnabledState.enabled => typed_states.EnabledState.enabled,
+        EnabledState.disabled => typed_states.EnabledState.disabled,
+        EnabledState.unknown => typed_states.EnabledState.unknown,
+      };
+    }
+
+    typed_states.FocusableState focusable() {
+      if (node.widgetType == 'Semantics' &&
+          node.getAttribute('focusable') != null) {
+        return switch (literalBool('focusable')) {
+          true => typed_states.FocusableState.focusable,
+          false => typed_states.FocusableState.notFocusable,
+          null => typed_states.FocusableState.unknown,
+        };
+      }
+      return switch (inheritedFocusable) {
+        FocusableState.focusable => typed_states.FocusableState.focusable,
+        FocusableState.notFocusable => typed_states.FocusableState.notFocusable,
+        FocusableState.unknown => typed_states.FocusableState.unknown,
+      };
+    }
+
+    T binary<T>(String name, T onTrue, T onFalse, T unknown) {
+      if (node.widgetType != 'Semantics' || node.getAttribute(name) == null) {
+        return unknown;
+      }
+      return switch (literalBool(name)) {
+        true => onTrue,
+        false => onFalse,
+        null => unknown,
+      };
+    }
+
+    final mixed = literalBool('mixed');
+    final checked = mixed == true
+        ? typed_states.CheckedState.mixed
+        : mixed == null && node.getAttribute('mixed') != null
+            ? typed_states.CheckedState.unknown
+            : binary(
+                'checked',
+                typed_states.CheckedState.checked,
+                typed_states.CheckedState.unchecked,
+                typed_states.CheckedState.unknown,
+              );
+    return typed_states.ControlStateFact(
+      enabled: enabled(),
+      checked: checked,
+      selected: binary(
+        'selected',
+        typed_states.SelectedState.selected,
+        typed_states.SelectedState.unselected,
+        typed_states.SelectedState.unknown,
+      ),
+      toggled: binary(
+        'toggled',
+        typed_states.ToggledState.on,
+        typed_states.ToggledState.off,
+        typed_states.ToggledState.unknown,
+      ),
+      expanded: binary(
+        'expanded',
+        typed_states.ExpandedState.expanded,
+        typed_states.ExpandedState.collapsed,
+        typed_states.ExpandedState.unknown,
+      ),
+      focusable: focusable(),
+      focused: binary(
+        'focused',
+        typed_states.FocusedState.focused,
+        typed_states.FocusedState.unfocused,
+        typed_states.FocusedState.unknown,
+      ),
+      required: binary(
+        'isRequired',
+        typed_states.RequiredState.required,
+        typed_states.RequiredState.optional,
+        typed_states.RequiredState.unknown,
+      ),
+      readOnly: binary(
+        'readOnly',
+        typed_states.ReadOnlyState.readOnly,
+        typed_states.ReadOnlyState.editable,
+        typed_states.ReadOnlyState.unknown,
+      ),
+      obscured: binary(
+        'obscured',
+        typed_states.ObscuredState.obscured,
+        typed_states.ObscuredState.unobscured,
+        typed_states.ObscuredState.unknown,
+      ),
+      multiline: binary(
+        'multiline',
+        typed_states.MultilineState.multiline,
+        typed_states.MultilineState.singleLine,
+        typed_states.MultilineState.unknown,
+      ),
       evidence: evidence,
     );
   }

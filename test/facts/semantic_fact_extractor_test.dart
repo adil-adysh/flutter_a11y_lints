@@ -3,6 +3,8 @@ import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
 import 'package:flutter_a11y_lints/src/facts/model/composition_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/exposure_facts.dart'
     as typed_exposure;
+import 'package:flutter_a11y_lints/src/facts/model/evidence.dart'
+    show KnowledgeState;
 import 'package:flutter_a11y_lints/src/facts/model/image_facts.dart'
     as typed_images;
 import 'package:flutter_a11y_lints/src/facts/model/naming_facts.dart'
@@ -424,6 +426,53 @@ Set<String> controlledNodes = {'overflow-menu'};
           typed_values.TextState.dynamic);
       expect(dynamicFact.controlsNodeIdentifiers.state,
           typed_relationships.IdentifierSetState.dynamic);
+    });
+
+    test('extracts explicit typed semantic states without defaulting dynamics',
+        () async {
+      final literalTree = await buildTestSemanticTree('''
+Semantics(
+  enabled: false,
+  checked: true,
+  selected: false,
+  toggled: true,
+  expanded: false,
+  focusable: true,
+  focused: false,
+  isRequired: true,
+  readOnly: true,
+  obscured: false,
+  multiline: true,
+  child: Text('Password'),
+)
+''');
+      final dynamicTree = await buildTestSemanticTree(
+        'Semantics(checked: isChecked, child: Text("Choice"))',
+        extraDeclarations: 'bool isChecked = true;',
+      );
+
+      typed_states.ControlStateFact stateFor(SemanticTree tree) =>
+          SemanticFactExtractor()
+              .extract(tree)
+              .controlStateFactFor(tree.root.id!)!;
+
+      final literal = stateFor(literalTree);
+      expect(literal.enabled, typed_states.EnabledState.disabled);
+      expect(literal.checked, typed_states.CheckedState.checked);
+      expect(literal.selected, typed_states.SelectedState.unselected);
+      expect(literal.toggled, typed_states.ToggledState.on);
+      expect(literal.expanded, typed_states.ExpandedState.collapsed);
+      expect(literal.focusable, typed_states.FocusableState.focusable);
+      expect(literal.focused, typed_states.FocusedState.unfocused);
+      expect(literal.required, typed_states.RequiredState.required);
+      expect(literal.readOnly, typed_states.ReadOnlyState.readOnly);
+      expect(literal.obscured, typed_states.ObscuredState.unobscured);
+      expect(literal.multiline, typed_states.MultilineState.multiline);
+      expect(literal.evidence.provenance, FactProvenance.exact);
+
+      final dynamic = stateFor(dynamicTree);
+      expect(dynamic.checked, typed_states.CheckedState.unknown);
+      expect(dynamic.evidence.knowledge, KnowledgeState.dynamic);
     });
 
     test('projects only compatible explicit traversal and controls edges',
