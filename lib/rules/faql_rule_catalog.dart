@@ -34,6 +34,12 @@ class LoadedRuleCatalog {
   final Map<String, CompiledQuery> byQueryId;
   final Map<String, List<CompiledQuery>> byRuleId;
   final Map<FactMode, List<CompiledQuery>> byMode;
+
+  /// Rules run by default. Expanded rules are opt-in because they can rely on
+  /// contextual or heuristic evidence and must never affect conservative
+  /// diagnostics implicitly.
+  List<CompiledQuery> get defaultQueries =>
+      byMode[FactMode.conservative] ?? const [];
 }
 
 /// Loads FAQL rules from the embedded bundle and optional user directories.

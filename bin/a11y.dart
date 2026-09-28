@@ -90,7 +90,8 @@ void main(List<String> args) async {
   final rulesDir = argResults['rules-dir'] as String?;
   final ruleLogger = (String msg) => stderr.writeln('[rules] $msg');
   final catalog = FaqlRuleCatalog(logger: ruleLogger);
-  final activeRules = catalog.load(customRulesDir: rulesDir).queries;
+  final activeRules =
+      catalog.load(customRulesDir: rulesDir).defaultQueries;
 
   if (argResults['list-rules'] as bool) {
     if (activeRules.isEmpty) {

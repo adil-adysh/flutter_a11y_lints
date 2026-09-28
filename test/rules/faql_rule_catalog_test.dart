@@ -41,6 +41,24 @@ void main() {
       );
     });
 
+    test('keeps expanded custom queries out of the default query set', () {
+      final directory = Directory.systemTemp.createTempSync('faql-catalog-');
+      addTearDown(() => directory.deleteSync(recursive: true));
+      File('${directory.path}${Platform.pathSeparator}expanded.faql')
+          .writeAsStringSync(_coreQuery('custom/expanded', mode: 'expanded'));
+
+      final catalog = FaqlRuleCatalog().load(customRulesDir: directory.path);
+
+      expect(
+        catalog.defaultQueries.map((query) => query.queryId),
+        isNot(contains('custom/expanded')),
+      );
+      expect(
+        catalog.byMode[FactMode.expanded]?.map((query) => query.queryId),
+        contains('custom/expanded'),
+      );
+    });
+
     test('rejects duplicate custom query IDs instead of silently skipping one',
         () {
       final directory = Directory.systemTemp.createTempSync('faql-catalog-');
@@ -58,10 +76,10 @@ void main() {
   });
 }
 
-String _coreQuery(String id) => '''
+String _coreQuery(String id, {String mode = 'conservative'}) => '''
 @id $id
 @rule-id a01_custom
-@mode conservative
+@mode $mode
 @severity warning
 from SemanticNode node
 select node, "Test diagnostic."
