@@ -304,6 +304,10 @@ class RadioListTile<T> extends Widget {
 
 class Semantics extends Widget {
   const Semantics({
+    String? identifier,
+    Object? traversalParentIdentifier,
+    Object? traversalChildIdentifier,
+    Set<String>? controlsNodes,
     String? label,
     bool? button,
     bool? header,

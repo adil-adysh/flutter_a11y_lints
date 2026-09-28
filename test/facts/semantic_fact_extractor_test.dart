@@ -9,6 +9,8 @@ import 'package:flutter_a11y_lints/src/facts/model/naming_facts.dart'
     as typed_naming;
 import 'package:flutter_a11y_lints/src/facts/model/role_action_facts.dart'
     as typed_actions;
+import 'package:flutter_a11y_lints/src/facts/model/relationship_facts.dart'
+    as typed_relationships;
 import 'package:flutter_a11y_lints/src/facts/model/state_facts.dart'
     as typed_states;
 import 'package:flutter_a11y_lints/src/facts/model/value_input_facts.dart'
@@ -367,6 +369,55 @@ Semantics(semanticValue: '42', semanticHint: 'Percentage', child: Text('42'))
       expect(valueInput.value.state, typed_values.TextState.static);
       expect(valueInput.value.value, '42');
       expect(valueInput.hint.value, 'Percentage');
+    });
+
+    test('extracts only static semantic relationship identifiers', () async {
+      final staticTree = await buildTestSemanticTree('''
+Semantics(
+  identifier: 'menu-button',
+  traversalParentIdentifier: 'toolbar',
+  traversalChildIdentifier: 'overflow-menu',
+  controlsNodes: {'overflow-menu', 'profile-menu'},
+  child: Text('Menu'),
+)
+''');
+      final dynamicTree = await buildTestSemanticTree('''
+Semantics(
+  identifier: semanticIdentifier,
+  traversalParentIdentifier: parentIdentifier,
+  controlsNodes: controlledNodes,
+  child: Text('Menu'),
+)
+''', extraDeclarations: '''
+String semanticIdentifier = 'menu-button';
+Object parentIdentifier = 'toolbar';
+Set<String> controlledNodes = {'overflow-menu'};
+''');
+
+      typed_relationships.SemanticRelationshipFact relationshipFor(
+        SemanticTree tree,
+      ) => SemanticFactExtractor()
+          .extract(tree)
+          .relationshipFactFor(tree.root.id!)!;
+
+      final staticFact = relationshipFor(staticTree);
+      expect(staticFact.identifier.state, typed_values.TextState.static);
+      expect(staticFact.identifier.value, 'menu-button');
+      expect(staticFact.traversalParentIdentifier.state,
+          typed_values.TextState.static);
+      expect(staticFact.traversalChildIdentifier.value, 'overflow-menu');
+      expect(staticFact.controlsNodeIdentifiers.state,
+          typed_relationships.IdentifierSetState.static);
+      expect(staticFact.controlsNodeIdentifiers.values,
+          unorderedEquals(['overflow-menu', 'profile-menu']));
+      expect(staticFact.evidence.provenance, FactProvenance.exact);
+
+      final dynamicFact = relationshipFor(dynamicTree);
+      expect(dynamicFact.identifier.state, typed_values.TextState.dynamic);
+      expect(dynamicFact.traversalParentIdentifier.state,
+          typed_values.TextState.dynamic);
+      expect(dynamicFact.controlsNodeIdentifiers.state,
+          typed_relationships.IdentifierSetState.dynamic);
     });
 
     test('projects source, composition, and accessibility graphs separately',

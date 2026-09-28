@@ -3,6 +3,7 @@ import 'exposure_facts.dart';
 import 'image_facts.dart';
 import 'naming_facts.dart';
 import 'role_action_facts.dart';
+import 'relationship_facts.dart';
 import 'state_facts.dart';
 import 'value_input_facts.dart';
 
@@ -20,6 +21,7 @@ class TypedNodeFacts {
     this.role,
     this.image,
     this.valueInput,
+    this.relationship,
     this.actions = const [],
   });
 
@@ -30,6 +32,7 @@ class TypedNodeFacts {
   final RoleFact? role;
   final ImageFact? image;
   final ValueInputFact? valueInput;
+  final SemanticRelationshipFact? relationship;
   final List<SemanticActionFact> actions;
 
   SemanticActionFact? action(ActionKind kind) {

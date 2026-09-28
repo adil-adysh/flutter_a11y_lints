@@ -12,6 +12,7 @@ import 'model/exposure_facts.dart' as typed_exposure;
 import 'model/image_facts.dart' as typed_images;
 import 'model/naming_facts.dart' as typed_naming;
 import 'model/role_action_facts.dart' as typed_actions;
+import 'model/relationship_facts.dart' as typed_relationships;
 import 'model/state_facts.dart' as typed_states;
 import 'model/structure_facts.dart';
 import 'model/typed_node_facts.dart';
@@ -50,6 +51,8 @@ class SemanticFactExtractor {
     final roleFacts = <int, typed_actions.RoleFact>{};
     final imageFacts = <int, typed_images.ImageFact>{};
     final valueInputFacts = <int, typed_values.ValueInputFact>{};
+    final relationshipFacts =
+        <int, typed_relationships.SemanticRelationshipFact>{};
     final sourceNodes = <SourceWidgetNode>[];
     final sourceChildren = <SourceWidgetChildEdge>[];
     final slotEdges = <NamedSlotEdge>[];
@@ -97,6 +100,7 @@ class SemanticFactExtractor {
       final imageFact = _imageFact(node, evidence);
       if (imageFact != null) imageFacts[id] = imageFact;
       valueInputFacts[id] = _valueInputFact(node, evidence);
+      relationshipFacts[id] = _relationshipFact(node, evidence);
       final labelState = _labelState(node);
       labelStates[id] = labelState;
       enabledStates[id] = node.isHeuristic
@@ -459,6 +463,7 @@ class SemanticFactExtractor {
           role: roleFacts[id],
           image: imageFacts[id],
           valueInput: valueInputFacts[id],
+          relationship: relationshipFacts[id],
           actions: actionFacts[id] ?? const [],
         ),
       );
@@ -479,6 +484,7 @@ class SemanticFactExtractor {
         controlStateFacts,
         actionFacts,
         exposureFacts,
+        relationshipFacts,
         accessibility,
         AccessibilityFactGraph(
           sourceNodes: sourceNodes,
@@ -864,6 +870,72 @@ class SemanticFactExtractor {
     );
   }
 
+  typed_relationships.SemanticRelationshipFact _relationshipFact(
+    SemanticNode node,
+    FactEvidence evidence,
+  ) {
+    typed_values.TextFact textFact(String name) {
+      final expression = node.getAttribute(name);
+      if (expression == null) {
+        return typed_values.TextFact(
+          state: typed_values.TextState.absent,
+          evidence: evidence,
+        );
+      }
+      final literal = _literalValue(expression);
+      if (literal is String) {
+        return typed_values.TextFact(
+          state: typed_values.TextState.static,
+          value: literal,
+          evidence: evidence,
+        );
+      }
+      return typed_values.TextFact(
+        state: typed_values.TextState.dynamic,
+        evidence: FactEvidence(
+          provenance: evidence.provenance,
+          knowledge: KnowledgeState.dynamic,
+          sources: evidence.sources,
+          inputs: evidence.inputs,
+        ),
+      );
+    }
+
+    final controls = node.getAttribute('controlsNodes');
+    final controlsFact = switch (controls) {
+      null => typed_relationships.IdentifierSetFact(
+          state: typed_relationships.IdentifierSetState.absent,
+          evidence: evidence,
+        ),
+      SetOrMapLiteral() when controls.elements.every(
+          (element) => element is Expression && _literalValue(element) is String,
+        ) => typed_relationships.IdentifierSetFact(
+          state: typed_relationships.IdentifierSetState.static,
+          values: [
+            for (final element in controls.elements)
+              _literalValue(element as Expression)! as String,
+          ],
+          evidence: evidence,
+        ),
+      _ => typed_relationships.IdentifierSetFact(
+          state: typed_relationships.IdentifierSetState.dynamic,
+          evidence: FactEvidence(
+            provenance: evidence.provenance,
+            knowledge: KnowledgeState.dynamic,
+            sources: evidence.sources,
+            inputs: evidence.inputs,
+          ),
+        ),
+    };
+    return typed_relationships.SemanticRelationshipFact(
+      identifier: textFact('identifier'),
+      traversalParentIdentifier: textFact('traversalParentIdentifier'),
+      traversalChildIdentifier: textFact('traversalChildIdentifier'),
+      controlsNodeIdentifiers: controlsFact,
+      evidence: evidence,
+    );
+  }
+
   Iterable<(String, Object)> _imageFacts(SemanticNode node) sync* {
     if (node.widgetType == 'CircleAvatar') {
       final background = node.getAttribute('backgroundImage');
@@ -959,6 +1031,7 @@ class ExtractedSemanticFacts {
       this._controlStateFacts,
       this._actionFacts,
       this._exposureFacts,
+      this._relationshipFacts,
       this.accessibility,
       this.graph);
 
@@ -977,6 +1050,8 @@ class ExtractedSemanticFacts {
   final Map<int, typed_states.ControlStateFact> _controlStateFacts;
   final Map<int, List<typed_actions.SemanticActionFact>> _actionFacts;
   final Map<int, typed_exposure.ExposureFact> _exposureFacts;
+  final Map<int, typed_relationships.SemanticRelationshipFact>
+      _relationshipFacts;
 
   /// Separate conservative accessibility-tree approximation.
   final AccessibilityTreeApproximation accessibility;
@@ -1009,4 +1084,8 @@ class ExtractedSemanticFacts {
       _actionFacts[nodeId] ?? const [];
   typed_exposure.ExposureFact? exposureFactFor(int nodeId) =>
       _exposureFacts[nodeId];
+  typed_relationships.SemanticRelationshipFact? relationshipFactFor(
+    int nodeId,
+  ) =>
+      _relationshipFacts[nodeId];
 }

@@ -203,4 +203,37 @@ void main() {
       handle.dispose();
     }
   });
+
+  testWidgets('Semantics publishes explicit relationship identifiers',
+      (tester) async {
+    // Runtime contract: explicitly supplied identifier, traversal identifiers,
+    // and controlsNodes appear on the emitted semantics node.
+    // IR mapping: literal source values become relationship facts; no graph
+    // edge is inferred merely because identifiers happen to match.
+    // Conservative consequence: rules can use only static relationship facts.
+    // Deliberate unknown boundary: dynamic/object identifiers remain unknown.
+    final handle = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Semantics(
+            identifier: 'menu-button',
+            traversalParentIdentifier: 'toolbar',
+            traversalChildIdentifier: 'overflow-menu',
+            controlsNodes: const {'overflow-menu', 'profile-menu'},
+            child: const Text('Menu'),
+          ),
+        ),
+      );
+
+      final data = tester.getSemantics(find.byType(Semantics)).getSemanticsData();
+      expect(data.identifier, 'menu-button');
+      expect(data.traversalParentIdentifier, 'toolbar');
+      expect(data.traversalChildIdentifier, 'overflow-menu');
+      expect(data.controlsNodes, {'overflow-menu', 'profile-menu'});
+    } finally {
+      handle.dispose();
+    }
+  });
 }
