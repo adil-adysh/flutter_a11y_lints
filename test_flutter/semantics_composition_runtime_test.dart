@@ -236,4 +236,33 @@ void main() {
       handle.dispose();
     }
   });
+
+  testWidgets('Semantics publishes explicit callback actions', (tester) async {
+    // Runtime contract: documented Semantics callback parameters add their
+    // corresponding actions to the emitted semantics node.
+    // IR mapping: literal callback expressions map to present action facts.
+    // Conservative consequence: action predicates use exact callback facts.
+    // Deliberate unknown boundary: identifiers and tear-offs remain dynamic.
+    final handle = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: Semantics(
+            onScrollLeft: () {},
+            onCopy: () {},
+            onExpand: () {},
+            child: const Text('Actions'),
+          ),
+        ),
+      );
+
+      final data = tester.getSemantics(find.byType(Semantics)).getSemanticsData();
+      expect(data.hasAction(SemanticsAction.scrollLeft), isTrue);
+      expect(data.hasAction(SemanticsAction.copy), isTrue);
+      expect(data.hasAction(SemanticsAction.expand), isTrue);
+    } finally {
+      handle.dispose();
+    }
+  });
 }

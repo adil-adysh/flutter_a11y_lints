@@ -58,6 +58,8 @@ enum ActionKind {
   paste,
   setText,
   setSelection,
+  moveCursorForwardByCharacter,
+  moveCursorBackwardByCharacter,
   custom,
 }
 

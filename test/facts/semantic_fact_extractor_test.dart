@@ -475,6 +475,55 @@ Semantics(
       expect(dynamic.evidence.knowledge, KnowledgeState.dynamic);
     });
 
+    test('extracts explicit semantic callback availability', () async {
+      final tree = await buildTestSemanticTree(
+        '''
+Semantics(
+  onScrollLeft: () {},
+  onCopy: copyHandler,
+  onPaste: null,
+  onExpand: () {},
+  onSetText: () {},
+  onMoveCursorForwardByCharacter: () {},
+  child: Text('Actions'),
+)
+''',
+        extraDeclarations: 'void copyHandler() {}',
+      );
+      final actions = SemanticFactExtractor().extract(tree).actionsFor(
+            tree.root.id!,
+          );
+      typed_actions.ActionAvailability availability(
+        typed_actions.ActionKind kind,
+      ) =>
+          actions.singleWhere((action) => action.kind == kind).availability;
+
+      expect(
+        availability(typed_actions.ActionKind.scrollLeft),
+        typed_actions.ActionAvailability.present,
+      );
+      expect(
+        availability(typed_actions.ActionKind.copy),
+        typed_actions.ActionAvailability.dynamic,
+      );
+      expect(
+        availability(typed_actions.ActionKind.paste),
+        typed_actions.ActionAvailability.absent,
+      );
+      expect(
+        availability(typed_actions.ActionKind.expand),
+        typed_actions.ActionAvailability.present,
+      );
+      expect(
+        availability(typed_actions.ActionKind.setText),
+        typed_actions.ActionAvailability.present,
+      );
+      expect(
+        availability(typed_actions.ActionKind.moveCursorForwardByCharacter),
+        typed_actions.ActionAvailability.present,
+      );
+    });
+
     test('projects only compatible explicit traversal and controls edges',
         () async {
       final tree = await buildTestSemanticTree('''
