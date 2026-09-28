@@ -1,5 +1,40 @@
 import 'evidence.dart';
 
+/// A source boolean that is either statically known, dynamic, or unresolved.
+enum KnownBooleanState { unknown, trueValue, falseValue, dynamic }
+
+/// How a recognized Flutter semantic-constructor argument was established.
+enum ArgumentEvidenceOrigin { defaultValue, literal, resolved, dynamic }
+
+class KnownBooleanFact {
+  const KnownBooleanFact({required this.state, required this.origin});
+
+  const KnownBooleanFact.unknown()
+      : state = KnownBooleanState.unknown,
+        origin = ArgumentEvidenceOrigin.dynamic;
+
+  final KnownBooleanState state;
+  final ArgumentEvidenceOrigin origin;
+}
+
+/// Raw configuration for a recognized `Semantics` constructor.
+///
+/// Defaults are facts only when supplied by the documented constructor
+/// contract; unresolved expressions remain dynamic or unknown.
+class RawSemanticsConfigurationFact {
+  const RawSemanticsConfigurationFact({
+    required this.container,
+    required this.explicitChildNodes,
+    required this.excludeSemantics,
+    required this.blockUserActions,
+  });
+
+  final KnownBooleanFact container;
+  final KnownBooleanFact explicitChildNodes;
+  final KnownBooleanFact excludeSemantics;
+  final KnownBooleanFact blockUserActions;
+}
+
 enum NodeCreationState { unknown, noNewNode, createsNode }
 
 enum ChildContributionState { unknown, mayContribute, mustRemainExplicit }
@@ -15,13 +50,15 @@ class CompositionFact {
     required this.evidence,
     this.childContribution = ChildContributionState.unknown,
     this.merge = MergeState.unknown,
-    this.blocksUserActions = false,
+    this.blocksUserActions = const KnownBooleanFact.unknown(),
+    this.rawSemanticsConfiguration,
   });
 
   final NodeCreationState nodeCreation;
   final ChildContributionState childContribution;
   final DescendantDisposition descendantDisposition;
   final MergeState merge;
-  final bool blocksUserActions;
+  final KnownBooleanFact blocksUserActions;
+  final RawSemanticsConfigurationFact? rawSemanticsConfiguration;
   final FactEvidence evidence;
 }

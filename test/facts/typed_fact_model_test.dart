@@ -57,6 +57,35 @@ void main() {
     expect(accessibility.compositionNodeId, 1);
   });
 
+  test('typed graph keeps source, composition, and accessibility edges apart',
+      () {
+    const evidence = FactEvidence(
+      provenance: FactProvenance.exact,
+      knowledge: KnowledgeState.known,
+    );
+    const graph = AccessibilityFactGraph(
+      sourceChildren: [SourceWidgetChildEdge(parentId: 1, childId: 2)],
+      compositionNodes: [
+        SemanticCompositionNode(id: 10, sourceWidgetId: 1, evidence: evidence),
+        SemanticCompositionNode(id: 11, sourceWidgetId: 2, evidence: evidence),
+      ],
+      compositionChildren: [
+        SemanticCompositionChildEdge(parentId: 10, childId: 11),
+      ],
+      accessibilityNodes: [
+        AccessibilityNode(id: 20, compositionNodeId: 10, evidence: evidence),
+        AccessibilityNode(id: 21, compositionNodeId: 11, evidence: evidence),
+      ],
+      accessibilityChildren: [
+        AccessibilityChildEdge(parentId: 20, childId: 21),
+      ],
+    );
+
+    expect(graph.sourceChildren.single.parentId, 1);
+    expect(graph.compositionChildren.single.parentId, 10);
+    expect(graph.accessibilityChildren.single.parentId, 20);
+  });
+
   test('action availability and visual exposure are typed independently', () {
     const action = SemanticActionFact(
       kind: ActionKind.tap,
@@ -93,6 +122,32 @@ void main() {
     expect(composition.descendantDisposition, DescendantDisposition.replaced);
     expect(name.state, NameState.unknown);
     expect(state.enabled, EnabledState.unknown);
+  });
+
+  test('raw semantic configuration records values and their evidence origin',
+      () {
+    const configuration = RawSemanticsConfigurationFact(
+      container: KnownBooleanFact(
+        state: KnownBooleanState.trueValue,
+        origin: ArgumentEvidenceOrigin.literal,
+      ),
+      explicitChildNodes: KnownBooleanFact(
+        state: KnownBooleanState.falseValue,
+        origin: ArgumentEvidenceOrigin.defaultValue,
+      ),
+      excludeSemantics: KnownBooleanFact.unknown(),
+      blockUserActions: KnownBooleanFact(
+        state: KnownBooleanState.trueValue,
+        origin: ArgumentEvidenceOrigin.resolved,
+      ),
+    );
+
+    expect(configuration.container.state, KnownBooleanState.trueValue);
+    expect(
+      configuration.explicitChildNodes.origin,
+      ArgumentEvidenceOrigin.defaultValue,
+    );
+    expect(configuration.excludeSemantics.state, KnownBooleanState.unknown);
   });
 
   test('legacy fact-store facts retain the complete typed evidence record', () {

@@ -14,6 +14,18 @@ class SourceWidgetNode {
   final FactEvidence evidence;
 }
 
+/// A source-level widget child edge. It is not a semantic or accessibility
+/// relationship, even when the same widgets later contribute nodes there.
+class SourceWidgetChildEdge {
+  const SourceWidgetChildEdge({
+    required this.parentId,
+    required this.childId,
+  });
+
+  final int parentId;
+  final int childId;
+}
+
 /// A source constructor-slot relationship, such as `ListTile.leading`.
 class NamedSlotEdge {
   const NamedSlotEdge({
@@ -40,4 +52,67 @@ class AccessibilityNode {
   final int id;
   final int compositionNodeId;
   final FactEvidence evidence;
+}
+
+/// A semantic-composition node synthesized from a source widget or wrapper.
+///
+/// Its identity is intentionally distinct from [SourceWidgetNode] and
+/// [AccessibilityNode], even when the current conservative projection maps
+/// them one-to-one.
+class SemanticCompositionNode {
+  const SemanticCompositionNode({
+    required this.id,
+    required this.sourceWidgetId,
+    required this.evidence,
+  });
+
+  final int id;
+  final int sourceWidgetId;
+  final FactEvidence evidence;
+}
+
+/// A composition contribution edge, rather than a source child edge.
+class SemanticCompositionChildEdge {
+  const SemanticCompositionChildEdge({
+    required this.parentId,
+    required this.childId,
+  });
+
+  final int parentId;
+  final int childId;
+}
+
+/// An edge in the conservative accessibility-tree approximation.
+class AccessibilityChildEdge {
+  const AccessibilityChildEdge({
+    required this.parentId,
+    required this.childId,
+  });
+
+  final int parentId;
+  final int childId;
+}
+
+/// Immutable projections for the three graph layers used by analysis.
+///
+/// The lists remain deliberately separate: APIs consuming this model cannot
+/// accidentally treat a source edge as an accessibility-tree edge.
+class AccessibilityFactGraph {
+  const AccessibilityFactGraph({
+    this.sourceNodes = const [],
+    this.sourceChildren = const [],
+    this.slots = const [],
+    this.compositionNodes = const [],
+    this.compositionChildren = const [],
+    this.accessibilityNodes = const [],
+    this.accessibilityChildren = const [],
+  });
+
+  final List<SourceWidgetNode> sourceNodes;
+  final List<SourceWidgetChildEdge> sourceChildren;
+  final List<NamedSlotEdge> slots;
+  final List<SemanticCompositionNode> compositionNodes;
+  final List<SemanticCompositionChildEdge> compositionChildren;
+  final List<AccessibilityNode> accessibilityNodes;
+  final List<AccessibilityChildEdge> accessibilityChildren;
 }
