@@ -133,6 +133,55 @@ void main() {
     }
   });
 
+  testWidgets('Offstage excludes semantics in this Flutter SDK', (tester) async {
+    // Runtime contract: this SDK's Offstage(true) omits the child from
+    // simulated accessibility traversal.
+    // IR mapping: known offstage true is visual hiding and semantic exclusion.
+    // Conservative consequence: no independent child accessibility node.
+    // Deliberate unknown boundary: runtime focus changes remain unknown.
+    final handle = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        const Directionality(
+          textDirection: TextDirection.ltr,
+          child: Offstage(offstage: true, child: Text('Offstage child')),
+        ),
+      );
+
+      final labels = tester.semantics
+          .simulatedAccessibilityTraversal()
+          .map((node) => node.label);
+      expect(labels, isNot(contains('Offstage child')));
+    } finally {
+      handle.dispose();
+    }
+  });
+
+  testWidgets('hidden Visibility excludes semantics by default', (tester) async {
+    // Runtime contract: Visibility(false) does not retain child semantics by
+    // default.
+    // IR mapping: explicit false visibility is visual hiding plus semantic
+    // exclusion, not a focus-list inference.
+    // Conservative consequence: no independent child accessibility node.
+    // Deliberate unknown boundary: dynamic flags remain unknown.
+    final handle = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        const Directionality(
+          textDirection: TextDirection.ltr,
+          child: Visibility(visible: false, child: Text('Hidden child')),
+        ),
+      );
+
+      final labels = tester.semantics
+          .simulatedAccessibilityTraversal()
+          .map((node) => node.label);
+      expect(labels, isNot(contains('Hidden child')));
+    } finally {
+      handle.dispose();
+    }
+  });
+
   testWidgets('MergeSemantics combines descendant text into one node',
       (tester) async {
     final handle = tester.ensureSemantics();
