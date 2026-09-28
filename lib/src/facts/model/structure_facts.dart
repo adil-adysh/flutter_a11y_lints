@@ -1,4 +1,5 @@
 import 'evidence.dart';
+import '../fact_store.dart' show BranchPath;
 
 /// A node in the source-derived widget graph. It deliberately has no implied
 /// accessibility-tree parentage.
@@ -7,11 +8,13 @@ class SourceWidgetNode {
     required this.id,
     required this.widgetType,
     required this.evidence,
+    this.branchPath = const BranchPath([]),
   });
 
   final int id;
   final String widgetType;
   final FactEvidence evidence;
+  final BranchPath branchPath;
 }
 
 /// A source-level widget child edge. It is not a semantic or accessibility
@@ -47,11 +50,13 @@ class AccessibilityNode {
     required this.id,
     required this.compositionNodeId,
     required this.evidence,
+    this.branchPath = const BranchPath([]),
   });
 
   final int id;
   final int compositionNodeId;
   final FactEvidence evidence;
+  final BranchPath branchPath;
 }
 
 /// A semantic-composition node synthesized from a source widget or wrapper.
@@ -64,11 +69,13 @@ class SemanticCompositionNode {
     required this.id,
     required this.sourceWidgetId,
     required this.evidence,
+    this.branchPath = const BranchPath([]),
   });
 
   final int id;
   final int sourceWidgetId;
   final FactEvidence evidence;
+  final BranchPath branchPath;
 }
 
 /// A composition contribution edge, rather than a source child edge.

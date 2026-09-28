@@ -44,6 +44,7 @@ void main() {
         provenance: FactProvenance.exact,
         knowledge: KnowledgeState.known,
       ),
+      branchPath: BranchPath([Branch(1, 0)]),
     );
     const slot = NamedSlotEdge(parentId: 1, name: 'leading', childId: 2);
     const accessibility = AccessibilityNode(
@@ -58,6 +59,7 @@ void main() {
     expect(source.widgetType, 'ListTile');
     expect(slot.childId, 2);
     expect(accessibility.compositionNodeId, 1);
+    expect(source.branchPath.constraints.single.group, 1);
   });
 
   test('typed graph keeps source, composition, and accessibility edges apart',
