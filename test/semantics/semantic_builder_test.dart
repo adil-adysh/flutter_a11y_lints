@@ -83,6 +83,29 @@ Semantics(
       expect(root.children.single.focusOrderIndex, isNotNull);
     });
 
+    test('a static Semantics identifier creates a semantic node', () async {
+      final tree = await buildTestSemanticTree('''
+Semantics(
+  identifier: 'menu-button',
+  child: Text('Menu'),
+)
+''');
+
+      expect(tree.root.nodeCreation, SemanticNodeCreation.createsNode);
+    });
+
+    test('a dynamic Semantics identifier leaves node creation unknown',
+        () async {
+      final tree = await buildTestSemanticTree(
+        '''
+Semantics(identifier: semanticIdentifier, child: Text('Menu'))
+''',
+        extraDeclarations: "String semanticIdentifier = 'menu-button';",
+      );
+
+      expect(tree.root.nodeCreation, SemanticNodeCreation.unknown);
+    });
+
     test('Semantics replacement hides descendants without excluding wrapper',
         () async {
       final tree = await buildTestSemanticTree('''

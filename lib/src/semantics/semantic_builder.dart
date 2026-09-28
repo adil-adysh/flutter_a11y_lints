@@ -321,6 +321,9 @@ class SemanticBuilder {
     final tooltip = ctx.evalString(widget.props['tooltip']);
     final value = ctx.evalString(widget.props['value']);
     final config = _semanticsConfig(widget, ctx);
+    final identifierExpression = widget.props['identifier'];
+    final hasStaticIdentifier = identifierExpression != null &&
+        ctx.evalString(identifierExpression) != null;
     // Flutter discards child semantics when replacement is enabled. When the
     // value is dynamic, source analysis cannot prove whether child semantics
     // contribute, so inheriting them would invent role/action evidence.
@@ -354,11 +357,12 @@ class SemanticBuilder {
       semanticsConfig: config,
       semanticsLabelArgumentState:
           _semanticsLabelArgumentState(widget, labelInfo),
-      nodeCreation: switch (config.container) {
-        KnownBool.yes => SemanticNodeCreation.createsNode,
-        KnownBool.no => SemanticNodeCreation.noNewNode,
-        KnownBool.unknown => SemanticNodeCreation.unknown,
-      },
+      nodeCreation: config.container == KnownBool.yes || hasStaticIdentifier
+          ? SemanticNodeCreation.createsNode
+          : config.container == KnownBool.unknown ||
+                  identifierExpression != null
+              ? SemanticNodeCreation.unknown
+              : SemanticNodeCreation.noNewNode,
       childContribution: switch (config.explicitChildNodes) {
         KnownBool.yes => ChildContributionPolicy.mustRemainExplicit,
         KnownBool.no => ChildContributionPolicy.mayContributeToParent,
