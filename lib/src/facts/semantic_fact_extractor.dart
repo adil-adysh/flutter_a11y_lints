@@ -7,7 +7,7 @@ import '../semantics/known_semantics.dart';
 import 'fact_store.dart';
 import 'model/composition_facts.dart';
 import 'model/evidence.dart'
-    show FactEvidence, KnowledgeState, SourceSpan;
+    show FactEvidence, FactReference, KnowledgeState, SourceSpan;
 import 'model/exposure_facts.dart' as typed_exposure;
 import 'model/image_facts.dart' as typed_images;
 import 'model/naming_facts.dart' as typed_naming;
@@ -64,6 +64,9 @@ class SemanticFactExtractor {
         provenance: nodeProvenance,
         knowledge: KnowledgeState.known,
         sources: [SourceSpan(node.fileUri.toString(), node.offset, node.length)],
+        inputs: nodeProvenance == FactProvenance.derived
+            ? [FactReference(nodeId: id, kind: 'customWidgetExpansion')]
+            : const [],
       );
       store = store.addNode(
         FactNode(
@@ -649,6 +652,9 @@ class SemanticFactExtractor {
         provenance: provenance,
         knowledge: knowledge,
         sources: [SourceSpan(node.fileUri.toString(), node.offset, node.length)],
+        inputs: provenance == FactProvenance.derived
+            ? [FactReference(nodeId: node.id ?? -1, kind: 'semanticNode')]
+            : const [],
       ),
     );
   }

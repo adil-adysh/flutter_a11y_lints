@@ -62,6 +62,12 @@ Widget buildWidget(bool purchasePending) => SaveControl();
           .every((fact) => fact.provenance != FactProvenance.exact),
       isTrue,
     );
+    expect(
+      facts.conservative
+          .factsFor(control.id!)
+          .every((fact) => fact.evidence.inputs.isNotEmpty),
+      isTrue,
+    );
   });
 
   test('expands a resolved StatefulWidget through its State build method',

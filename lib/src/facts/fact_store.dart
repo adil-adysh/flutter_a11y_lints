@@ -1,5 +1,5 @@
 import 'model/evidence.dart'
-    show FactEvidence, FactProvenance, KnowledgeState, SourceSpan;
+    show FactEvidence, FactProvenance, FactReference, KnowledgeState, SourceSpan;
 import 'model/typed_node_facts.dart';
 
 export 'model/evidence.dart' show FactProvenance;
@@ -146,6 +146,9 @@ class AccessibilityFactStore {
               provenance: fact.provenance,
               knowledge: KnowledgeState.known,
               sources: [source],
+              inputs: fact.provenance == FactProvenance.derived
+                  ? [FactReference(nodeId: fact.nodeId, kind: 'factProjection')]
+                  : const [],
             ),
           );
     next[fact.nodeId] = [...(next[fact.nodeId] ?? const []), normalized];
