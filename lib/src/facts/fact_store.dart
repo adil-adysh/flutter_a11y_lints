@@ -1,4 +1,5 @@
-import 'model/evidence.dart' show FactProvenance;
+import 'model/evidence.dart'
+    show FactEvidence, FactProvenance, KnowledgeState, SourceSpan;
 
 export 'model/evidence.dart' show FactProvenance;
 
@@ -35,12 +36,14 @@ class FactNode {
     required this.widgetType,
     this.branch,
     this.branchPath,
+    this.source,
   });
 
   final int id;
   final String widgetType;
   final Branch? branch;
   final BranchPath? branchPath;
+  final SourceSpan? source;
   BranchPath get effectiveBranchPath =>
       branchPath ??
       (branch == null ? const BranchPath([]) : BranchPath([branch!]));
@@ -51,13 +54,40 @@ class SemanticFact {
     required this.nodeId,
     required this.name,
     required this.value,
-    required this.provenance,
-  });
+    FactProvenance? provenance,
+    FactEvidence? evidence,
+  })  : assert(provenance != null || evidence != null),
+        _legacyProvenance = provenance,
+        _explicitEvidence = evidence;
 
   final int nodeId;
   final String name;
   final Object? value;
-  final FactProvenance provenance;
+  /// Typed evidence for this compatibility-projected fact.
+  ///
+  /// Callers should provide [evidence] for new facts. The [provenance]
+  /// parameter remains so the legacy extractor can migrate incrementally; it
+  /// projects to known evidence without inventing source spans or inputs.
+  final FactProvenance? _legacyProvenance;
+  final FactEvidence? _explicitEvidence;
+
+  bool get hasExplicitEvidence => _explicitEvidence != null;
+
+  FactEvidence get evidence => _explicitEvidence ??
+      FactEvidence(
+        provenance: _legacyProvenance!,
+        knowledge: KnowledgeState.known,
+      );
+
+  FactProvenance get provenance =>
+      _explicitEvidence?.provenance ?? _legacyProvenance!;
+
+  SemanticFact withEvidence(FactEvidence evidence) => SemanticFact(
+        nodeId: nodeId,
+        name: name,
+        value: value,
+        evidence: evidence,
+      );
 }
 
 /// An immutable, indexed projection of semantic IR for FAQL evaluation.
@@ -103,7 +133,17 @@ class AccessibilityFactStore {
 
   AccessibilityFactStore add(SemanticFact fact) {
     final next = <int, List<SemanticFact>>{..._facts};
-    next[fact.nodeId] = [...(next[fact.nodeId] ?? const []), fact];
+    final source = _nodes[fact.nodeId]?.source;
+    final normalized = fact.hasExplicitEvidence || source == null
+        ? fact
+        : fact.withEvidence(
+            FactEvidence(
+              provenance: fact.provenance,
+              knowledge: KnowledgeState.known,
+              sources: [source],
+            ),
+          );
+    next[fact.nodeId] = [...(next[fact.nodeId] ?? const []), normalized];
     return AccessibilityFactStore._(_nodes, next, _children, _parents, _slots);
   }
 

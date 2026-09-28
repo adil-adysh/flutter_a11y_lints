@@ -5,6 +5,7 @@ import 'package:flutter_a11y_lints/src/facts/model/exposure_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/composition_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/naming_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/state_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -92,5 +93,46 @@ void main() {
     expect(composition.descendantDisposition, DescendantDisposition.replaced);
     expect(name.state, NameState.unknown);
     expect(state.enabled, EnabledState.unknown);
+  });
+
+  test('legacy fact-store facts retain the complete typed evidence record', () {
+    const evidence = FactEvidence(
+      provenance: FactProvenance.derived,
+      knowledge: KnowledgeState.known,
+      sources: [SourceSpan('file:///widget.dart', 20, 6)],
+      inputs: [FactReference(nodeId: 4, kind: 'semanticWrapper')],
+    );
+    const fact = SemanticFact(
+      nodeId: 5,
+      name: 'effectiveName',
+      value: 'Save',
+      evidence: evidence,
+    );
+
+    expect(fact.provenance, FactProvenance.derived);
+    expect(fact.evidence, same(evidence));
+    expect(fact.evidence.sources.single.offset, 20);
+    expect(fact.evidence.inputs.single.kind, 'semanticWrapper');
+  });
+
+  test('store attaches a source node span to legacy-projected facts', () {
+    final store = AccessibilityFactStore.empty()
+        .addNode(
+          const FactNode(
+            id: 6,
+            widgetType: 'TextButton',
+            source: SourceSpan('file:///widget.dart', 31, 10),
+          ),
+        )
+        .add(const SemanticFact(
+          nodeId: 6,
+          name: 'role',
+          value: 'button',
+          provenance: FactProvenance.exact,
+        ));
+
+    final fact = store.conservative.factsFor(6).single;
+    expect(fact.evidence.sources.single.uri, 'file:///widget.dart');
+    expect(fact.evidence.sources.single.offset, 31);
   });
 }
