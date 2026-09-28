@@ -145,17 +145,18 @@ and relevant unknown and branch cases.
 
 ## FAQL 4 migration status
 
-- Typed facts and a FAQL 4 Core compiler exist. Source-derived `BranchPath`
-  propagation is implemented through WidgetTree, Semantic IR, facts, and the
-  evaluator; focused fixtures prove nested conditional alternatives cannot
-  combine in relationships, `exists`, or `count`. Conservative rule ports may
-  rely on that proof, while still treating unknown evidence conservatively.
-- Built-in `.faql` sources and `lib/rules/builtin_faql_rules.g.dart` still use
-  legacy rule syntax. The future canonical generated bundle remains
-  `lib/rules/builtin_faql_rules.g.dart`.
-- Do not regenerate the bundle from legacy sources as though they were FAQL 4,
-  delete legacy code before replacement fixtures pass, or claim branch safety
-  from scalar `branchGroupId`/`branchValue` metadata.
+- Typed facts, a branch-safe FAQL 4 Core compiler, and the Core evaluator are
+  implemented. Core predicates evaluate typed node facts only; serialized
+  `SemanticFact(name, value)` records are diagnostic compatibility output.
+  Source-derived `BranchPath` propagation is proven through WidgetTree,
+  Semantic IR, fact graphs, relationships, `exists`, and `count`.
+- `lib/rules/builtin_faql_rules.g.dart` is the canonical generated Core bundle.
+  It contains only the approved migrated conservative queries. Legacy `.faql`
+  files, `lib/src/faql/`, and the bridge remain parity references for rules not
+  yet replaced.
+- Do not regenerate from legacy sources, delete legacy code before each
+  replacement rule has passing proof fixtures, or claim branch safety from
+  scalar `branchGroupId`/`branchValue` metadata.
 
 ## Verification
 
