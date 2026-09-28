@@ -35,6 +35,22 @@ select merge, "Multiple actions"
     );
   });
 
+  test('parses a bare action-kind argument', () {
+    final query = parseFaql4('''
+@id example/action
+@rule-id action
+@severity warning
+@mode conservative
+from SemanticNode node
+where node.hasAction(scrollLeft)
+select node, "x"
+''');
+
+    final member = query.where! as MemberCallAst;
+    expect(member.member, 'hasAction');
+    expect(member.arguments.single.value, 'scrollLeft');
+  });
+
   test('reports source locations for malformed comments and strings', () {
     expect(
       () => Faql4Compiler().compile('/* unterminated'),

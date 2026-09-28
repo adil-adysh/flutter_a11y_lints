@@ -15,17 +15,33 @@ class Faql4StandardLibrary {
     'ListTileNode'
   };
   static const booleanMembers = {
-    'isDefinitelyEnabled', 'isDefinitelyFocusable', 'isDefinitelyExposed',
-    'isDefinitelyIncludedInSemantics', 'isDefinitelyUnlabeled',
-    'isDefinitelyEffectivelyUnlabeled', 'hasAccessibleLabel', 'hasStaticLabel',
-    'hasTapAction', 'hasLongPressAction', 'mergesDescendants',
-    'excludesDescendants', 'hasImageContent', 'isKnownDecorativeAsset',
-    'isNetworkOrFileImage', 'isDefinitelyExcludedFromSemantics',
-    'isDefinitelyNotExcludedFromSemantics', 'hasExplicitSemanticsLabel',
-    'hasStaticExplicitSemanticsLabel', 'hasExplicitSemanticsButtonRole',
-    'isDefinitelyExcludingDescendants', 'isDefinitelyNotExcludingDescendants',
-    'createsSemanticContainer', 'requiresExplicitChildNodes',
-    'replacesDescendantSemantics', 'blocksSemanticUserActions',
+    'isDefinitelyEnabled',
+    'isDefinitelyFocusable',
+    'isDefinitelyExposed',
+    'isDefinitelyIncludedInSemantics',
+    'isDefinitelyUnlabeled',
+    'isDefinitelyEffectivelyUnlabeled',
+    'hasAccessibleLabel',
+    'hasStaticLabel',
+    'hasTapAction',
+    'hasLongPressAction',
+    'mergesDescendants',
+    'hasAction',
+    'excludesDescendants',
+    'hasImageContent',
+    'isKnownDecorativeAsset',
+    'isNetworkOrFileImage',
+    'isDefinitelyExcludedFromSemantics',
+    'isDefinitelyNotExcludedFromSemantics',
+    'hasExplicitSemanticsLabel',
+    'hasStaticExplicitSemanticsLabel',
+    'hasExplicitSemanticsButtonRole',
+    'isDefinitelyExcludingDescendants',
+    'isDefinitelyNotExcludingDescendants',
+    'createsSemanticContainer',
+    'requiresExplicitChildNodes',
+    'replacesDescendantSemantics',
+    'blocksSemanticUserActions',
   };
   static const relationshipMembers = {
     'getParent',
@@ -40,27 +56,31 @@ class Faql4StandardLibrary {
   /// Conservative rules must use positive definite-state predicates rather
   /// than deriving absence by negation.
   static bool isPartial(String member) => booleanMembers.contains(member);
-  static FaqlType? memberType(String member) =>
-      booleanMembers.contains(member)
-          ? FaqlType.boolean
-          : relationshipMembers.contains(member)
-              ? FaqlType.node
-              : member == 'getWidgetType'
-                  ? FaqlType.string
-                  : null;
+  static FaqlType? memberType(String member) => booleanMembers.contains(member)
+      ? FaqlType.boolean
+      : relationshipMembers.contains(member)
+          ? FaqlType.node
+          : member == 'getWidgetType'
+              ? FaqlType.string
+              : null;
   static bool validArguments(String member, List<LiteralAst> arguments) =>
-      member == 'getSlot'
-          ? arguments.length == 1 && arguments.single.value is String
-          : arguments.isEmpty;
+      member == 'hasAction'
+          ? arguments.length == 1 &&
+              arguments.single.value is String &&
+              ActionKind.values.any(
+                (kind) => kind.name == arguments.single.value,
+              )
+          : member == 'getSlot'
+              ? arguments.length == 1 && arguments.single.value is String
+              : arguments.isEmpty;
   static bool matchesView(String view, FactNode node, FactStoreView facts) {
     final typed = facts.typedFactsFor(node.id);
     return switch (view) {
       'SemanticNode' => true,
-      'InteractiveControl' =>
-        typed?.action(ActionKind.tap)?.availability ==
-                ActionAvailability.present ||
-            typed?.action(ActionKind.longPress)?.availability ==
-                ActionAvailability.present,
+      'InteractiveControl' => typed?.action(ActionKind.tap)?.availability ==
+              ActionAvailability.present ||
+          typed?.action(ActionKind.longPress)?.availability ==
+              ActionAvailability.present,
       'MaterialButtonControl' => const {
           ControlClassification.iconButton,
           ControlClassification.elevatedButton,
@@ -69,10 +89,9 @@ class Faql4StandardLibrary {
           ControlClassification.outlinedButton,
           ControlClassification.floatingActionButton,
         }.contains(typed?.role?.control),
-      'ImageNode' =>
-        typed?.image != null ||
-            node.widgetType == 'Image' ||
-            node.widgetType == 'CircleAvatar',
+      'ImageNode' => typed?.image != null ||
+          node.widgetType == 'Image' ||
+          node.widgetType == 'CircleAvatar',
       'SemanticsNode' => node.widgetType == 'Semantics',
       'MergeSemanticsNode' => node.widgetType == 'MergeSemantics',
       'ListTileNode' => node.widgetType.endsWith('ListTile'),

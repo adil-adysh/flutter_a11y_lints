@@ -104,10 +104,16 @@ class Faql4Evaluator {
       return (relations as Iterable<Object?>).whereType<int>();
     }
     final typed = facts.typedFactsFor(id);
-    return typed == null ? false : _typedMember(v.member, typed) ?? false;
+    return typed == null
+        ? false
+        : _typedMember(v.member, typed, v.arguments) ?? false;
   }
 
-  Object? _typedMember(String member, TypedNodeFacts facts) {
+  Object? _typedMember(
+    String member,
+    TypedNodeFacts facts,
+    List<LiteralAst> arguments,
+  ) {
     final name = facts.name;
     final state = facts.controlState;
     final exposure = facts.exposure;
@@ -124,18 +130,26 @@ class Faql4Evaluator {
         exposure?.focus == AccessibilityFocusExposureState.exposed,
       'isDefinitelyIncludedInSemantics' =>
         exposure?.semantic == SemanticInclusionState.included,
-      'hasTapAction' =>
-        facts.action(ActionKind.tap)?.availability == ActionAvailability.present,
+      'hasTapAction' => facts.action(ActionKind.tap)?.availability ==
+          ActionAvailability.present,
       'hasLongPressAction' =>
         facts.action(ActionKind.longPress)?.availability ==
             ActionAvailability.present,
+      'hasAction' => facts
+              .action(
+                ActionKind.values.singleWhere(
+                  (kind) => kind.name == arguments.single.value,
+                ),
+              )
+              ?.availability ==
+          ActionAvailability.present,
       'mergesDescendants' => composition?.merge == MergeState.merged,
       'excludesDescendants' =>
         composition?.descendantDisposition == DescendantDisposition.excluded,
       'createsSemanticContainer' =>
         composition?.nodeCreation == NodeCreationState.createsNode,
-      'requiresExplicitChildNodes' =>
-        composition?.childContribution == ChildContributionState.mustRemainExplicit,
+      'requiresExplicitChildNodes' => composition?.childContribution ==
+          ChildContributionState.mustRemainExplicit,
       'replacesDescendantSemantics' =>
         composition?.descendantDisposition == DescendantDisposition.replaced,
       'blocksSemanticUserActions' =>

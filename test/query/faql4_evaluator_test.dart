@@ -54,6 +54,16 @@ where wrapper.createsSemanticContainer() and
 select wrapper, "Explicit replacement"
 ''';
 
+const _scrollAction = '''
+@id example/scroll-action
+@rule-id scroll_action
+@severity warning
+@mode conservative
+from SemanticNode node
+where node.hasAction(scrollLeft)
+select node, "Has scroll-left"
+''';
+
 AccessibilityFactStore _store({required bool sameBranch}) {
   return AccessibilityFactStore.empty()
       .addNode(const FactNode(id: 1, widgetType: 'MergeSemantics'))
@@ -193,5 +203,31 @@ void main() {
 
     final query = Faql4Compiler().compile(_semanticReplacement);
     expect(Faql4Evaluator().evaluate(query, store), hasLength(1));
+  });
+
+  test('reads a typed action by validated action name', () {
+    const evidence = FactEvidence(
+      provenance: FactProvenance.exact,
+      knowledge: KnowledgeState.known,
+    );
+    final store = AccessibilityFactStore.empty()
+        .addNode(const FactNode(id: 1, widgetType: 'Semantics'))
+        .addTyped(
+          1,
+          const TypedNodeFacts(
+            actions: [
+              SemanticActionFact(
+                kind: ActionKind.scrollLeft,
+                availability: ActionAvailability.present,
+                evidence: evidence,
+              ),
+            ],
+          ),
+        );
+
+    expect(
+      Faql4Evaluator().evaluate(Faql4Compiler().compile(_scrollAction), store),
+      hasLength(1),
+    );
   });
 }

@@ -134,9 +134,9 @@ class _Parser {
     take(TokenKind.lParen);
     final arguments = <LiteralAst>[];
     if (current.kind != TokenKind.rParen) {
-      arguments.add(literal());
+      arguments.add(member.lexeme == 'hasAction' ? actionKind() : literal());
       while (accept(TokenKind.comma)) {
-        arguments.add(literal());
+        arguments.add(member.lexeme == 'hasAction' ? actionKind() : literal());
       }
     }
     take(TokenKind.rParen);
@@ -154,6 +154,16 @@ class _Parser {
     if (accept(TokenKind.identifier, 'false'))
       return LiteralAst(false, token.span);
     throw Faql4ValidationError('Expected literal.', span: token.span);
+  }
+
+  /// Action kinds are closed standard-library identifiers, not variables.
+  /// Keeping this special form narrow avoids broadening Core expressions while
+  /// allowing the ergonomic `control.hasAction(tap)` syntax.
+  LiteralAst actionKind() {
+    final token = current;
+    if (accept(TokenKind.identifier))
+      return LiteralAst(token.lexeme, token.span);
+    return literal();
   }
 
   bool isComparison(TokenKind kind) => const {

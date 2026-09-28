@@ -21,6 +21,18 @@ select node, "x"
     );
   });
 
+  test('rejects an unknown action name', () {
+    expect(
+      () => Faql4Compiler().compile('''
+$_header
+from SemanticNode node
+where node.hasAction("invented")
+select node, "x"
+'''),
+      throwsA(isA<Faql4ValidationError>()),
+    );
+  });
+
   test('rejects nested conservative negation of partial label evidence', () {
     expect(
       () => Faql4Compiler().compile('''
