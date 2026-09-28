@@ -5,6 +5,8 @@ import 'package:flutter_a11y_lints/src/facts/model/exposure_facts.dart'
     as typed_exposure;
 import 'package:flutter_a11y_lints/src/facts/model/evidence.dart'
     show KnowledgeState;
+import 'package:flutter_a11y_lints/src/facts/model/form_association_facts.dart'
+    as typed_forms;
 import 'package:flutter_a11y_lints/src/facts/model/image_facts.dart'
     as typed_images;
 import 'package:flutter_a11y_lints/src/facts/model/naming_facts.dart'
@@ -562,6 +564,61 @@ Column(children: [
           ),
         ),
         contains((controllerId: controller.id!, controlledId: menu.id!)),
+      );
+    });
+
+    test('derives static label associations only from explicit controls nodes',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Column(children: [
+  Semantics(
+    label: 'Email address',
+    controlsNodes: {'email-field'},
+    child: Text('Email address'),
+  ),
+  Semantics(identifier: 'email-field', child: Text('Input')),
+])
+''');
+      final facts = SemanticFactExtractor().extract(tree);
+      final field = tree.physicalNodes.singleWhere(
+        (node) => node.getAttribute('identifier') != null,
+      );
+      final association = facts.formAssociationFor(field.id!);
+
+      expect(
+          association!.state, typed_forms.StaticLabelAssociationState.static);
+      expect(association.labelNodeIds, hasLength(1));
+      expect(association.evidence.provenance, FactProvenance.derived);
+      expect(
+        facts.store.conservative.typedFactsFor(field.id!)!.formAssociation,
+        same(association),
+      );
+    });
+
+    test('does not derive label associations across incompatible branches',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Column(children: [
+  if (purchasePending)
+    Semantics(
+      label: 'Email address',
+      controlsNodes: {'email-field'},
+      child: Text('Email address'),
+    )
+  else
+    Semantics(identifier: 'email-field', child: Text('Input')),
+])
+''');
+      final field = tree.physicalNodes.singleWhere(
+        (node) => node.getAttribute('identifier') != null,
+      );
+
+      expect(
+        SemanticFactExtractor()
+            .extract(tree)
+            .formAssociationFor(field.id!)!
+            .state,
+        typed_forms.StaticLabelAssociationState.unknown,
       );
     });
 

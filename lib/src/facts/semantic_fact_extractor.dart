@@ -9,6 +9,7 @@ import 'model/composition_facts.dart';
 import 'model/evidence.dart'
     show FactEvidence, FactReference, KnowledgeState, SourceSpan;
 import 'model/exposure_facts.dart' as typed_exposure;
+import 'model/form_association_facts.dart' as typed_forms;
 import 'model/image_facts.dart' as typed_images;
 import 'model/naming_facts.dart' as typed_naming;
 import 'model/role_action_facts.dart' as typed_actions;
@@ -53,6 +54,7 @@ class SemanticFactExtractor {
     final valueInputFacts = <int, typed_values.ValueInputFact>{};
     final relationshipFacts =
         <int, typed_relationships.SemanticRelationshipFact>{};
+    final formAssociationFacts = <int, typed_forms.FormAssociationFact>{};
     final sourceNodes = <SourceWidgetNode>[];
     final sourceChildren = <SourceWidgetChildEdge>[];
     final slotEdges = <NamedSlotEdge>[];
@@ -449,23 +451,6 @@ class SemanticFactExtractor {
         provenance: effective.$2,
       ));
     }
-    for (final node in tree.physicalNodes) {
-      final id = node.id!;
-      store = store.addTyped(
-        id,
-        TypedNodeFacts(
-          composition: compositionFacts[id],
-          name: nameFacts[id],
-          controlState: controlStateFacts[id],
-          exposure: exposureFacts[id],
-          role: roleFacts[id],
-          image: imageFacts[id],
-          valueInput: valueInputFacts[id],
-          relationship: relationshipFacts[id],
-          actions: actionFacts[id] ?? const [],
-        ),
-      );
-    }
     final traversalChildren = <TraversalChildEdge>[];
     final controlsNodes = <ControlsNodeEdge>[];
     for (final parent in tree.physicalNodes) {
@@ -511,6 +496,55 @@ class SemanticFactExtractor {
         );
       }
     }
+    for (final node in tree.physicalNodes) {
+      final id = node.id!;
+      final labelNodeIds = [
+        for (final edge in controlsNodes)
+          if (edge.controlledId == id &&
+              nameFacts[edge.controllerId]?.state ==
+                  typed_naming.NameState.static)
+            edge.controllerId,
+      ];
+      formAssociationFacts[id] = typed_forms.FormAssociationFact(
+        state: labelNodeIds.isEmpty
+            ? typed_forms.StaticLabelAssociationState.unknown
+            : typed_forms.StaticLabelAssociationState.static,
+        labelNodeIds: labelNodeIds,
+        evidence: FactEvidence(
+          provenance: labelNodeIds.isEmpty
+              ? FactProvenance.exact
+              : FactProvenance.derived,
+          knowledge: labelNodeIds.isEmpty
+              ? KnowledgeState.unknown
+              : KnowledgeState.known,
+          sources: [
+            SourceSpan(node.fileUri.toString(), node.offset, node.length),
+          ],
+          inputs: [
+            for (final labelNodeId in labelNodeIds)
+              FactReference(nodeId: labelNodeId, kind: 'controlsNodesLabel'),
+          ],
+        ),
+      );
+    }
+    for (final node in tree.physicalNodes) {
+      final id = node.id!;
+      store = store.addTyped(
+        id,
+        TypedNodeFacts(
+          composition: compositionFacts[id],
+          name: nameFacts[id],
+          controlState: controlStateFacts[id],
+          exposure: exposureFacts[id],
+          role: roleFacts[id],
+          image: imageFacts[id],
+          valueInput: valueInputFacts[id],
+          relationship: relationshipFacts[id],
+          formAssociation: formAssociationFacts[id],
+          actions: actionFacts[id] ?? const [],
+        ),
+      );
+    }
     return ExtractedSemanticFacts(
         store,
         labelStates,
@@ -528,6 +562,7 @@ class SemanticFactExtractor {
         actionFacts,
         exposureFacts,
         relationshipFacts,
+        formAssociationFacts,
         accessibility,
         AccessibilityFactGraph(
           sourceNodes: sourceNodes,
@@ -1307,6 +1342,7 @@ class ExtractedSemanticFacts {
       this._actionFacts,
       this._exposureFacts,
       this._relationshipFacts,
+      this._formAssociationFacts,
       this.accessibility,
       this.graph);
 
@@ -1327,6 +1363,7 @@ class ExtractedSemanticFacts {
   final Map<int, typed_exposure.ExposureFact> _exposureFacts;
   final Map<int, typed_relationships.SemanticRelationshipFact>
       _relationshipFacts;
+  final Map<int, typed_forms.FormAssociationFact> _formAssociationFacts;
 
   /// Separate conservative accessibility-tree approximation.
   final AccessibilityTreeApproximation accessibility;
@@ -1363,4 +1400,6 @@ class ExtractedSemanticFacts {
     int nodeId,
   ) =>
       _relationshipFacts[nodeId];
+  typed_forms.FormAssociationFact? formAssociationFor(int nodeId) =>
+      _formAssociationFacts[nodeId];
 }

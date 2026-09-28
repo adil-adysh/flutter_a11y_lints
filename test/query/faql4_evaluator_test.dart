@@ -2,6 +2,7 @@ import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
 import 'package:flutter_a11y_lints/src/facts/semantic_fact_extractor.dart';
 import 'package:flutter_a11y_lints/src/facts/model/composition_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/evidence.dart';
+import 'package:flutter_a11y_lints/src/facts/model/form_association_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/typed_node_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/role_action_facts.dart';
 import 'package:flutter_a11y_lints/src/query/faql4.dart';
@@ -62,6 +63,16 @@ const _scrollAction = '''
 from SemanticNode node
 where node.hasAction(scrollLeft)
 select node, "Has scroll-left"
+''';
+
+const _staticAssociation = '''
+@id example/static-association
+@rule-id static_association
+@severity warning
+@mode conservative
+from SemanticNode field
+where field.hasStaticAssociatedLabel()
+select field, "Static label association"
 ''';
 
 AccessibilityFactStore _store({required bool sameBranch}) {
@@ -227,6 +238,34 @@ void main() {
 
     expect(
       Faql4Evaluator().evaluate(Faql4Compiler().compile(_scrollAction), store),
+      hasLength(1),
+    );
+  });
+
+  test('reads a static form label association from typed facts', () {
+    const evidence = FactEvidence(
+      provenance: FactProvenance.derived,
+      knowledge: KnowledgeState.known,
+      inputs: [FactReference(nodeId: 2, kind: 'controlsNodesLabel')],
+    );
+    final store = AccessibilityFactStore.empty()
+        .addNode(const FactNode(id: 1, widgetType: 'Semantics'))
+        .addTyped(
+          1,
+          const TypedNodeFacts(
+            formAssociation: FormAssociationFact(
+              state: StaticLabelAssociationState.static,
+              labelNodeIds: [2],
+              evidence: evidence,
+            ),
+          ),
+        );
+
+    expect(
+      Faql4Evaluator().evaluate(
+        Faql4Compiler().compile(_staticAssociation),
+        store,
+      ),
       hasLength(1),
     );
   });

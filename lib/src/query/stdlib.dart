@@ -27,6 +27,7 @@ class Faql4StandardLibrary {
     'hasLongPressAction',
     'mergesDescendants',
     'hasAction',
+    'hasStaticAssociatedLabel',
     'excludesDescendants',
     'hasImageContent',
     'isKnownDecorativeAsset',

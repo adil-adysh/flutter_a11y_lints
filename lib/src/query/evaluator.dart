@@ -1,6 +1,7 @@
 import '../facts/fact_store.dart';
 import '../facts/model/composition_facts.dart';
 import '../facts/model/exposure_facts.dart';
+import '../facts/model/form_association_facts.dart';
 import '../facts/model/image_facts.dart';
 import '../facts/model/naming_facts.dart';
 import '../facts/model/role_action_facts.dart';
@@ -143,6 +144,8 @@ class Faql4Evaluator {
               )
               ?.availability ==
           ActionAvailability.present,
+      'hasStaticAssociatedLabel' =>
+        facts.formAssociation?.state == StaticLabelAssociationState.static,
       'mergesDescendants' => composition?.merge == MergeState.merged,
       'excludesDescendants' =>
         composition?.descendantDisposition == DescendantDisposition.excluded,

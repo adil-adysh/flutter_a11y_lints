@@ -1,5 +1,6 @@
 import 'composition_facts.dart';
 import 'exposure_facts.dart';
+import 'form_association_facts.dart';
 import 'image_facts.dart';
 import 'naming_facts.dart';
 import 'role_action_facts.dart';
@@ -22,6 +23,7 @@ class TypedNodeFacts {
     this.image,
     this.valueInput,
     this.relationship,
+    this.formAssociation,
     this.actions = const [],
   });
 
@@ -33,6 +35,7 @@ class TypedNodeFacts {
   final ImageFact? image;
   final ValueInputFact? valueInput;
   final SemanticRelationshipFact? relationship;
+  final FormAssociationFact? formAssociation;
   final List<SemanticActionFact> actions;
 
   SemanticActionFact? action(ActionKind kind) {
