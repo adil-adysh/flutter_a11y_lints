@@ -28,7 +28,12 @@ Dart source → analyzer → WidgetTree → Semantic IR → typed fact store
 - Source and semantic nodes must retain stable identities and source locations. A widget edge is not necessarily an edge in the runtime accessibility tree; model those relations separately.
 - The fact store is an immutable snapshot for one analysis scope. Facts carry scope and provenance; consumers must not mutate Semantic IR while evaluating queries.
 
-This architecture is incremental. The existing files under `lib/src/faql`, `lib/src/semantics`, `lib/src/widget_tree`, and `lib/rules` remain the implementation until migrated.
+This architecture is incremental. The legacy parser/evaluator and Semantic IR
+adapter have been removed because the active pipeline no longer imports them.
+Legacy rule sources remain reference material until their replacement policies
+have passing coverage. The current implementation lives under
+`lib/src/semantics`, `lib/src/widget_tree`, `lib/src/facts`, `lib/src/query`,
+and `lib/rules`.
 
 ## 3. Explicit knowledge, including unknown
 

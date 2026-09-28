@@ -8,7 +8,6 @@ This is a Dart static analyzer for Flutter accessibility. The current pipeline p
 - `lib/src/widget_tree/`: source-derived widgets, named slots, and conditional branches.
 - `lib/src/semantics/`: known widget semantics, semantic synthesis, and tree relationships.
 - `lib/src/query/`: in-progress FAQL 4 Core parser, compiler, standard library, and evaluator.
-- `lib/src/faql/` and `lib/src/bridge/`: temporary legacy parser, evaluator, and Semantic IR adapter retained for migration parity.
 - `lib/rules/`: current rule sources, catalog, runner, and generated bundles.
 - `test/faql/`, `test/semantics/`, `test/rules/`: focused tests.
 - `test_flutter/`: focused runtime contract fixtures against Flutter's real
@@ -152,11 +151,10 @@ and relevant unknown and branch cases.
   Semantic IR, fact graphs, relationships, `exists`, and `count`.
 - `lib/rules/builtin_faql_rules.g.dart` is the canonical generated Core bundle.
   It contains only the approved migrated conservative queries. Legacy `.faql`
-  files, `lib/src/faql/`, and the bridge remain parity references for rules not
-  yet replaced.
-- Do not regenerate from legacy sources, delete legacy code before each
-  replacement rule has passing proof fixtures, or claim branch safety from
-  scalar `branchGroupId`/`branchValue` metadata.
+  files remain parity references for rules not yet replaced.
+- Do not regenerate from legacy sources, delete legacy rule sources before
+  each replacement rule has passing proof fixtures, or claim branch safety
+  from scalar `branchGroupId`/`branchValue` metadata.
 
 ## Verification
 
