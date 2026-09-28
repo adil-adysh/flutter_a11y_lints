@@ -1,4 +1,5 @@
 import '../facts/fact_store.dart';
+import '../facts/model/role_action_facts.dart';
 import 'ast.dart';
 
 enum FaqlType { boolean, integer, string, node }
@@ -69,13 +70,19 @@ class Faql4StandardLibrary {
           ? arguments.length == 1 && arguments.single.value is String
           : arguments.isEmpty;
   static bool matchesView(String view, FactNode node, FactStoreView facts) {
+    final typed = facts.typedFactsFor(node.id);
     final values = {
       for (final fact in facts.factsFor(node.id)) fact.name: fact.value
     };
     return switch (view) {
       'SemanticNode' => true,
       'InteractiveControl' =>
-        values['tap'] == true || values['longPress'] == true,
+        typed != null
+            ? typed.action(ActionKind.tap)?.availability ==
+                    ActionAvailability.present ||
+                typed.action(ActionKind.longPress)?.availability ==
+                    ActionAvailability.present
+            : values['tap'] == true || values['longPress'] == true,
       'MaterialButtonControl' => const {
           'iconButton',
           'elevatedButton',

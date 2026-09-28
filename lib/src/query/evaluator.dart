@@ -1,4 +1,10 @@
 import '../facts/fact_store.dart';
+import '../facts/model/composition_facts.dart';
+import '../facts/model/exposure_facts.dart';
+import '../facts/model/naming_facts.dart';
+import '../facts/model/role_action_facts.dart';
+import '../facts/model/state_facts.dart';
+import '../facts/model/typed_node_facts.dart';
 import 'ast.dart';
 import 'compiler.dart';
 import 'stdlib.dart';
@@ -96,6 +102,11 @@ class Faql4Evaluator {
     if (relations != null) {
       return (relations as Iterable<Object?>).whereType<int>();
     }
+    final typed = facts.typedFactsFor(id);
+    if (typed != null) {
+      final typedValue = _typedMember(v.member, typed);
+      if (typedValue != null) return typedValue;
+    }
     Object? fact;
     for (final item in facts.factsFor(id)) {
       if (item.name == Faql4StandardLibrary.booleanMembers[v.member]) {
@@ -114,6 +125,43 @@ class Faql4Evaluator {
       'hasStaticLabel' => fact == 'static',
       'isNetworkOrFileImage' => fact == 'network' || fact == 'file',
       _ => fact == true
+    };
+  }
+
+  Object? _typedMember(String member, TypedNodeFacts facts) {
+    final name = facts.name;
+    final state = facts.controlState;
+    final exposure = facts.exposure;
+    final composition = facts.composition;
+    return switch (member) {
+      'isDefinitelyUnlabeled' => name?.state == NameState.absent,
+      'isDefinitelyEffectivelyUnlabeled' => name?.state == NameState.absent,
+      'hasAccessibleLabel' =>
+        name?.state == NameState.static || name?.state == NameState.dynamic,
+      'hasStaticLabel' => name?.state == NameState.static,
+      'isDefinitelyEnabled' => state?.enabled == EnabledState.enabled,
+      'isDefinitelyFocusable' => state?.focusable == FocusableState.focusable,
+      'isDefinitelyExposed' =>
+        exposure?.focus == AccessibilityFocusExposureState.exposed,
+      'isDefinitelyIncludedInSemantics' =>
+        exposure?.semantic == SemanticInclusionState.included,
+      'hasTapAction' =>
+        facts.action(ActionKind.tap)?.availability == ActionAvailability.present,
+      'hasLongPressAction' =>
+        facts.action(ActionKind.longPress)?.availability ==
+            ActionAvailability.present,
+      'mergesDescendants' => composition?.merge == MergeState.merged,
+      'excludesDescendants' =>
+        composition?.descendantDisposition == DescendantDisposition.excluded,
+      'createsSemanticContainer' =>
+        composition?.nodeCreation == NodeCreationState.createsNode,
+      'requiresExplicitChildNodes' =>
+        composition?.childContribution == ChildContributionState.mustRemainExplicit,
+      'replacesDescendantSemantics' =>
+        composition?.descendantDisposition == DescendantDisposition.replaced,
+      'blocksSemanticUserActions' =>
+        composition?.blocksUserActions.state == KnownBooleanState.trueValue,
+      _ => null,
     };
   }
 

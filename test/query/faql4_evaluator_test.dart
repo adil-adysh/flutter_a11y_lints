@@ -1,5 +1,8 @@
 import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
 import 'package:flutter_a11y_lints/src/facts/semantic_fact_extractor.dart';
+import 'package:flutter_a11y_lints/src/facts/model/composition_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/evidence.dart';
+import 'package:flutter_a11y_lints/src/facts/model/typed_node_facts.dart';
 import 'package:flutter_a11y_lints/src/query/faql4.dart';
 import 'package:test/test.dart';
 
@@ -154,6 +157,34 @@ void main() {
           value: true,
           provenance: FactProvenance.derived,
         ));
+
+    final query = Faql4Compiler().compile(_semanticReplacement);
+    expect(Faql4Evaluator().evaluate(query, store), hasLength(1));
+  });
+
+  test('reads composition predicates from typed facts before string facts', () {
+    const evidence = FactEvidence(
+      provenance: FactProvenance.derived,
+      knowledge: KnowledgeState.known,
+    );
+    final store = AccessibilityFactStore.empty()
+        .addNode(const FactNode(id: 1, widgetType: 'Semantics'))
+        .addTyped(
+          1,
+          const TypedNodeFacts(
+            composition: CompositionFact(
+              nodeCreation: NodeCreationState.createsNode,
+              childContribution: ChildContributionState.mustRemainExplicit,
+              descendantDisposition: DescendantDisposition.replaced,
+              merge: MergeState.notMerged,
+              blocksUserActions: KnownBooleanFact(
+                state: KnownBooleanState.trueValue,
+                origin: ArgumentEvidenceOrigin.literal,
+              ),
+              evidence: evidence,
+            ),
+          ),
+        );
 
     final query = Faql4Compiler().compile(_semanticReplacement);
     expect(Faql4Evaluator().evaluate(query, store), hasLength(1));
