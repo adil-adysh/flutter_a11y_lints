@@ -122,6 +122,7 @@ void main() {
     expect(composition.descendantDisposition, DescendantDisposition.replaced);
     expect(name.state, NameState.unknown);
     expect(state.enabled, EnabledState.unknown);
+    expect(state.evidence.knowledge, KnowledgeState.unknown);
   });
 
   test('raw semantic configuration records values and their evidence origin',

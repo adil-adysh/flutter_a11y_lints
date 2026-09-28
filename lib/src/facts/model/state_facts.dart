@@ -1,3 +1,5 @@
+import 'evidence.dart';
+
 enum EnabledState { unknown, enabled, disabled }
 
 enum CheckedState { unknown, checked, unchecked, mixed }
@@ -33,6 +35,10 @@ class ControlStateFact {
     this.readOnly = ReadOnlyState.unknown,
     this.obscured = ObscuredState.unknown,
     this.multiline = MultilineState.unknown,
+    this.evidence = const FactEvidence(
+      provenance: FactProvenance.exact,
+      knowledge: KnowledgeState.unknown,
+    ),
   });
 
   final EnabledState enabled;
@@ -46,4 +52,5 @@ class ControlStateFact {
   final ReadOnlyState readOnly;
   final ObscuredState obscured;
   final MultilineState multiline;
+  final FactEvidence evidence;
 }
