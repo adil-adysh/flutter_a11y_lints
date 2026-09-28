@@ -87,6 +87,7 @@ class SemanticSchema {
 /// reasoning (button/image/textField/etc.).
 enum SemanticRole {
   button,
+  link,
   image,
   switchRole,
   checkbox,

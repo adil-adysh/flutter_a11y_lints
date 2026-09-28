@@ -884,6 +884,7 @@ class SemanticFactExtractor {
       typed_actions.RoleFact(
         role: switch (node.role) {
           SemanticRole.button => typed_actions.AccessibilityRole.button,
+          SemanticRole.link => typed_actions.AccessibilityRole.link,
           SemanticRole.image => typed_actions.AccessibilityRole.image,
           SemanticRole.checkbox => typed_actions.AccessibilityRole.checkbox,
           SemanticRole.switchRole => typed_actions.AccessibilityRole.switchRole,

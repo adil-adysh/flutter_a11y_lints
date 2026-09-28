@@ -115,6 +115,15 @@ Semantics(image: true, child: IconButton(icon: Icon('info'), onPressed: () {}))
       expect(tree.root.role, SemanticRole.image);
     });
 
+    test('explicit link Semantics role overrides an inherited child role',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Semantics(link: true, child: IconButton(icon: Icon('open'), onPressed: () {}))
+''');
+
+      expect(tree.root.role, SemanticRole.link);
+    });
+
     test('Semantics replacement hides descendants without excluding wrapper',
         () async {
       final tree = await buildTestSemanticTree('''

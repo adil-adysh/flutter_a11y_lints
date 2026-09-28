@@ -311,6 +311,7 @@ class Semantics extends Widget {
     String? label,
     bool? button,
     bool? image,
+    bool? link,
     bool? header,
     bool? toggled,
     bool? checked,

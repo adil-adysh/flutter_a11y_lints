@@ -3,6 +3,7 @@ import 'evidence.dart';
 enum AccessibilityRole {
   unknown,
   button,
+  link,
   image,
   checkbox,
   switchRole,
