@@ -143,13 +143,26 @@ void main() {
       hint: TextFact(state: TextState.unknown, evidence: evidence),
       inputKind: InputKind.number,
       validation: ValidationState.unknown,
-      minValue: 0,
-      maxValue: 100,
+      minValue:
+          TextFact(state: TextState.static, value: '0', evidence: evidence),
+      maxValue:
+          TextFact(state: TextState.static, value: '100', evidence: evidence),
+      currentValueLength: IntegerFact(
+        state: IntegerState.static,
+        value: 42,
+        evidence: evidence,
+      ),
+      maxValueLength: IntegerFact(
+        state: IntegerState.unknown,
+        evidence: evidence,
+      ),
       evidence: evidence,
     );
 
     expect(input.value.value, '42');
     expect(input.hint.state, TextState.unknown);
+    expect(input.minValue.value, '0');
+    expect(input.currentValueLength.value, 42);
   });
 
   test('composition, names, and control states retain unknown explicitly', () {

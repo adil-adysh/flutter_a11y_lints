@@ -380,6 +380,49 @@ Semantics(semanticValue: '42', semanticHint: 'Percentage', child: Text('42'))
       expect(valueInput.hint.value, 'Percentage');
     });
 
+    test('extracts typed semantic range and length evidence', () async {
+      final literalTree = await buildTestSemanticTree('''
+Semantics(
+  minValue: '0',
+  maxValue: '100',
+  currentValueLength: 3,
+  maxValueLength: 20,
+  child: Text('Value'),
+)
+''');
+      final dynamicTree = await buildTestSemanticTree(
+        'Semantics(minValue: minimum, currentValueLength: length, child: Text("Value"))',
+        extraDeclarations: '''
+String minimum = '0';
+int length = 3;
+''',
+      );
+
+      typed_values.ValueInputFact inputFor(SemanticTree tree) =>
+          SemanticFactExtractor()
+              .extract(tree)
+              .store
+              .conservative
+              .typedFactsFor(tree.root.id!)!
+              .valueInput!;
+
+      final literal = inputFor(literalTree);
+      expect(literal.minValue.state, typed_values.TextState.static);
+      expect(literal.minValue.value, '0');
+      expect(literal.maxValue.value, '100');
+      expect(
+          literal.currentValueLength.state, typed_values.IntegerState.static);
+      expect(literal.currentValueLength.value, 3);
+      expect(literal.maxValueLength.value, 20);
+
+      final dynamic = inputFor(dynamicTree);
+      expect(dynamic.minValue.state, typed_values.TextState.dynamic);
+      expect(
+        dynamic.currentValueLength.state,
+        typed_values.IntegerState.dynamic,
+      );
+    });
+
     test('extracts only static semantic relationship identifiers', () async {
       final staticTree = await buildTestSemanticTree('''
 Semantics(

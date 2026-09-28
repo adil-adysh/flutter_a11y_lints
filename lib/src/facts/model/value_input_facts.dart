@@ -14,6 +14,20 @@ class TextFact {
   final FactEvidence evidence;
 }
 
+enum IntegerState { unknown, absent, dynamic, static }
+
+class IntegerFact {
+  const IntegerFact({
+    required this.state,
+    required this.evidence,
+    this.value,
+  });
+
+  final IntegerState state;
+  final int? value;
+  final FactEvidence evidence;
+}
+
 enum InputKind { unknown, text, number, emailAddress, phone, url, password }
 
 enum ValidationState { unknown, valid, invalid }
@@ -25,19 +39,19 @@ class ValueInputFact {
     required this.inputKind,
     required this.validation,
     required this.evidence,
-    this.minValue,
-    this.maxValue,
-    this.currentValueLength,
-    this.maxValueLength,
+    required this.minValue,
+    required this.maxValue,
+    required this.currentValueLength,
+    required this.maxValueLength,
   });
 
   final TextFact value;
   final TextFact hint;
   final InputKind inputKind;
   final ValidationState validation;
-  final int? minValue;
-  final int? maxValue;
-  final int? currentValueLength;
-  final int? maxValueLength;
+  final TextFact minValue;
+  final TextFact maxValue;
+  final IntegerFact currentValueLength;
+  final IntegerFact maxValueLength;
   final FactEvidence evidence;
 }

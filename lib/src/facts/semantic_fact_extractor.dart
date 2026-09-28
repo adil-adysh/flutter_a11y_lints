@@ -1009,7 +1009,32 @@ class SemanticFactExtractor {
       );
     }
 
-    int? integer(String name) => _literalValue(node.getAttribute(name)) as int?;
+    typed_values.IntegerFact integerFact(Expression? expression) {
+      if (expression == null) {
+        return typed_values.IntegerFact(
+          state: typed_values.IntegerState.absent,
+          evidence: evidence,
+        );
+      }
+      final literal = _literalValue(expression);
+      if (literal is int) {
+        return typed_values.IntegerFact(
+          state: typed_values.IntegerState.static,
+          value: literal,
+          evidence: evidence,
+        );
+      }
+      return typed_values.IntegerFact(
+        state: typed_values.IntegerState.dynamic,
+        evidence: FactEvidence(
+          provenance: evidence.provenance,
+          knowledge: KnowledgeState.dynamic,
+          sources: evidence.sources,
+          inputs: evidence.inputs,
+        ),
+      );
+    }
+
     final value =
         node.getAttribute('semanticValue') ?? node.getAttribute('value');
     final hint = node.getAttribute('semanticHint') ?? node.getAttribute('hint');
@@ -1020,10 +1045,14 @@ class SemanticFactExtractor {
           ? typed_values.InputKind.text
           : typed_values.InputKind.unknown,
       validation: typed_values.ValidationState.unknown,
-      minValue: integer('minValue') ?? integer('min'),
-      maxValue: integer('maxValue') ?? integer('max'),
-      currentValueLength: integer('currentValueLength'),
-      maxValueLength: integer('maxLength'),
+      minValue:
+          textFact(node.getAttribute('minValue') ?? node.getAttribute('min')),
+      maxValue:
+          textFact(node.getAttribute('maxValue') ?? node.getAttribute('max')),
+      currentValueLength: integerFact(node.getAttribute('currentValueLength')),
+      maxValueLength: integerFact(
+        node.getAttribute('maxValueLength') ?? node.getAttribute('maxLength'),
+      ),
       evidence: evidence,
     );
   }
