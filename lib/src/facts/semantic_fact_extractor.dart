@@ -66,7 +66,9 @@ class SemanticFactExtractor {
       final evidence = FactEvidence(
         provenance: nodeProvenance,
         knowledge: KnowledgeState.known,
-        sources: [SourceSpan(node.fileUri.toString(), node.offset, node.length)],
+        sources: [
+          SourceSpan(node.fileUri.toString(), node.offset, node.length)
+        ],
         inputs: nodeProvenance == FactProvenance.derived
             ? [FactReference(nodeId: id, kind: 'customWidgetExpansion')]
             : const [],
@@ -354,7 +356,8 @@ class SemanticFactExtractor {
         },
         focusable: switch (focusableStates[id]!) {
           FocusableState.focusable => typed_states.FocusableState.focusable,
-          FocusableState.notFocusable => typed_states.FocusableState.notFocusable,
+          FocusableState.notFocusable =>
+            typed_states.FocusableState.notFocusable,
           FocusableState.unknown => typed_states.FocusableState.unknown,
         },
         evidence: evidence,
@@ -362,10 +365,12 @@ class SemanticFactExtractor {
       actionFacts[id] = _actionFacts(node, evidence);
       exposureFacts[id] = typed_exposure.ExposureFact(
         visual: switch (visibilityStates[id]!) {
-          VisibilityState.visible => typed_exposure.VisualVisibilityState.visible,
+          VisibilityState.visible =>
+            typed_exposure.VisualVisibilityState.visible,
           VisibilityState.hidden =>
             typed_exposure.VisualVisibilityState.visuallyHidden,
-          VisibilityState.unknown => typed_exposure.VisualVisibilityState.unknown,
+          VisibilityState.unknown =>
+            typed_exposure.VisualVisibilityState.unknown,
         },
         semantic: switch (inclusionStates[id]!) {
           SemanticInclusionState.included =>
@@ -433,7 +438,8 @@ class SemanticFactExtractor {
       final parent = tree.byId[parentId];
       if (parent == null ||
           parent.mergeState == SemanticMergeState.merged ||
-          parent.descendantReplacement != DescendantReplacementState.preserved) {
+          parent.descendantReplacement !=
+              DescendantReplacementState.preserved) {
         continue;
       }
       accessibilityChildren.add(
@@ -468,6 +474,51 @@ class SemanticFactExtractor {
         ),
       );
     }
+    final traversalChildren = <TraversalChildEdge>[];
+    final controlsNodes = <ControlsNodeEdge>[];
+    for (final parent in tree.physicalNodes) {
+      final parentId = parent.id!;
+      final parentRelationship = relationshipFacts[parentId]!;
+      final parentIdentifier =
+          parentRelationship.traversalParentIdentifier.value;
+      if (parentRelationship.traversalParentIdentifier.state ==
+              typed_values.TextState.static &&
+          parentIdentifier != null) {
+        for (final child in tree.physicalNodes) {
+          final childId = child.id!;
+          final childRelationship = relationshipFacts[childId]!;
+          if (childRelationship.traversalChildIdentifier.state !=
+                  typed_values.TextState.static ||
+              childRelationship.traversalChildIdentifier.value !=
+                  parentIdentifier ||
+              !store.compatible(parentId, childId)) {
+            continue;
+          }
+          traversalChildren.add(
+            TraversalChildEdge(parentId: parentId, childId: childId),
+          );
+        }
+      }
+      if (parentRelationship.controlsNodeIdentifiers.state !=
+          typed_relationships.IdentifierSetState.static) {
+        continue;
+      }
+      for (final child in tree.physicalNodes) {
+        final childId = child.id!;
+        final childRelationship = relationshipFacts[childId]!;
+        if (childRelationship.identifier.state !=
+                typed_values.TextState.static ||
+            childRelationship.identifier.value == null ||
+            !parentRelationship.controlsNodeIdentifiers.values
+                .contains(childRelationship.identifier.value) ||
+            !store.compatible(parentId, childId)) {
+          continue;
+        }
+        controlsNodes.add(
+          ControlsNodeEdge(controllerId: parentId, controlledId: childId),
+        );
+      }
+    }
     return ExtractedSemanticFacts(
         store,
         labelStates,
@@ -494,6 +545,8 @@ class SemanticFactExtractor {
           compositionChildren: compositionChildren,
           accessibilityNodes: accessibilityNodes,
           accessibilityChildren: accessibilityChildren,
+          traversalChildren: traversalChildren,
+          controlsNodes: controlsNodes,
         ));
   }
 
@@ -568,8 +621,7 @@ class SemanticFactExtractor {
             SemanticsArgumentOrigin.defaultValue =>
               ArgumentEvidenceOrigin.defaultValue,
             SemanticsArgumentOrigin.literal => ArgumentEvidenceOrigin.literal,
-            SemanticsArgumentOrigin.resolved =>
-              ArgumentEvidenceOrigin.resolved,
+            SemanticsArgumentOrigin.resolved => ArgumentEvidenceOrigin.resolved,
             SemanticsArgumentOrigin.dynamic => ArgumentEvidenceOrigin.dynamic,
           },
         );
@@ -650,14 +702,18 @@ class SemanticFactExtractor {
         LabelSource.inputDecoration => typed_naming.NameSource.inputDecoration,
         LabelSource.customWidgetParameter =>
           typed_naming.NameSource.customWidgetDerived,
-        LabelSource.none || LabelSource.valueToString || LabelSource.other =>
+        LabelSource.none ||
+        LabelSource.valueToString ||
+        LabelSource.other =>
           null,
       },
       value: state == LabelState.static ? node.label : null,
       evidence: FactEvidence(
         provenance: provenance,
         knowledge: knowledge,
-        sources: [SourceSpan(node.fileUri.toString(), node.offset, node.length)],
+        sources: [
+          SourceSpan(node.fileUri.toString(), node.offset, node.length)
+        ],
         inputs: provenance == FactProvenance.derived
             ? [FactReference(nodeId: node.id ?? -1, kind: 'semanticNode')]
             : const [],
@@ -745,19 +801,23 @@ class SemanticFactExtractor {
           ControlKind.none => typed_actions.ControlClassification.none,
           ControlKind.elevatedButton =>
             typed_actions.ControlClassification.elevatedButton,
-          ControlKind.textButton => typed_actions.ControlClassification.textButton,
+          ControlKind.textButton =>
+            typed_actions.ControlClassification.textButton,
           ControlKind.filledButton =>
             typed_actions.ControlClassification.filledButton,
           ControlKind.outlinedButton =>
             typed_actions.ControlClassification.outlinedButton,
-          ControlKind.iconButton => typed_actions.ControlClassification.iconButton,
+          ControlKind.iconButton =>
+            typed_actions.ControlClassification.iconButton,
           ControlKind.floatingActionButton =>
             typed_actions.ControlClassification.floatingActionButton,
           ControlKind.listTile => typed_actions.ControlClassification.listTile,
-          ControlKind.checkboxControl => typed_actions.ControlClassification.checkbox,
+          ControlKind.checkboxControl =>
+            typed_actions.ControlClassification.checkbox,
           ControlKind.switchControl =>
             typed_actions.ControlClassification.switchControl,
-          ControlKind.sliderControl => typed_actions.ControlClassification.slider,
+          ControlKind.sliderControl =>
+            typed_actions.ControlClassification.slider,
           ControlKind.textFieldControl =>
             typed_actions.ControlClassification.textField,
         },
@@ -853,7 +913,8 @@ class SemanticFactExtractor {
     }
 
     int? integer(String name) => _literalValue(node.getAttribute(name)) as int?;
-    final value = node.getAttribute('semanticValue') ?? node.getAttribute('value');
+    final value =
+        node.getAttribute('semanticValue') ?? node.getAttribute('value');
     final hint = node.getAttribute('semanticHint') ?? node.getAttribute('hint');
     return typed_values.ValueInputFact(
       value: textFact(value),
@@ -907,9 +968,12 @@ class SemanticFactExtractor {
           state: typed_relationships.IdentifierSetState.absent,
           evidence: evidence,
         ),
-      SetOrMapLiteral() when controls.elements.every(
-          (element) => element is Expression && _literalValue(element) is String,
-        ) => typed_relationships.IdentifierSetFact(
+      SetOrMapLiteral()
+          when controls.elements.every(
+            (element) =>
+                element is Expression && _literalValue(element) is String,
+          ) =>
+        typed_relationships.IdentifierSetFact(
           state: typed_relationships.IdentifierSetState.static,
           values: [
             for (final element in controls.elements)

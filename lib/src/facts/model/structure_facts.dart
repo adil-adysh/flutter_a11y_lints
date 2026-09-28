@@ -100,6 +100,28 @@ class AccessibilityChildEdge {
   final int childId;
 }
 
+/// An explicit accessibility traversal parent/child link. Unlike a source or
+/// accessibility-tree edge, this exists only when matching static traversal
+/// identifiers prove it.
+class TraversalChildEdge {
+  const TraversalChildEdge({required this.parentId, required this.childId});
+
+  final int parentId;
+  final int childId;
+}
+
+/// An explicit `controlsNodes` association resolved through a static target
+/// identifier. It does not imply either hierarchy or traversal order.
+class ControlsNodeEdge {
+  const ControlsNodeEdge({
+    required this.controllerId,
+    required this.controlledId,
+  });
+
+  final int controllerId;
+  final int controlledId;
+}
+
 /// Immutable projections for the three graph layers used by analysis.
 ///
 /// The lists remain deliberately separate: APIs consuming this model cannot
@@ -113,6 +135,8 @@ class AccessibilityFactGraph {
     this.compositionChildren = const [],
     this.accessibilityNodes = const [],
     this.accessibilityChildren = const [],
+    this.traversalChildren = const [],
+    this.controlsNodes = const [],
   });
 
   final List<SourceWidgetNode> sourceNodes;
@@ -122,4 +146,6 @@ class AccessibilityFactGraph {
   final List<SemanticCompositionChildEdge> compositionChildren;
   final List<AccessibilityNode> accessibilityNodes;
   final List<AccessibilityChildEdge> accessibilityChildren;
+  final List<TraversalChildEdge> traversalChildren;
+  final List<ControlsNodeEdge> controlsNodes;
 }

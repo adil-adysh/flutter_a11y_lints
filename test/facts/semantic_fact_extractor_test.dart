@@ -72,8 +72,9 @@ Semantics(
   child: Text('Save'),
 )
 ''');
-      final composition =
-          SemanticFactExtractor().extract(tree).compositionFactFor(tree.root.id!);
+      final composition = SemanticFactExtractor()
+          .extract(tree)
+          .compositionFactFor(tree.root.id!);
 
       expect(
         composition!.rawSemanticsConfiguration!.container.state,
@@ -138,9 +139,12 @@ Semantics(
         typed_states.EnabledState.enabled,
       );
       expect(
-        facts.actionsFor(node.id!).singleWhere(
+        facts
+            .actionsFor(node.id!)
+            .singleWhere(
               (action) => action.kind == typed_actions.ActionKind.tap,
-            ).availability,
+            )
+            .availability,
         typed_actions.ActionAvailability.absent,
       );
       expect(
@@ -349,7 +353,8 @@ ExcludeSemantics(
           SemanticFactExtractor()
               .extract(tree)
               .actionsFor(tree.root.id!)
-              .singleWhere((action) => action.kind == typed_actions.ActionKind.tap)
+              .singleWhere(
+                  (action) => action.kind == typed_actions.ActionKind.tap)
               .availability;
 
       expect(availability(present), typed_actions.ActionAvailability.present);
@@ -396,9 +401,10 @@ Set<String> controlledNodes = {'overflow-menu'};
 
       typed_relationships.SemanticRelationshipFact relationshipFor(
         SemanticTree tree,
-      ) => SemanticFactExtractor()
-          .extract(tree)
-          .relationshipFactFor(tree.root.id!)!;
+      ) =>
+          SemanticFactExtractor()
+              .extract(tree)
+              .relationshipFactFor(tree.root.id!)!;
 
       final staticFact = relationshipFor(staticTree);
       expect(staticFact.identifier.state, typed_values.TextState.static);
@@ -418,6 +424,70 @@ Set<String> controlledNodes = {'overflow-menu'};
           typed_values.TextState.dynamic);
       expect(dynamicFact.controlsNodeIdentifiers.state,
           typed_relationships.IdentifierSetState.dynamic);
+    });
+
+    test('projects only compatible explicit traversal and controls edges',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Column(children: [
+  Semantics(
+    identifier: 'controller',
+    traversalParentIdentifier: 'toolbar',
+    controlsNodes: {'overflow-menu'},
+    child: Text('Controller'),
+  ),
+  Semantics(
+    identifier: 'overflow-menu',
+    traversalChildIdentifier: 'toolbar',
+    child: Text('Menu'),
+  ),
+])
+''');
+      final facts = SemanticFactExtractor().extract(tree);
+      final controller = tree.physicalNodes.singleWhere(
+        (node) => node.getAttribute('controlsNodes') != null,
+      );
+      final menu = tree.physicalNodes.singleWhere(
+        (node) => node.getAttribute('traversalChildIdentifier') != null,
+      );
+
+      expect(
+        facts.graph.traversalChildren
+            .map((edge) => (parentId: edge.parentId, childId: edge.childId)),
+        contains((parentId: controller.id!, childId: menu.id!)),
+      );
+      expect(
+        facts.graph.controlsNodes.map(
+          (edge) => (
+            controllerId: edge.controllerId,
+            controlledId: edge.controlledId,
+          ),
+        ),
+        contains((controllerId: controller.id!, controlledId: menu.id!)),
+      );
+    });
+
+    test('does not project traversal edges across incompatible branches',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Column(children: [
+  if (purchasePending)
+    Semantics(
+      traversalParentIdentifier: 'toolbar',
+      child: Text('Controller'),
+    )
+  else
+    Semantics(
+      traversalChildIdentifier: 'toolbar',
+      child: Text('Menu'),
+    ),
+])
+''');
+
+      expect(
+        SemanticFactExtractor().extract(tree).graph.traversalChildren,
+        isEmpty,
+      );
     });
 
     test('projects source, composition, and accessibility graphs separately',
