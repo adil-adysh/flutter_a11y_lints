@@ -310,6 +310,7 @@ class Semantics extends Widget {
     Set<String>? controlsNodes,
     String? label,
     bool? button,
+    bool? image,
     bool? header,
     bool? toggled,
     bool? checked,

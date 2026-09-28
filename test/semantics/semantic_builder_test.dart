@@ -106,6 +106,15 @@ Semantics(identifier: semanticIdentifier, child: Text('Menu'))
       expect(tree.root.nodeCreation, SemanticNodeCreation.unknown);
     });
 
+    test('explicit image Semantics role overrides an inherited child role',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Semantics(image: true, child: IconButton(icon: Icon('info'), onPressed: () {}))
+''');
+
+      expect(tree.root.role, SemanticRole.image);
+    });
+
     test('Semantics replacement hides descendants without excluding wrapper',
         () async {
       final tree = await buildTestSemanticTree('''

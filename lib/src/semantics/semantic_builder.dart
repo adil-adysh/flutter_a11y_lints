@@ -335,6 +335,8 @@ class SemanticBuilder {
     SemanticRole? roleOverride;
     if (ctx.evalBool(widget.props['button']) == true) {
       roleOverride = SemanticRole.button;
+    } else if (ctx.evalBool(widget.props['image']) == true) {
+      roleOverride = SemanticRole.image;
     } else if (ctx.evalBool(widget.props['header']) == true) {
       roleOverride = SemanticRole.header;
     }
