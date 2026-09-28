@@ -131,6 +131,7 @@ class WidgetTreeBuilder {
       branchGroupId: branchGroupId,
       branchValue: branchValue,
       branchPath: branchPath,
+      sourceUri: Uri.file(unit.path),
     );
   }
 
@@ -313,6 +314,7 @@ class WidgetTreeBuilder {
       branchGroupId: branchGroupId,
       branchValue: branchValue,
       branchPath: branchPath,
+      sourceUri: Uri.file(unit.path),
       branchChildren: branches,
     );
   }

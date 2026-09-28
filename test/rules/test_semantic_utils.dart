@@ -59,7 +59,7 @@ Widget buildWidget(bool purchasePending) {
     final returnStatement =
         body.block.statements.whereType<ReturnStatement>().first;
     final expression = returnStatement.expression;
-    final tree = builder.buildForExpression(expression);
+    final tree = await builder.buildForExpressionAsync(expression);
     if (tree == null) {
       fail('Failed to build semantic tree for: $widgetSource');
     }

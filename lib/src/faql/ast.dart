@@ -17,10 +17,38 @@ class BooleanStateExpression extends FaqlExpression {
 class PropExpression extends FaqlExpression {
   final String name;
   final String? asType; // 'int'|'string'|'bool'
-  final bool? isResolved;
-  PropExpression(this.name, {this.asType, this.isResolved});
+  PropExpression(this.name, {this.asType});
   @override
-  String toString() => 'Prop($name, as:$asType, resolved:$isResolved)';
+  String toString() => 'Prop($name, as:$asType)';
+}
+
+class ThisExpression extends FaqlExpression {
+  ThisExpression();
+  @override
+  String toString() => 'This()';
+}
+
+class WidgetAccessExpression extends FaqlExpression {
+  final String typeParam; // 'int'|'string'|'bool'
+  final String name; // property name
+  WidgetAccessExpression(this.typeParam, this.name);
+  @override
+  String toString() => 'Widget<$typeParam>("$name")';
+}
+
+class IsDefinedExpression extends FaqlExpression {
+  final FaqlExpression expr;
+  IsDefinedExpression(this.expr);
+  @override
+  String toString() => 'IsDefined($expr)';
+}
+
+class IndexAccessExpression extends FaqlExpression {
+  final FaqlExpression target;
+  final int index;
+  IndexAccessExpression(this.target, this.index);
+  @override
+  String toString() => 'Index($target[$index])';
 }
 
 class UnaryExpression extends FaqlExpression {
@@ -53,8 +81,11 @@ enum FaqlRelation {
   children,
   ancestors,
   siblings,
-  nextFocus,
-  prevFocus,
+  descendants,
+  parent,
+  firstChild,
+  lastChild,
+  onlyChild,
 }
 
 enum FaqlAggregator { any, all, none }
@@ -76,9 +107,15 @@ class RegexMatchExpression extends FaqlExpression {
   String toString() => 'RegexMatch($left, ${pattern.pattern})';
 }
 
+class ClosestExpression extends FaqlExpression {
+  final List<FaqlSelector> selectors;
+  ClosestExpression(this.selectors);
+  @override
+  String toString() => 'Closest(${selectors.join(' || ')})';
+}
+
 class AggregatorExpression extends FaqlExpression {
-  final FaqlRelation
-      relation; // children/ancestors/siblings/next_focus/prev_focus
+  final FaqlRelation relation;
   final FaqlAggregator aggregator; // any/all/none
   final FaqlExpression expr;
   AggregatorExpression(this.relation, this.aggregator, this.expr);
@@ -91,6 +128,13 @@ class RelationLengthExpression extends FaqlExpression {
   RelationLengthExpression(this.relation);
   @override
   String toString() => 'Length($relation)';
+}
+
+class RelationExpression extends FaqlExpression {
+  final FaqlRelation relation;
+  RelationExpression(this.relation);
+  @override
+  String toString() => 'Relation($relation)';
 }
 
 class Identifier extends FaqlExpression {

@@ -14,11 +14,20 @@ class FaqlSemanticValidator {
       if (e == null) return;
       if (e is Identifier) {
         if (!_isKnown(e.name)) {
-          throw FaqlCompilationError('Unknown identifier "${e.name}" in rule ${rule.name}');
+          throw FaqlCompilationError(
+              'Unknown identifier "${e.name}" in rule ${rule.name}');
+        }
+      } else if (e is ThisExpression) {
+        // explicit 'this' is allowed - no validation
+      } else if (e is WidgetAccessExpression) {
+        if (!_isKnown(e.name)) {
+          throw FaqlCompilationError(
+              'Unknown widget property "${e.name}" in rule ${rule.name}');
         }
       } else if (e is PropExpression) {
         if (!_isKnown(e.name)) {
-          throw FaqlCompilationError('Unknown property "${e.name}" in rule ${rule.name}');
+          throw FaqlCompilationError(
+              'Unknown property "${e.name}" in rule ${rule.name}');
         }
       } else if (e is UnaryExpression) {
         visitExpr(e.expr);
@@ -31,6 +40,8 @@ class FaqlSemanticValidator {
         visitExpr(e.expr);
       } else if (e is RelationLengthExpression) {
         // relation names in AST are enums so nothing to validate here
+      } else if (e is ClosestExpression) {
+        // selectors are enumerated tokens; nothing to validate beyond parse
       } else if (e is LiteralExpression) {
         // ok
       } else if (e is BooleanStateExpression) {
@@ -44,7 +55,7 @@ class FaqlSemanticValidator {
 
   bool _isKnown(String name) {
     // allow builtins
-    const builtins = {'role', 'widgetType', 'type'};
+    const builtins = {'role', 'widgetType', 'type', 'this', 'it'};
     if (builtins.contains(name)) return true;
     return schemaProps.contains(name);
   }

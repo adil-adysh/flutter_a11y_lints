@@ -23,6 +23,8 @@ abstract class FaqlContext {
   // State
   bool get isFocusable;
   bool get isEnabled;
+  bool get isChecked;
+  bool get isToggled;
   bool get isHidden;
   bool get mergesDescendants;
   bool get hasTap;
@@ -32,10 +34,20 @@ abstract class FaqlContext {
   Iterable<FaqlContext> get children;
   Iterable<FaqlContext> get ancestors;
   Iterable<FaqlContext> get siblings;
+  Iterable<FaqlContext> get descendants;
+  FaqlContext? get parent;
+  FaqlContext? get firstChild;
+  FaqlContext? get lastChild;
+  FaqlContext? get onlyChild;
 
   // AST Properties
+  // Runtime semantics properties
   Object? getProperty(String name);
   bool isPropertyResolved(String name);
+
+  // Widget (source-level) accessors
+  Object? getWidgetProperty(String name);
+  bool isWidgetPropertyDefined(String name);
 }
 
 class FaqlInterpreter {
@@ -89,6 +101,8 @@ class FaqlInterpreter {
   }
 
   dynamic _evaluateExpression(FaqlExpression expr, FaqlContext context) {
+    if (expr is ThisExpression) return context;
+
     if (expr is Identifier) {
       final n = expr.name;
       switch (n) {
@@ -114,23 +128,18 @@ class FaqlInterpreter {
           return context.isFocusable;
         case 'enabled':
           return context.isEnabled;
+        case 'checked':
+          return context.isChecked;
+        case 'toggled':
+          return context.isToggled;
         case 'hidden':
           return context.isHidden;
-        case 'merges_descendants':
-          return context.mergesDescendants;
-        case 'has_tap':
-          return context.hasTap;
-        case 'has_long_press':
-          return context.hasLongPress;
         default:
           return false;
       }
     }
 
     if (expr is PropExpression) {
-      if (expr.isResolved == true) {
-        return context.isPropertyResolved(expr.name);
-      }
       final raw = context.getProperty(expr.name);
       if (raw == null) return null; // Safe navigation
 
@@ -163,6 +172,72 @@ class FaqlInterpreter {
         return null;
       }
       return raw;
+    }
+
+    if (expr is WidgetAccessExpression) {
+      final raw = context.getWidgetProperty(expr.name);
+      if (raw == null) return null;
+      // Basic casting logic (similar to PropExpression)
+      if (expr.typeParam == 'int') {
+        if (raw is num) return raw.toInt();
+        if (raw is String) {
+          final parsed = num.tryParse(raw);
+          if (parsed == null) return null;
+          if (parsed is double && (parsed.isNaN || parsed.isInfinite))
+            return null;
+          return parsed.toInt();
+        }
+        if (raw is bool) return raw ? 1 : 0;
+        return null;
+      }
+      if (expr.typeParam == 'string') return raw.toString();
+      if (expr.typeParam == 'bool') {
+        if (raw is bool) return raw;
+        if (raw is String) {
+          final v = raw.toLowerCase().trim();
+          if (v == 'true') return true;
+          if (v == 'false') return false;
+          return null;
+        }
+        if (raw is num) return raw != 0;
+        return null;
+      }
+      return raw;
+    }
+
+    if (expr is IsDefinedExpression) {
+      final inner = expr.expr;
+      if (inner is WidgetAccessExpression) {
+        return context.isWidgetPropertyDefined(inner.name);
+      }
+      if (inner is PropExpression) {
+        return context.isPropertyResolved(inner.name);
+      }
+      // Fallback: evaluate expression and check non-null
+      return _evaluateExpression(inner, context) != null;
+    }
+
+    if (expr is RelationExpression) {
+      return _getRelation(expr.relation, context);
+    }
+
+    if (expr is ClosestExpression) {
+      for (final ancestor in context.ancestors) {
+        if (_matchesSelector(expr.selectors, ancestor)) return ancestor;
+      }
+      return null;
+    }
+
+    if (expr is IndexAccessExpression) {
+      final target = _evaluateExpression(expr.target, context);
+      if (target == null) return null;
+      if (target is Iterable<FaqlContext>) {
+        final list = target.toList(growable: false);
+        if (expr.index < 0 || expr.index >= list.length) return null;
+        // Return the context node at that index - property access may follow.
+        return list[expr.index];
+      }
+      return null;
     }
 
     if (expr is UnaryExpression) {
@@ -208,27 +283,34 @@ class FaqlInterpreter {
           final ln = _toNumber(l);
           final rn = _toNumber(r);
           if (ln != null && rn != null) return ln + rn;
-          throw FaqlRuntimeError('Operator + requires two numbers, got $l and $r');
+          throw FaqlRuntimeError(
+              'Operator + requires two numbers, got $l and $r');
         case FaqlBinaryOp.subtract:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          if (ln == null || rn == null) throw FaqlRuntimeError('Operator - requires two numbers, got $l and $r');
+          if (ln == null || rn == null)
+            throw FaqlRuntimeError(
+                'Operator - requires two numbers, got $l and $r');
           return ln - rn;
         case FaqlBinaryOp.multiply:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          if (ln == null || rn == null) throw FaqlRuntimeError('Operator * requires two numbers, got $l and $r');
+          if (ln == null || rn == null)
+            throw FaqlRuntimeError(
+                'Operator * requires two numbers, got $l and $r');
           return ln * rn;
         case FaqlBinaryOp.divide:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          if (ln == null || rn == null) throw FaqlRuntimeError('Operator / requires two numbers, got $l and $r');
+          if (ln == null || rn == null)
+            throw FaqlRuntimeError(
+                'Operator / requires two numbers, got $l and $r');
           if (rn == 0) throw FaqlRuntimeError('Division by zero');
           return ln / rn;
         case FaqlBinaryOp.less:
@@ -236,33 +318,38 @@ class FaqlInterpreter {
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          if (ln == null || rn == null) throw FaqlRuntimeError('< requires numbers');
+          if (ln == null || rn == null)
+            throw FaqlRuntimeError('< requires numbers');
           return ln < rn;
         case FaqlBinaryOp.greater:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          if (ln == null || rn == null) throw FaqlRuntimeError('> requires numbers');
+          if (ln == null || rn == null)
+            throw FaqlRuntimeError('> requires numbers');
           return ln > rn;
         case FaqlBinaryOp.lessEqual:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          if (ln == null || rn == null) throw FaqlRuntimeError('<= requires numbers');
+          if (ln == null || rn == null)
+            throw FaqlRuntimeError('<= requires numbers');
           return ln <= rn;
         case FaqlBinaryOp.greaterEqual:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
           final ln = _toNumber(l);
           final rn = _toNumber(r);
-          if (ln == null || rn == null) throw FaqlRuntimeError('>= requires numbers');
+          if (ln == null || rn == null)
+            throw FaqlRuntimeError('>= requires numbers');
           return ln >= rn;
         case FaqlBinaryOp.tildeEquals:
           final lv = _evaluateExpression(expr.left, context);
           final rv = _evaluateExpression(expr.right, context);
-          return lv.toString().toLowerCase().trim() == rv.toString().toLowerCase().trim();
+          return lv.toString().toLowerCase().trim() ==
+              rv.toString().toLowerCase().trim();
         case FaqlBinaryOp.contains:
           final l = _evaluateExpression(expr.left, context);
           final r = _evaluateExpression(expr.right, context);
@@ -282,7 +369,8 @@ class FaqlInterpreter {
               caseSensitive = false;
               pattern = pattern.substring(4);
             }
-            return RegExp(pattern, caseSensitive: caseSensitive).hasMatch(l.toString());
+            return RegExp(pattern, caseSensitive: caseSensitive)
+                .hasMatch(l.toString());
           } catch (e) {
             throw FaqlRuntimeError('Invalid regex: $e');
           }
@@ -325,7 +413,8 @@ class FaqlInterpreter {
     return null;
   }
 
-  Iterable<FaqlContext> _getRelation(FaqlRelation relation, FaqlContext context) {
+  Iterable<FaqlContext> _getRelation(
+      FaqlRelation relation, FaqlContext context) {
     switch (relation) {
       case FaqlRelation.children:
         return context.children;
@@ -333,10 +422,24 @@ class FaqlInterpreter {
         return context.ancestors;
       case FaqlRelation.siblings:
         return context.siblings;
-      case FaqlRelation.nextFocus:
-      case FaqlRelation.prevFocus:
-        // Not modeled in FaqlContext currently
-        return [];
+      case FaqlRelation.descendants:
+        return context.descendants;
+      case FaqlRelation.parent:
+        return context.parent == null
+            ? const <FaqlContext>[]
+            : [context.parent!];
+      case FaqlRelation.firstChild:
+        return context.firstChild == null
+            ? const <FaqlContext>[]
+            : [context.firstChild!];
+      case FaqlRelation.lastChild:
+        return context.lastChild == null
+            ? const <FaqlContext>[]
+            : [context.lastChild!];
+      case FaqlRelation.onlyChild:
+        return context.onlyChild == null
+            ? const <FaqlContext>[]
+            : [context.onlyChild!];
     }
   }
 

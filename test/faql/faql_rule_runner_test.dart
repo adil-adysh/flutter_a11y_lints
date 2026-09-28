@@ -7,7 +7,7 @@ import 'dart:io';
 import '../rules/test_semantic_utils.dart';
 
 void main() {
-  test('reports a definitely unlabeled interactive semantic node', () {
+  test('reports a definitely unlabeled interactive semantic node', () async {
     const source = '''
 @id flutter-a11y/a01/unlabeled-interactive
 @rule-id a01_unlabeled_interactive
@@ -17,7 +17,9 @@ from InteractiveControl control
 where control.isDefinitelyExposed() and control.isDefinitelyEnabled() and control.isDefinitelyUnlabeled()
 select control, "Interactive control must have an accessible label."
 ''';
-    final tree = buildManualTree(makeSemanticNode());
+    final tree = await buildTestSemanticTree(
+      "IconButton(icon: Icon('delete'), onPressed: () {})",
+    );
     final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
 
     expect(runner.run(tree), hasLength(1));
@@ -89,8 +91,8 @@ ExcludeSemantics(
       () async {
     final tree = await buildTestSemanticTree('''
 MergeSemantics(child: Column(children: [
-  IconButton(icon: Icon('edit'), tooltip: 'Edit'),
-  IconButton(icon: Icon('delete'), tooltip: 'Delete'),
+  IconButton(icon: Icon('edit'), tooltip: 'Edit', onPressed: () {}),
+  IconButton(icon: Icon('delete'), tooltip: 'Delete', onPressed: () {}),
 ]))
 ''');
     final source =

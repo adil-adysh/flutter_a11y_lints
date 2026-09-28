@@ -1,7 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:meta/meta.dart';
 
-import '../facts/fact_store.dart' show BranchPath;
+import '../facts/fact_store.dart' show BranchPath, FactProvenance;
 import 'known_semantics.dart';
 
 export 'package:analyzer/dart/ast/ast.dart' show Expression;
@@ -142,6 +142,7 @@ class SemanticNode {
     this.hasDismiss = false,
     Map<String, Expression>? rawAttributes,
     this.isHeuristic = false,
+    this.factProvenance = FactProvenance.exact,
     this.semanticsConfig = const SemanticsCompositionConfig(),
     this.semanticsLabelArgumentState = SemanticsLabelArgumentState.absent,
     SemanticNodeCreation? nodeCreation,
@@ -283,6 +284,11 @@ class SemanticNode {
   /// different strategies for explicit vs inferred roles.
   final bool isHeuristic;
 
+  /// The source-level evidence supporting this semantic node. This remains
+  /// distinct from [isHeuristic]: resolved custom-widget composition is
+  /// safely derived, while unresolved behavior is heuristic/unknown.
+  final FactProvenance factProvenance;
+
   /// Retrieve a raw widget attribute by name (e.g., 'elevation', 'overflow').
   /// Returns the AST expression if present, or null if not found.
   /// The caller is responsible for evaluating the expression using
@@ -356,6 +362,7 @@ class SemanticNode {
     bool? hasDismiss,
     Map<String, Expression>? rawAttributes,
     bool? isHeuristic,
+    FactProvenance? factProvenance,
     SemanticsCompositionConfig? semanticsConfig,
     SemanticsLabelArgumentState? semanticsLabelArgumentState,
     SemanticNodeCreation? nodeCreation,
@@ -414,6 +421,7 @@ class SemanticNode {
       hasDismiss: hasDismiss ?? this.hasDismiss,
       rawAttributes: rawAttributes ?? _rawAttributes,
       isHeuristic: isHeuristic ?? this.isHeuristic,
+      factProvenance: factProvenance ?? this.factProvenance,
       semanticsConfig: semanticsConfig ?? this.semanticsConfig,
       semanticsLabelArgumentState:
           semanticsLabelArgumentState ?? this.semanticsLabelArgumentState,

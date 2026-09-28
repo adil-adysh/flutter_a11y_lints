@@ -1,5 +1,18 @@
 import 'package:flutter_a11y_lints/src/facts/semantic_fact_extractor.dart';
 import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
+import 'package:flutter_a11y_lints/src/facts/model/composition_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/exposure_facts.dart'
+    as typed_exposure;
+import 'package:flutter_a11y_lints/src/facts/model/image_facts.dart'
+    as typed_images;
+import 'package:flutter_a11y_lints/src/facts/model/naming_facts.dart'
+    as typed_naming;
+import 'package:flutter_a11y_lints/src/facts/model/role_action_facts.dart'
+    as typed_actions;
+import 'package:flutter_a11y_lints/src/facts/model/state_facts.dart'
+    as typed_states;
+import 'package:flutter_a11y_lints/src/facts/model/value_input_facts.dart'
+    as typed_values;
 import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 import 'package:test/test.dart';
@@ -48,6 +61,36 @@ void main() {
       expect(names, contains('semanticsLabelArgumentState'));
     });
 
+    test('projects raw Semantics configuration with documented defaults',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Semantics(
+  container: true,
+  blockUserActions: false,
+  child: Text('Save'),
+)
+''');
+      final composition =
+          SemanticFactExtractor().extract(tree).compositionFactFor(tree.root.id!);
+
+      expect(
+        composition!.rawSemanticsConfiguration!.container.state,
+        KnownBooleanState.trueValue,
+      );
+      expect(
+        composition.rawSemanticsConfiguration!.container.origin,
+        ArgumentEvidenceOrigin.literal,
+      );
+      expect(
+        composition.rawSemanticsConfiguration!.explicitChildNodes.state,
+        KnownBooleanState.falseValue,
+      );
+      expect(
+        composition.rawSemanticsConfiguration!.explicitChildNodes.origin,
+        ArgumentEvidenceOrigin.defaultValue,
+      );
+    });
+
     test('does not inherit a group Semantics label through an unrelated child',
         () async {
       final tree = await buildTestSemanticTree('''
@@ -84,6 +127,24 @@ Semantics(
             .value,
         'enabled',
       );
+      expect(
+        facts.controlStateFactFor(node.id!)!.enabled,
+        typed_states.EnabledState.enabled,
+      );
+      expect(
+        facts.store.conservative.typedFactsFor(node.id!)!.controlState!.enabled,
+        typed_states.EnabledState.enabled,
+      );
+      expect(
+        facts.actionsFor(node.id!).singleWhere(
+              (action) => action.kind == typed_actions.ActionKind.tap,
+            ).availability,
+        typed_actions.ActionAvailability.absent,
+      );
+      expect(
+        facts.exposureFactFor(node.id!)!.semantic,
+        typed_exposure.SemanticInclusionState.included,
+      );
     });
     test('distinguishes proven absence from dynamic and unknown labels', () {
       final absent = makeSemanticNode(labelGuarantee: LabelGuarantee.none);
@@ -112,6 +173,14 @@ Semantics(
       final facts = SemanticFactExtractor().extract(tree);
 
       expect(facts.labelStateFor(tree.root.id!), LabelState.unknown);
+      expect(
+        facts.nameFactFor(tree.root.id!)!.state,
+        typed_naming.NameState.unknown,
+      );
+      expect(
+        facts.actionsFor(tree.root.id!).first.availability,
+        typed_actions.ActionAvailability.unknown,
+      );
     });
 
     test('extracts named slots and literal primitive properties', () async {
@@ -184,6 +253,14 @@ Image.network(
 
       expect(hasNotExcludedFact(defaultTree), isTrue);
       expect(hasNotExcludedFact(explicitFalseTree), isTrue);
+      final extracted = SemanticFactExtractor().extract(defaultTree);
+      final image = defaultTree.physicalNodes.singleWhere(
+        (node) => node.widgetType == 'Image',
+      );
+      final typedImage =
+          extracted.store.conservative.typedFactsFor(image.id!)!.image!;
+      expect(typedImage.sourceKind, typed_images.ImageSourceKind.network);
+      expect(typedImage.isDefinitelyNotExcludedFromSemantics, isTrue);
     });
 
     test('emits visibility only for explicit hiding widgets', () async {
@@ -250,6 +327,89 @@ ExcludeSemantics(
       expect(
         facts.store.nodeById(childId)!.effectiveBranchPath.constraints,
         hasLength(2),
+      );
+    });
+
+    test('derives callback action availability without assuming runtime values',
+        () async {
+      final present = await buildTestSemanticTree(
+        "IconButton(icon: Icon('add'), onPressed: () {})",
+      );
+      final absent = await buildTestSemanticTree(
+        "IconButton(icon: Icon('add'), onPressed: null)",
+      );
+      final dynamic = await buildTestSemanticTree(
+        "IconButton(icon: Icon('add'), onPressed: handler)",
+        extraDeclarations: 'void Function()? handler;',
+      );
+
+      typed_actions.ActionAvailability availability(SemanticTree tree) =>
+          SemanticFactExtractor()
+              .extract(tree)
+              .actionsFor(tree.root.id!)
+              .singleWhere((action) => action.kind == typed_actions.ActionKind.tap)
+              .availability;
+
+      expect(availability(present), typed_actions.ActionAvailability.present);
+      expect(availability(absent), typed_actions.ActionAvailability.absent);
+      expect(availability(dynamic), typed_actions.ActionAvailability.dynamic);
+    });
+
+    test('extracts literal semantic value and hint without guessing dynamics',
+        () async {
+      final tree = await buildTestSemanticTree('''
+Semantics(semanticValue: '42', semanticHint: 'Percentage', child: Text('42'))
+''');
+      final facts = SemanticFactExtractor().extract(tree);
+      final valueInput =
+          facts.store.conservative.typedFactsFor(tree.root.id!)!.valueInput!;
+
+      expect(valueInput.value.state, typed_values.TextState.static);
+      expect(valueInput.value.value, '42');
+      expect(valueInput.hint.value, 'Percentage');
+    });
+
+    test('projects source, composition, and accessibility graphs separately',
+        () async {
+      final tree = await buildTestSemanticTree(
+        "ListTile(leading: Image.network('https://example.test/photo.png'))",
+      );
+      final facts = SemanticFactExtractor().extract(tree);
+
+      expect(facts.graph.sourceNodes, hasLength(tree.physicalNodes.length));
+      expect(
+        facts.graph.sourceChildren.map((edge) => edge.parentId),
+        contains(tree.root.id),
+      );
+      expect(
+        facts.graph.compositionNodes.map((node) => node.sourceWidgetId),
+        contains(tree.root.id),
+      );
+      expect(
+        facts.graph.accessibilityNodes.map((node) => node.compositionNodeId),
+        contains(tree.root.id),
+      );
+      expect(facts.graph.slots.single.name, 'leading');
+    });
+
+    test('does not emit an independent accessibility node for merge children',
+        () async {
+      final tree = await buildTestSemanticTree('''
+MergeSemantics(
+  child: Row(children: [
+    IconButton(icon: Icon('add'), onPressed: () {}),
+  ]),
+)
+''');
+      final facts = SemanticFactExtractor().extract(tree);
+      final button = tree.physicalNodes.singleWhere(
+        (node) => node.widgetType == 'IconButton',
+      );
+
+      expect(
+        facts.graph.accessibilityNodes
+            .where((node) => node.compositionNodeId == button.id),
+        isEmpty,
       );
     });
   });

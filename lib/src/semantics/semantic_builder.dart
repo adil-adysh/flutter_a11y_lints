@@ -2,6 +2,7 @@ import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/element/type.dart';
 
+import '../facts/fact_store.dart' show FactProvenance;
 import '../widget_tree/widget_node.dart';
 import 'known_semantics.dart';
 import 'semantic_context.dart';
@@ -113,9 +114,50 @@ class SemanticBuilder {
         return _buildBlockSemantics(widget, ctx);
       case 'IndexedSemantics':
         return _buildIndexedSemantics(widget, ctx);
+      case 'Offstage':
+        return _buildExposureWrapper(widget, ctx, 'offstage');
+      case 'Visibility':
+        return _buildExposureWrapper(widget, ctx, 'visible');
       default:
         return _buildStandardNode(widget, ctx);
     }
+  }
+
+  SemanticNode? _buildExposureWrapper(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+    String property,
+  ) {
+    final base = _buildStandardNode(widget, ctx);
+    if (base == null) return null;
+    final value = ctx.evalBool(widget.props[property]);
+    final hidden = property == 'offstage' ? value == true : value == false;
+    final visible = property == 'offstage' ? value == false : value == true;
+    // Visibility's documented default does not maintain semantics. A custom
+    // maintainSemantics value is a separate runtime contract and remains
+    // unknown unless it is explicitly proven false.
+    final maintainSemantics = widget.widgetType == 'Visibility'
+        ? ctx.evalBool(widget.props['maintainSemantics'])
+        : false;
+    if (hidden && maintainSemantics != true) {
+      return base.copyWith(
+        descendantReplacement: DescendantReplacementState.excluded,
+        exposureState: SemanticExposureState.hidden,
+        inclusionState: SemanticInclusionState.excluded,
+      );
+    }
+    if (visible) {
+      return base.copyWith(
+        descendantReplacement: DescendantReplacementState.preserved,
+        exposureState: SemanticExposureState.exposed,
+        inclusionState: SemanticInclusionState.included,
+      );
+    }
+    return base.copyWith(
+      descendantReplacement: DescendantReplacementState.unknown,
+      exposureState: SemanticExposureState.unknown,
+      inclusionState: SemanticInclusionState.unknown,
+    );
   }
 
   SemanticNode? _buildStandardNode(
@@ -214,7 +256,7 @@ class SemanticBuilder {
     return SemanticNode(
       widgetType: widget.widgetType,
       astNode: widget.astNode,
-      fileUri: fileUri,
+      fileUri: widget.sourceUri ?? fileUri,
       offset: widget.astNode.offset,
       length: widget.astNode.length,
       role: known.role,
@@ -260,6 +302,8 @@ class SemanticBuilder {
       branchPath: widget.branchPath,
       rawAttributes: widget.props,
       isHeuristic: isHeuristic,
+      factProvenance:
+          isHeuristic ? FactProvenance.heuristic : widget.evidenceProvenance,
     );
   }
 
@@ -531,7 +575,7 @@ class SemanticBuilder {
     return SemanticNode(
       widgetType: widget.widgetType,
       astNode: widget.astNode,
-      fileUri: fileUri,
+      fileUri: widget.sourceUri ?? fileUri,
       offset: widget.astNode.offset,
       length: widget.astNode.length,
       role: role,
@@ -577,6 +621,9 @@ class SemanticBuilder {
       hasDismiss: hasDismiss,
       rawAttributes: widget.props,
       isHeuristic: base?.isHeuristic ?? false,
+      factProvenance: base?.isHeuristic == true
+          ? FactProvenance.heuristic
+          : widget.evidenceProvenance,
     );
   }
 

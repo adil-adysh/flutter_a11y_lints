@@ -96,13 +96,17 @@ class FaqlGrammar extends GrammarDefinition {
 
     // primitives - register each separately to satisfy types
     builder.primitive(ref0(parentheses));
+    builder.primitive(ref0(thisExpr));
+    builder.primitive(ref0(closestExpr));
+    builder.primitive(ref0(relationExpr));
     builder.primitive(ref0(traversal));
-    builder.primitive(ref0(propAccess));
+    builder.primitive(ref0(thisPropAccess));
+    builder.primitive(ref0(widgetAccess));
+    builder.primitive(ref0(indexAccess));
     builder.primitive(ref0(booleanState));
     builder.primitive(ref0(literal));
-    // support `identifier.is_resolved` shorthand for prop("identifier").is_resolved
+    // shorthand: bare identifiers resolve against the semantic node
     builder.primitive(ref0(identifierPropAccess));
-    // allow bare identifiers in expressions (e.g., `role == "button")`
     builder.primitive(ref0(identifierExpr));
 
     // prefix
@@ -137,7 +141,31 @@ class FaqlGrammar extends GrammarDefinition {
       ..left(token(char('>')),
           (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r));
 
-    // equality & contains/matches
+    // is defined postfix operator (per spec precedence between relational and equality)
+    builder.group()
+      ..postfix((token('is') & token('defined')).map((_) => 'is defined'),
+          (value, op) => IsDefinedExpression(value));
+
+    // string.matches("pattern") postfix
+    builder.group()
+      ..postfix(
+          (token(char('.')) &
+                  token('matches') &
+                  token(char('(')) &
+                  token(ref0(stringLiteral)) &
+                  token(char(')')))
+              .map((v) => v[3] as String), (value, pattern) {
+        var pat = pattern;
+        var caseSensitive = true;
+        if (pat.startsWith('(?i)')) {
+          caseSensitive = false;
+          pat = pat.substring(4);
+        }
+        return RegexMatchExpression(
+            value, RegExp(pat, caseSensitive: caseSensitive));
+      });
+
+    // equality & contains
     builder.group()
       ..left(token(string('==')),
           (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
@@ -146,21 +174,7 @@ class FaqlGrammar extends GrammarDefinition {
       ..left(token(string('~=')),
           (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
       ..left(token(string('contains')),
-          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r))
-      ..left(token(string('matches')), (l, op, r) {
-        // If the right-hand-side is a string literal, pre-compile the RegExp.
-        if (r is LiteralExpression && r.value is String) {
-          var pattern = (r.value as String);
-          var caseSensitive = true;
-          if (pattern.startsWith('(?i)')) {
-            caseSensitive = false;
-            pattern = pattern.substring(4);
-          }
-          return RegexMatchExpression(
-              l, RegExp(pattern, caseSensitive: caseSensitive));
-        }
-        return BinaryExpression(l, _mapOp(op.toString()), r);
-      });
+          (l, op, r) => BinaryExpression(l, _mapOp(op.toString()), r));
 
     // logical
     builder.group()
@@ -215,6 +229,16 @@ class FaqlGrammar extends GrammarDefinition {
       (token(char('(')) & ref0(expression) & token(char(')')))
           .map((v) => v[1] as FaqlExpression);
 
+  Parser<FaqlExpression> thisExpr() =>
+      token('this').map((_) => ThisExpression());
+
+  Parser<FaqlExpression> closestExpr() =>
+      (token('closest') & token(char('(')) & ref0(selector) & token(char(')')))
+          .map((v) {
+        final selectors = (v[2] as List).cast<FaqlSelector>();
+        return ClosestExpression(selectors);
+      });
+
   // traversal -> RelationLengthExpression or AggregatorExpression
   Parser<FaqlExpression> traversal() => (ref0(relationName) &
               token(char('.')) &
@@ -244,14 +268,23 @@ class FaqlGrammar extends GrammarDefinition {
         return FaqlRelation.ancestors;
       case 'siblings':
         return FaqlRelation.siblings;
-      case 'next_focus':
-        return FaqlRelation.nextFocus;
-      case 'prev_focus':
-        return FaqlRelation.prevFocus;
+      case 'descendants':
+        return FaqlRelation.descendants;
+      case 'parent':
+        return FaqlRelation.parent;
+      case 'firstChild':
+        return FaqlRelation.firstChild;
+      case 'lastChild':
+        return FaqlRelation.lastChild;
+      case 'onlyChild':
+        return FaqlRelation.onlyChild;
       default:
         return FaqlRelation.children;
     }
   }
+
+  Parser<FaqlExpression> relationExpr() =>
+      ref0(relationName).map((s) => RelationExpression(_mapRelation(s)));
 
   FaqlAggregator _mapAggregator(String s) {
     switch (s) {
@@ -266,34 +299,59 @@ class FaqlGrammar extends GrammarDefinition {
     }
   }
 
-  // prop("name") [.is_resolved] | as type
-  Parser<FaqlExpression> propAccess() => (token('prop') &
+  // widget<T>("name") - source access, e.g., widget<int>("min")
+  Parser<FaqlExpression> widgetAccess() => (token('widget') &
+              token(char('<')) &
+              (token('int') | token('string') | token('bool')) &
+              token(char('>')) &
               token(char('(')) &
               ref0(stringLiteral) &
-              token(char(')')) &
+              token(char(')')))
+          .map((v) {
+        final typ = (v[2] as String);
+        final name = v[5] as String;
+        return WidgetAccessExpression(typ, name);
+      });
+
+  // this.<identifier> for explicit semantics property access
+  Parser<FaqlExpression> thisPropAccess() => (token('this') &
+              token(char('.')) &
+              ref0(identifier) &
               ref0(castOperation).optional())
           .map((v) {
         final name = v[2] as String;
         String? asType;
-        bool? isResolved;
-        final cast = v[4];
+        final cast = v[3];
         if (cast != null) {
-          if (cast is String && cast == '.is_resolved')
-            isResolved = true;
-          else if (cast is List && cast.length >= 2) asType = cast[1] as String;
+          if (cast is List && cast.length >= 2) asType = cast[1] as String;
         }
-        return PropExpression(name, asType: asType, isResolved: isResolved);
+        return PropExpression(name, asType: asType);
       });
 
-  Parser<dynamic> castOperation() => (token('.is_resolved') |
-      (token('as') & (token('string') | token('int') | token('bool'))));
+  // Bracket indexing, e.g., children[0] or descendants[1]
+  Parser<FaqlExpression> indexAccess() =>
+      ((ref0(traversal) | ref0(relationExpr) | ref0(thisPropAccess)) &
+              token(char('[')) &
+              ref0(numberLiteral) &
+              token(char(']')))
+          .map((v) {
+        final target = v[0] as FaqlExpression;
+        final index = int.parse((v[2] as String));
+        return IndexAccessExpression(target, index);
+      });
+
+  Parser<dynamic> castOperation() =>
+      (token('as') & (token('string') | token('int') | token('bool')));
 
   // Tokens and helpers
   Parser<String> relationName() => token((string('children') |
           string('siblings') |
           string('ancestors') |
-          string('next_focus') |
-          string('prev_focus')))
+          string('descendants') |
+          string('parent') |
+          string('firstChild') |
+          string('lastChild') |
+          string('onlyChild')))
       .flatten();
 
   Parser<String> aggregatorName() =>
@@ -303,23 +361,22 @@ class FaqlGrammar extends GrammarDefinition {
           string('enabled') |
           string('hidden') |
           string('checked') |
-          string('toggled') |
-          string('merges_descendants') |
-          string('has_tap') |
-          string('has_long_press') |
-          string('is_empty') |
-          string('is_not_empty')))
+          string('toggled')))
       .flatten()
       .map((s) => BooleanStateExpression(s.toString().trim()));
 
   Parser<String> functionCallArgs() => (token(char('(')) &
-              (ref0(identifier) | ref0(stringLiteral)) &
+              (ref0(enumRef) | ref0(identifier) | ref0(stringLiteral)) &
               token(char(')')))
           .map((v) {
         final arg = v[1];
         if (arg is String) return arg;
         return arg.toString();
       });
+
+  Parser<String> enumRef() =>
+      (ref0(identifier) & token(char('.')) & ref0(identifier))
+          .map((v) => '${v[0]}.${v[2]}');
 
   Parser<FaqlExpression> literal() {
     final p1 = ref0(stringLiteral).map((s) => LiteralExpression(s.toString()));
@@ -331,19 +388,16 @@ class FaqlGrammar extends GrammarDefinition {
     return (p1 | p2 | p3 | p4).map((v) => v as FaqlExpression);
   }
 
-  // identifier[.is_resolved] shorthand for prop("identifier").is_resolved
+  // identifier shorthand for this.identifier
   Parser<FaqlExpression> identifierPropAccess() =>
       (ref0(identifier) & ref0(castOperation).optional()).map((v) {
         final name = v[0] as String;
         String? asType;
-        bool? isResolved;
         final cast = v[1];
         if (cast != null) {
-          if (cast is String && cast == '.is_resolved')
-            isResolved = true;
-          else if (cast is List && cast.length >= 2) asType = cast[1] as String;
+          if (cast is List && cast.length >= 2) asType = cast[1] as String;
         }
-        return PropExpression(name, asType: asType, isResolved: isResolved);
+        return PropExpression(name, asType: asType);
       });
 
   // Bare identifiers produce an Identifier AST node.

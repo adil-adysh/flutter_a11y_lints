@@ -4,23 +4,16 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
-import 'package:analyzer/dart/analysis/results.dart';
-import 'package:analyzer/file_system/physical_file_system.dart';
 import 'package:args/args.dart';
 import 'package:path/path.dart' as p;
 import 'package:glob/glob.dart'; // REQUIRED: Add to pubspec.yaml
 
 // Generated file containing built-in rules map
-import 'package:flutter_a11y_lints/src/pipeline/semantic_ir_builder.dart';
-import 'package:flutter_a11y_lints/src/semantics/known_semantics.dart';
-import 'package:flutter_a11y_lints/src/utils/flutter_utils.dart';
-import 'package:flutter_a11y_lints/src/utils/method_utils.dart';
 import 'package:flutter_a11y_lints/rules/faql_rule_catalog.dart';
 import 'package:flutter_a11y_lints/rules/faql_rule_runner.dart';
 import 'package:flutter_a11y_lints/src/query/faql4.dart';
-import 'package:flutter_a11y_lints/src/bridge/semantic_faql_adapter.dart'
-    show faqlAllowedIdentifiers;
+import 'package:flutter_a11y_lints/src/analyzer/flutter_a11y_analyzer.dart'
+    as analyzer_api;
 import 'package:flutter_a11y_lints/src/version.g.dart' show kPackageVersion;
 
 // Use generated package version that's derived from pubspec.yaml.
@@ -147,14 +140,14 @@ void main(List<String> args) async {
 
   if (verbose) print('Analyzing: $targetPath');
 
-  final analyzer = FlutterA11yAnalyzer(
+  final analyzer = analyzer_api.FlutterA11yAnalyzer(
     faqlRunner:
         activeRules.isNotEmpty ? FaqlRuleRunner(rules: activeRules) : null,
     verbose: verbose,
     excludes: excludes, // Pass excludes to analyzer
   );
 
-  List<A11yIssue> issues;
+  List<analyzer_api.A11yIssue> issues;
   try {
     issues = await analyzer.analyze(targetPath);
   } catch (e, st) {
@@ -175,125 +168,6 @@ void main(List<String> args) async {
   if (issues.any((i) => i.severity == 'error')) exit(1);
   if (issues.isNotEmpty && failOnWarnings) exit(1);
   exit(0);
-}
-
-// ----------------------------------------------------------------------
-// Core Analysis Engine
-// ----------------------------------------------------------------------
-
-class FlutterA11yAnalyzer {
-  final KnownSemanticsRepository _knownSemantics = KnownSemanticsRepository();
-  final FaqlRuleRunner? faqlRunner;
-  final bool verbose;
-  final List<Glob> excludes;
-
-  FlutterA11yAnalyzer({
-    this.faqlRunner,
-    this.verbose = false,
-    this.excludes = const [],
-  });
-
-  Future<List<A11yIssue>> analyze(String path) async {
-    final issues = <A11yIssue>[];
-    final resourceProvider = PhysicalResourceProvider.INSTANCE;
-
-    final targetFile = File(path);
-    final targetDir = Directory(path);
-
-    if (!targetFile.existsSync() && !targetDir.existsSync()) {
-      throw Exception('Path "$path" does not exist.');
-    }
-
-    final analysisRoot = targetFile.existsSync()
-        ? p.normalize(targetFile.parent.absolute.path)
-        : p.normalize(targetDir.absolute.path);
-
-    final collection = AnalysisContextCollection(
-      includedPaths: [analysisRoot],
-      resourceProvider: resourceProvider,
-    );
-
-    final filesToAnalyze = <String>[];
-    if (targetFile.existsSync()) {
-      filesToAnalyze.add(p.normalize(targetFile.absolute.path));
-    } else {
-      if (verbose) print('Scanning directory for Dart files...');
-      // Use BFS or recursive list to find files
-      await for (final entity in targetDir.list(recursive: true)) {
-        if (entity is File && entity.path.endsWith('.dart')) {
-          final absPath = p.normalize(entity.absolute.path);
-          final relPath = p.relative(absPath, from: analysisRoot);
-
-          // --- FIX: Apply Exclusions ---
-          if (excludes.any((glob) => glob.matches(relPath))) {
-            if (verbose) print('Skipping excluded file: $relPath');
-            continue;
-          }
-
-          filesToAnalyze.add(absPath);
-        }
-      }
-    }
-
-    for (final filePath in filesToAnalyze) {
-      // Safety check: ensure context exists
-      try {
-        final context = collection.contextFor(filePath);
-        final unitResult =
-            await context.currentSession.getResolvedUnit(filePath);
-
-        if (unitResult is! ResolvedUnitResult) continue;
-        if (!fileUsesFlutter(unitResult)) continue;
-
-        if (verbose)
-          print('Checking ${p.relative(filePath, from: analysisRoot)}...');
-        issues.addAll(_analyzeFile(unitResult));
-      } catch (e) {
-        if (verbose) stderr.writeln('Failed to analyze $filePath: $e');
-      }
-    }
-
-    return issues;
-  }
-
-  List<A11yIssue> _analyzeFile(ResolvedUnitResult unit) {
-    final issues = <A11yIssue>[];
-    final irBuilder =
-        SemanticIrBuilder(unit: unit, knownSemantics: _knownSemantics);
-    final buildMethods = findBuildMethods(unit.unit);
-
-    for (final method in buildMethods) {
-      final expression = extractBuildBodyExpression(method);
-      if (expression == null) continue;
-
-      final tree = irBuilder.buildForExpression(expression);
-      if (tree == null) continue;
-
-      // FAQL Rules
-      if (faqlRunner != null) {
-        final violations = faqlRunner!.run(tree);
-        for (final v in violations) {
-          issues.add(_mapViolation(unit, v.node.astNode.offset, v.spec.severity,
-              v.spec.ruleId, v.spec.message, v.spec.message));
-        }
-      }
-    }
-    return issues;
-  }
-
-  A11yIssue _mapViolation(ResolvedUnitResult unit, int offset, String severity,
-      String code, String msg, String correction) {
-    final loc = unit.lineInfo.getLocation(offset);
-    return A11yIssue(
-      file: unit.path,
-      line: loc.lineNumber,
-      column: loc.columnNumber,
-      severity: severity,
-      code: code,
-      message: msg,
-      correctionMessage: correction,
-    );
-  }
 }
 
 Future<void> _validateFaqlFile(String path) async {
@@ -335,7 +209,7 @@ select control, "All buttons must have a semantic label."
   print('Run with: a11y --rules-dir a11y_rules lib/');
 }
 
-void _reportIssues(List<A11yIssue> issues, String format) {
+void _reportIssues(List<analyzer_api.A11yIssue> issues, String format) {
   if (issues.isEmpty) {
     if (format == 'console') print('No issues found.');
     return;
@@ -386,22 +260,3 @@ void _printError(String msg) {
   stderr.writeln('\u001b[31mERROR: $msg\u001b[0m');
 }
 
-class A11yIssue {
-  final String file;
-  final int line;
-  final int column;
-  final String severity;
-  final String code;
-  final String message;
-  final String correctionMessage;
-
-  A11yIssue({
-    required this.file,
-    required this.line,
-    required this.column,
-    required this.severity,
-    required this.code,
-    required this.message,
-    required this.correctionMessage,
-  });
-}
