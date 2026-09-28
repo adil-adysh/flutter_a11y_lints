@@ -1,5 +1,6 @@
 import 'model/evidence.dart'
     show FactEvidence, FactProvenance, KnowledgeState, SourceSpan;
+import 'model/typed_node_facts.dart';
 
 export 'model/evidence.dart' show FactProvenance;
 
@@ -95,6 +96,7 @@ class AccessibilityFactStore {
   const AccessibilityFactStore._(
     this._nodes,
     this._facts,
+    this._typedFacts,
     this._children,
     this._parents,
     this._slots,
@@ -103,6 +105,7 @@ class AccessibilityFactStore {
   factory AccessibilityFactStore.empty() => const AccessibilityFactStore._(
         <int, FactNode>{},
         <int, List<SemanticFact>>{},
+        <int, TypedNodeFacts>{},
         <int, List<int>>{},
         <int, int>{},
         <int, Map<String, int>>{},
@@ -110,6 +113,7 @@ class AccessibilityFactStore {
 
   final Map<int, FactNode> _nodes;
   final Map<int, List<SemanticFact>> _facts;
+  final Map<int, TypedNodeFacts> _typedFacts;
   final Map<int, List<int>> _children;
   final Map<int, int> _parents;
   final Map<int, Map<String, int>> _slots;
@@ -125,6 +129,7 @@ class AccessibilityFactStore {
     return AccessibilityFactStore._(
       {..._nodes, node.id: node},
       _facts,
+      _typedFacts,
       _children,
       _parents,
       _slots,
@@ -144,8 +149,25 @@ class AccessibilityFactStore {
             ),
           );
     next[fact.nodeId] = [...(next[fact.nodeId] ?? const []), normalized];
-    return AccessibilityFactStore._(_nodes, next, _children, _parents, _slots);
+    return AccessibilityFactStore._(
+      _nodes,
+      next,
+      _typedFacts,
+      _children,
+      _parents,
+      _slots,
+    );
   }
+
+  AccessibilityFactStore addTyped(int nodeId, TypedNodeFacts facts) =>
+      AccessibilityFactStore._(
+        _nodes,
+        _facts,
+        {..._typedFacts, nodeId: facts},
+        _children,
+        _parents,
+        _slots,
+      );
 
   AccessibilityFactStore addParent(
       {required int parentId, required int childId}) {
@@ -158,6 +180,7 @@ class AccessibilityFactStore {
     return AccessibilityFactStore._(
       _nodes,
       _facts,
+      _typedFacts,
       next,
       {..._parents, childId: parentId},
       _slots,
@@ -171,7 +194,14 @@ class AccessibilityFactStore {
   }) {
     final next = <int, Map<String, int>>{..._slots};
     next[parentId] = {...(next[parentId] ?? const {}), name: childId};
-    return AccessibilityFactStore._(_nodes, _facts, _children, _parents, next);
+    return AccessibilityFactStore._(
+      _nodes,
+      _facts,
+      _typedFacts,
+      _children,
+      _parents,
+      next,
+    );
   }
 
   FactNode? slotOf(int parentId, String name,
@@ -282,4 +312,5 @@ class FactStoreView {
 
   Iterable<FactNode> get nodes => _store.nodes;
   List<SemanticFact> factsFor(int nodeId) => _store._factsFor(nodeId, mode);
+  TypedNodeFacts? typedFactsFor(int nodeId) => _store._typedFacts[nodeId];
 }

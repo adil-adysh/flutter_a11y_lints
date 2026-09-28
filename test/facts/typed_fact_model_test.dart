@@ -5,6 +5,7 @@ import 'package:flutter_a11y_lints/src/facts/model/exposure_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/composition_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/naming_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/state_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/typed_node_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
 import 'package:test/test.dart';
 
@@ -149,6 +150,30 @@ void main() {
       ArgumentEvidenceOrigin.defaultValue,
     );
     expect(configuration.excludeSemantics.state, KnownBooleanState.unknown);
+  });
+
+  test('typed node facts find an action without string fact names', () {
+    const action = SemanticActionFact(
+      kind: ActionKind.tap,
+      availability: ActionAvailability.present,
+      evidence: FactEvidence(
+        provenance: FactProvenance.exact,
+        knowledge: KnowledgeState.known,
+      ),
+    );
+    const facts = TypedNodeFacts(actions: [action]);
+
+    expect(facts.action(ActionKind.tap), same(action));
+    expect(facts.action(ActionKind.dismiss), isNull);
+  });
+
+  test('fact-store views retain typed node facts independently of projection',
+      () {
+    const typed = TypedNodeFacts();
+    final store = AccessibilityFactStore.empty().addTyped(19, typed);
+
+    expect(store.conservative.typedFactsFor(19), same(typed));
+    expect(store.expanded.typedFactsFor(19), same(typed));
   });
 
   test('legacy fact-store facts retain the complete typed evidence record', () {
