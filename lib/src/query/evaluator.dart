@@ -1,6 +1,7 @@
 import '../facts/fact_store.dart';
 import '../facts/model/composition_facts.dart';
 import '../facts/model/exposure_facts.dart';
+import '../facts/model/image_facts.dart';
 import '../facts/model/naming_facts.dart';
 import '../facts/model/role_action_facts.dart';
 import '../facts/model/state_facts.dart';
@@ -161,6 +162,15 @@ class Faql4Evaluator {
         composition?.descendantDisposition == DescendantDisposition.replaced,
       'blocksSemanticUserActions' =>
         composition?.blocksUserActions.state == KnownBooleanState.trueValue,
+      'hasImageContent' => facts.image?.content == ImageContentState.present,
+      'isKnownDecorativeAsset' => facts.image?.isKnownDecorativeAsset == true,
+      'isNetworkOrFileImage' =>
+        facts.image?.sourceKind == ImageSourceKind.network ||
+            facts.image?.sourceKind == ImageSourceKind.file,
+      'isDefinitelyExcludedFromSemantics' =>
+        facts.image?.isDefinitelyExcludedFromSemantics == true,
+      'isDefinitelyNotExcludedFromSemantics' =>
+        facts.image?.isDefinitelyNotExcludedFromSemantics == true,
       _ => null,
     };
   }

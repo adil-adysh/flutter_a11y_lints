@@ -90,9 +90,13 @@ class Faql4StandardLibrary {
           'filledButton',
           'outlinedButton',
           'floatingActionButton'
-        }.contains(values['controlKind']),
+        }.contains(
+          typed?.role?.control.name ?? values['controlKind'],
+        ),
       'ImageNode' =>
-        node.widgetType == 'Image' || node.widgetType == 'CircleAvatar',
+        typed?.image != null ||
+            node.widgetType == 'Image' ||
+            node.widgetType == 'CircleAvatar',
       'SemanticsNode' => node.widgetType == 'Semantics',
       'MergeSemanticsNode' => node.widgetType == 'MergeSemantics',
       'ListTileNode' => node.widgetType.endsWith('ListTile'),

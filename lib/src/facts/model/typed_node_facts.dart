@@ -1,5 +1,6 @@
 import 'composition_facts.dart';
 import 'exposure_facts.dart';
+import 'image_facts.dart';
 import 'naming_facts.dart';
 import 'role_action_facts.dart';
 import 'state_facts.dart';
@@ -15,6 +16,8 @@ class TypedNodeFacts {
     this.name,
     this.controlState,
     this.exposure,
+    this.role,
+    this.image,
     this.actions = const [],
   });
 
@@ -22,6 +25,8 @@ class TypedNodeFacts {
   final NameFact? name;
   final ControlStateFact? controlState;
   final ExposureFact? exposure;
+  final RoleFact? role;
+  final ImageFact? image;
   final List<SemanticActionFact> actions;
 
   SemanticActionFact? action(ActionKind kind) {

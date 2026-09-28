@@ -2,6 +2,7 @@ import 'package:flutter_a11y_lints/src/facts/model/evidence.dart';
 import 'package:flutter_a11y_lints/src/facts/model/structure_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/role_action_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/exposure_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/image_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/composition_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/naming_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/state_facts.dart';
@@ -106,6 +107,27 @@ void main() {
     expect(action.availability, ActionAvailability.dynamic);
     expect(exposure.visual, VisualVisibilityState.visuallyHidden);
     expect(exposure.semantic, SemanticInclusionState.included);
+  });
+
+  test('roles and image evidence have dedicated typed facts', () {
+    const evidence = FactEvidence(
+      provenance: FactProvenance.exact,
+      knowledge: KnowledgeState.known,
+    );
+    const role = RoleFact(
+      role: AccessibilityRole.image,
+      control: ControlClassification.none,
+      evidence: evidence,
+    );
+    const image = ImageFact(
+      content: ImageContentState.present,
+      sourceKind: ImageSourceKind.network,
+      isDefinitelyNotExcludedFromSemantics: true,
+      evidence: evidence,
+    );
+
+    expect(role.role, AccessibilityRole.image);
+    expect(image.sourceKind, ImageSourceKind.network);
   });
 
   test('composition, names, and control states retain unknown explicitly', () {

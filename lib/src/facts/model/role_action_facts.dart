@@ -1,5 +1,46 @@
 import 'evidence.dart';
 
+enum AccessibilityRole {
+  unknown,
+  button,
+  image,
+  checkbox,
+  switchRole,
+  slider,
+  textField,
+  staticText,
+  heading,
+  group,
+}
+
+enum ControlClassification {
+  unknown,
+  none,
+  elevatedButton,
+  textButton,
+  filledButton,
+  outlinedButton,
+  iconButton,
+  floatingActionButton,
+  listTile,
+  checkbox,
+  switchControl,
+  slider,
+  textField,
+}
+
+class RoleFact {
+  const RoleFact({
+    required this.role,
+    required this.control,
+    required this.evidence,
+  });
+
+  final AccessibilityRole role;
+  final ControlClassification control;
+  final FactEvidence evidence;
+}
+
 enum ActionKind {
   tap,
   longPress,
