@@ -15,34 +15,17 @@ class Faql4StandardLibrary {
     'ListTileNode'
   };
   static const booleanMembers = {
-    'isDefinitelyEnabled': 'enabledState',
-    'isDefinitelyFocusable': 'focusableState',
-    'isDefinitelyExposed': 'semanticExposureState',
-    'isDefinitelyIncludedInSemantics': 'semanticInclusionState',
-    'isDefinitelyUnlabeled': 'labelState',
-    'isDefinitelyEffectivelyUnlabeled': 'effectiveNameState',
-    'hasAccessibleLabel': 'labelState',
-    'hasStaticLabel': 'labelState',
-    'hasTapAction': 'tap',
-    'hasLongPressAction': 'longPress',
-    'mergesDescendants': 'mergesDescendants',
-    'excludesDescendants': 'excludesDescendants',
-    'hasImageContent': 'hasImageContent',
-    'isKnownDecorativeAsset': 'isDecorativeAssetName',
-    'isNetworkOrFileImage': 'imageSourceKind',
-    'isDefinitelyExcludedFromSemantics': 'excludesDescendants',
-    'isDefinitelyNotExcludedFromSemantics':
-        'isDefinitelyNotExcludedFromSemantics',
-    'hasExplicitSemanticsLabel': 'hasExplicitSemanticsLabel',
-    'hasStaticExplicitSemanticsLabel': 'hasExplicitSemanticsLabel',
-    'hasExplicitSemanticsButtonRole': 'hasExplicitSemanticsButtonRole',
-    'isDefinitelyExcludingDescendants': 'isDefinitelyExcludingDescendants',
-    'isDefinitelyNotExcludingDescendants':
-        'isDefinitelyNotExcludingDescendants',
-    'createsSemanticContainer': 'createsSemanticContainer',
-    'requiresExplicitChildNodes': 'requiresExplicitChildNodes',
-    'replacesDescendantSemantics': 'replacesDescendantSemantics',
-    'blocksSemanticUserActions': 'blocksSemanticUserActions',
+    'isDefinitelyEnabled', 'isDefinitelyFocusable', 'isDefinitelyExposed',
+    'isDefinitelyIncludedInSemantics', 'isDefinitelyUnlabeled',
+    'isDefinitelyEffectivelyUnlabeled', 'hasAccessibleLabel', 'hasStaticLabel',
+    'hasTapAction', 'hasLongPressAction', 'mergesDescendants',
+    'excludesDescendants', 'hasImageContent', 'isKnownDecorativeAsset',
+    'isNetworkOrFileImage', 'isDefinitelyExcludedFromSemantics',
+    'isDefinitelyNotExcludedFromSemantics', 'hasExplicitSemanticsLabel',
+    'hasStaticExplicitSemanticsLabel', 'hasExplicitSemanticsButtonRole',
+    'isDefinitelyExcludingDescendants', 'isDefinitelyNotExcludingDescendants',
+    'createsSemanticContainer', 'requiresExplicitChildNodes',
+    'replacesDescendantSemantics', 'blocksSemanticUserActions',
   };
   static const relationshipMembers = {
     'getParent',
@@ -56,9 +39,9 @@ class Faql4StandardLibrary {
   /// No Boolean member is total over unresolved widgets and dynamic state.
   /// Conservative rules must use positive definite-state predicates rather
   /// than deriving absence by negation.
-  static bool isPartial(String member) => booleanMembers.containsKey(member);
+  static bool isPartial(String member) => booleanMembers.contains(member);
   static FaqlType? memberType(String member) =>
-      booleanMembers.containsKey(member)
+      booleanMembers.contains(member)
           ? FaqlType.boolean
           : relationshipMembers.contains(member)
               ? FaqlType.node
@@ -71,28 +54,21 @@ class Faql4StandardLibrary {
           : arguments.isEmpty;
   static bool matchesView(String view, FactNode node, FactStoreView facts) {
     final typed = facts.typedFactsFor(node.id);
-    final values = {
-      for (final fact in facts.factsFor(node.id)) fact.name: fact.value
-    };
     return switch (view) {
       'SemanticNode' => true,
       'InteractiveControl' =>
-        typed != null
-            ? typed.action(ActionKind.tap)?.availability ==
-                    ActionAvailability.present ||
-                typed.action(ActionKind.longPress)?.availability ==
-                    ActionAvailability.present
-            : values['tap'] == true || values['longPress'] == true,
+        typed?.action(ActionKind.tap)?.availability ==
+                ActionAvailability.present ||
+            typed?.action(ActionKind.longPress)?.availability ==
+                ActionAvailability.present,
       'MaterialButtonControl' => const {
-          'iconButton',
-          'elevatedButton',
-          'textButton',
-          'filledButton',
-          'outlinedButton',
-          'floatingActionButton'
-        }.contains(
-          typed?.role?.control.name ?? values['controlKind'],
-        ),
+          ControlClassification.iconButton,
+          ControlClassification.elevatedButton,
+          ControlClassification.textButton,
+          ControlClassification.filledButton,
+          ControlClassification.outlinedButton,
+          ControlClassification.floatingActionButton,
+        }.contains(typed?.role?.control),
       'ImageNode' =>
         typed?.image != null ||
             node.widgetType == 'Image' ||

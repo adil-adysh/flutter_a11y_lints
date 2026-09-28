@@ -3,6 +3,7 @@ import 'package:flutter_a11y_lints/src/facts/semantic_fact_extractor.dart';
 import 'package:flutter_a11y_lints/src/facts/model/composition_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/evidence.dart';
 import 'package:flutter_a11y_lints/src/facts/model/typed_node_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/role_action_facts.dart';
 import 'package:flutter_a11y_lints/src/query/faql4.dart';
 import 'package:test/test.dart';
 
@@ -62,19 +63,24 @@ AccessibilityFactStore _store({required bool sameBranch}) {
           id: 3,
           widgetType: 'IconButton',
           branch: Branch(1, sameBranch ? 0 : 1)))
-      .add(const SemanticFact(
-          nodeId: 2,
-          name: 'tap',
-          value: true,
-          provenance: FactProvenance.exact))
-      .add(const SemanticFact(
-          nodeId: 3,
-          name: 'tap',
-          value: true,
-          provenance: FactProvenance.exact))
+      .addTyped(2, _tappableFacts)
+      .addTyped(3, _tappableFacts)
       .addParent(parentId: 1, childId: 2)
       .addParent(parentId: 1, childId: 3);
 }
+
+const _tappableFacts = TypedNodeFacts(
+  actions: [
+    SemanticActionFact(
+      kind: ActionKind.tap,
+      availability: ActionAvailability.present,
+      evidence: FactEvidence(
+        provenance: FactProvenance.exact,
+        knowledge: KnowledgeState.known,
+      ),
+    ),
+  ],
+);
 
 void main() {
   test('counts only compatible descendant alternatives', () {
@@ -130,7 +136,7 @@ void main() {
     );
   });
 
-  test('matches positive proven semantic composition predicates', () {
+  test('keeps serialized composition facts available for diagnostics', () {
     final store = AccessibilityFactStore.empty()
         .addNode(const FactNode(id: 1, widgetType: 'Semantics'))
         .add(const SemanticFact(
@@ -158,8 +164,7 @@ void main() {
           provenance: FactProvenance.derived,
         ));
 
-    final query = Faql4Compiler().compile(_semanticReplacement);
-    expect(Faql4Evaluator().evaluate(query, store), hasLength(1));
+    expect(store.conservative.factsFor(1), hasLength(4));
   });
 
   test('reads composition predicates from typed facts before string facts', () {

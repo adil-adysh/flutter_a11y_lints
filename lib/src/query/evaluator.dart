@@ -104,29 +104,7 @@ class Faql4Evaluator {
       return (relations as Iterable<Object?>).whereType<int>();
     }
     final typed = facts.typedFactsFor(id);
-    if (typed != null) {
-      final typedValue = _typedMember(v.member, typed);
-      if (typedValue != null) return typedValue;
-    }
-    Object? fact;
-    for (final item in facts.factsFor(id)) {
-      if (item.name == Faql4StandardLibrary.booleanMembers[v.member]) {
-        fact = item.value;
-        break;
-      }
-    }
-    return switch (v.member) {
-      'isDefinitelyUnlabeled' => fact == 'absent',
-      'isDefinitelyEffectivelyUnlabeled' => fact == 'absent',
-      'isDefinitelyEnabled' => fact == 'enabled',
-      'isDefinitelyFocusable' => fact == 'focusable',
-      'isDefinitelyExposed' => fact == 'exposed',
-      'isDefinitelyIncludedInSemantics' => fact == 'included',
-      'hasAccessibleLabel' => fact == 'static' || fact == 'dynamic',
-      'hasStaticLabel' => fact == 'static',
-      'isNetworkOrFileImage' => fact == 'network' || fact == 'file',
-      _ => fact == true
-    };
+    return typed == null ? false : _typedMember(v.member, typed) ?? false;
   }
 
   Object? _typedMember(String member, TypedNodeFacts facts) {

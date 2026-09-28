@@ -1,4 +1,10 @@
 import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
+import 'package:flutter_a11y_lints/src/facts/model/evidence.dart';
+import 'package:flutter_a11y_lints/src/facts/model/exposure_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/naming_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/role_action_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/state_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/typed_node_facts.dart';
 import 'package:flutter_a11y_lints/src/query/faql4.dart';
 import 'package:test/test.dart';
 
@@ -17,26 +23,44 @@ select control, "Interactive control must have an accessible label."
       final query = Faql4Compiler().compile(source);
       final facts = AccessibilityFactStore.empty()
           .addNode(const FactNode(id: 1, widgetType: 'IconButton'))
-          .add(const SemanticFact(
-              nodeId: 1,
-              name: 'tap',
-              value: true,
-              provenance: FactProvenance.exact))
-          .add(const SemanticFact(
-              nodeId: 1,
-              name: 'enabledState',
-              value: 'enabled',
-              provenance: FactProvenance.exact))
-          .add(const SemanticFact(
-              nodeId: 1,
-              name: 'semanticExposureState',
-              value: 'exposed',
-              provenance: FactProvenance.exact))
-          .add(const SemanticFact(
-              nodeId: 1,
-              name: 'labelState',
-              value: 'absent',
-              provenance: FactProvenance.exact));
+          .addTyped(
+            1,
+            const TypedNodeFacts(
+              actions: [
+                SemanticActionFact(
+                  kind: ActionKind.tap,
+                  availability: ActionAvailability.present,
+                  evidence: FactEvidence(
+                    provenance: FactProvenance.exact,
+                    knowledge: KnowledgeState.known,
+                  ),
+                ),
+              ],
+              controlState: ControlStateFact(
+                enabled: EnabledState.enabled,
+                evidence: FactEvidence(
+                  provenance: FactProvenance.exact,
+                  knowledge: KnowledgeState.known,
+                ),
+              ),
+              exposure: ExposureFact(
+                visual: VisualVisibilityState.visible,
+                semantic: SemanticInclusionState.included,
+                focus: AccessibilityFocusExposureState.exposed,
+                evidence: FactEvidence(
+                  provenance: FactProvenance.exact,
+                  knowledge: KnowledgeState.known,
+                ),
+              ),
+              name: NameFact(
+                state: NameState.absent,
+                evidence: FactEvidence(
+                  provenance: FactProvenance.exact,
+                  knowledge: KnowledgeState.known,
+                ),
+              ),
+            ),
+          );
 
       expect(Faql4Evaluator().evaluate(query, facts), hasLength(1));
     });
