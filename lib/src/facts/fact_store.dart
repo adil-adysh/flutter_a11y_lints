@@ -1,5 +1,6 @@
-/// Provenance is deliberately separate from a query's confidence policy.
-enum FactProvenance { exact, derived, heuristic }
+import 'model/evidence.dart' show FactProvenance;
+
+export 'model/evidence.dart' show FactProvenance;
 
 enum FactMode { conservative, expanded }
 
