@@ -133,6 +133,18 @@ Semantics(link: true, child: IconButton(icon: Icon('open'), onPressed: () {}))
       expect(tree.root.hasTap, isTrue);
     });
 
+    test('GestureDetector keeps a non-literal callback dynamic', () async {
+      final tree = await buildTestSemanticTree(
+        'GestureDetector(onTap: handler, child: Text(\'Activate\'))',
+        extraDeclarations: 'void Function()? handler;',
+      );
+
+      expect(
+        tree.root.actionAvailability(SemanticActionKind.tap),
+        SemanticActionAvailability.dynamic,
+      );
+    });
+
     test('Semantics replacement hides descendants without excluding wrapper',
         () async {
       final tree = await buildTestSemanticTree('''

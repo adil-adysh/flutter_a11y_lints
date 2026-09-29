@@ -193,11 +193,22 @@ class SemanticBuilder {
       return base.copyWith(
         isHeuristic: true,
         factProvenance: FactProvenance.heuristic,
+        actions: const {
+          SemanticActionKind.tap: SemanticActionAvailability.unknown,
+        },
       );
     }
     final tap = widget.props['onTap'];
+    final tapAvailability = exclusion
+        ? SemanticActionAvailability.absent
+        : tap == null || tap is NullLiteral
+            ? SemanticActionAvailability.absent
+            : tap is FunctionExpression
+                ? SemanticActionAvailability.present
+                : SemanticActionAvailability.dynamic;
     return base.copyWith(
       hasTap: !exclusion && tap != null && tap is! NullLiteral,
+      actions: {SemanticActionKind.tap: tapAvailability},
     );
   }
 
