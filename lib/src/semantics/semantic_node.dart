@@ -85,6 +85,12 @@ enum SemanticExposureState { unknown, exposed, hidden }
 /// are included even though they are not individual focus targets.
 enum SemanticInclusionState { unknown, included, excluded }
 
+/// Source-level semantic actions before fact extraction.
+enum SemanticActionKind { tap, longPress, increase, decrease, dismiss }
+
+/// Keeps present, absent, dynamic, and unresolved action evidence distinct.
+enum SemanticActionAvailability { unknown, present, absent, dynamic }
+
 /// Simplified semantic IR node used by rules and the tree annotator.
 ///
 /// `SemanticNode` intentionally stores both raw discovery data (e.g. the
@@ -136,6 +142,7 @@ class SemanticNode {
     this.isInMutuallyExclusiveGroup = false,
     this.hasScroll = false,
     this.hasDismiss = false,
+    Map<SemanticActionKind, SemanticActionAvailability>? actions,
     Map<String, Expression>? rawAttributes,
     this.isHeuristic = false,
     this.factProvenance = FactProvenance.exact,
@@ -171,6 +178,7 @@ class SemanticNode {
                 ? SemanticInclusionState.unknown
                 : SemanticInclusionState.included),
         slots = slots ?? const {},
+        actions = actions ?? const {},
         _rawAttributes = rawAttributes ?? const {};
 
   final String widgetType;
@@ -190,6 +198,32 @@ class SemanticNode {
   final bool hasDecrease;
   final bool isToggled;
   final bool isChecked;
+
+  /// Typed action evidence. Scalar action booleans remain temporary
+  /// compatibility inputs while builders are migrated.
+  final Map<SemanticActionKind, SemanticActionAvailability> actions;
+
+  SemanticActionAvailability actionAvailability(SemanticActionKind kind) {
+    final explicit = actions[kind];
+    if (explicit != null) return explicit;
+    return switch (kind) {
+      SemanticActionKind.tap => hasTap
+          ? SemanticActionAvailability.present
+          : SemanticActionAvailability.absent,
+      SemanticActionKind.longPress => hasLongPress
+          ? SemanticActionAvailability.present
+          : SemanticActionAvailability.absent,
+      SemanticActionKind.increase => hasIncrease
+          ? SemanticActionAvailability.present
+          : SemanticActionAvailability.absent,
+      SemanticActionKind.decrease => hasDecrease
+          ? SemanticActionAvailability.present
+          : SemanticActionAvailability.absent,
+      SemanticActionKind.dismiss => hasDismiss
+          ? SemanticActionAvailability.present
+          : SemanticActionAvailability.absent,
+    };
+  }
 
   /// Deprecated compatibility views. New code must use typed composition.
   bool get mergesDescendants => mergeState == SemanticMergeState.merged;
@@ -345,6 +379,7 @@ class SemanticNode {
     bool? isInMutuallyExclusiveGroup,
     bool? hasScroll,
     bool? hasDismiss,
+    Map<SemanticActionKind, SemanticActionAvailability>? actions,
     Map<String, Expression>? rawAttributes,
     bool? isHeuristic,
     FactProvenance? factProvenance,
@@ -400,6 +435,7 @@ class SemanticNode {
           isInMutuallyExclusiveGroup ?? this.isInMutuallyExclusiveGroup,
       hasScroll: hasScroll ?? this.hasScroll,
       hasDismiss: hasDismiss ?? this.hasDismiss,
+      actions: actions ?? this.actions,
       rawAttributes: rawAttributes ?? _rawAttributes,
       isHeuristic: isHeuristic ?? this.isHeuristic,
       factProvenance: factProvenance ?? this.factProvenance,

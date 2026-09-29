@@ -12,11 +12,21 @@ import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
 // claim. `provenAccessibilityNodes` proves exposure only.
 
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
+import 'package:flutter_a11y_lints/src/semantics/semantic_node.dart';
 import 'package:test/test.dart';
 
 import '../rules/test_semantic_utils.dart';
 
 void main() {
+  test('projects legacy action inputs into typed action availability', () {
+    final node = makeSemanticNode(hasTap: true, hasLongPress: false);
+
+    expect(node.actionAvailability(SemanticActionKind.tap),
+        SemanticActionAvailability.present);
+    expect(node.actionAvailability(SemanticActionKind.longPress),
+        SemanticActionAvailability.absent);
+  });
+
   group('SemanticTree.fromRoots', () {
     test('retains every conditional root alternative', () {
       final firstAlternative = makeSemanticNode(
