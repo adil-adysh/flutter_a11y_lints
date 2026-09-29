@@ -157,6 +157,19 @@ Semantics(link: true, child: IconButton(icon: Icon('open'), onPressed: () {}))
       );
     });
 
+    test('Semantics preserves dynamic action evidence from a child', () async {
+      final tree = await buildTestSemanticTree(
+        'Semantics(child: GestureDetector(onTap: handler, '
+        'child: Text(\'Activate\')))',
+        extraDeclarations: 'void Function()? handler;',
+      );
+
+      expect(
+        tree.root.actionAvailability(SemanticActionKind.tap),
+        SemanticActionAvailability.dynamic,
+      );
+    });
+
     test('Semantics replacement hides descendants without excluding wrapper',
         () async {
       final tree = await buildTestSemanticTree('''

@@ -707,7 +707,14 @@ class SemanticBuilder {
       isInMutuallyExclusiveGroup: isInMutuallyExclusiveGroup,
       hasScroll: hasScroll,
       hasDismiss: hasDismiss,
-      actions: actionOverrides ?? base?.actions,
+      // A wrapper may override only a subset of a contributing child's
+      // actions. Preserve the child's typed evidence for every other action;
+      // otherwise an empty wrapper map falls back to legacy booleans and can
+      // turn dynamic evidence into a false certainty.
+      actions: {
+        ...?base?.actions,
+        ...?actionOverrides,
+      },
       rawAttributes: widget.props,
       isHeuristic: base?.isHeuristic ?? false,
       factProvenance: base?.isHeuristic == true
