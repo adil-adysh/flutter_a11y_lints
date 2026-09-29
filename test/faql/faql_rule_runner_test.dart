@@ -45,6 +45,25 @@ select control, "Control needs a label."
     expect(runner.run(dynamic), isEmpty);
   });
 
+  test('A01 ignores controls with a dynamic enabled callback', () async {
+    const source = '''
+@id example/a01-dynamic-enabled
+@rule-id a01
+@severity warning
+@mode conservative
+from InteractiveControl control
+where control.isDefinitelyExposed() and control.isDefinitelyEnabled() and control.isDefinitelyUnlabeled()
+select control, "Control needs a label."
+''';
+    final tree = await buildTestSemanticTree(
+      'IconButton(icon: const Icon(\'save\'), onPressed: handler)',
+      extraDeclarations: 'void Function()? handler;',
+    );
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(tree), isEmpty);
+  });
+
   test('A01 ignores an interactable child under dynamic exclusion', () async {
     const source = '''
 @id example/a01-dynamic-exclusion

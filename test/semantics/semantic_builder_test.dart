@@ -145,6 +145,16 @@ Semantics(link: true, child: IconButton(icon: Icon('open'), onPressed: () {}))
       );
     });
 
+    test('keeps a known control with a dynamic callback enabled-state unknown',
+        () async {
+      final tree = await buildTestSemanticTree(
+        'IconButton(icon: const Icon(\'save\'), onPressed: handler)',
+        extraDeclarations: 'void Function()? handler;',
+      );
+
+      expect(tree.root.enabledState, SemanticEnabledState.unknown);
+    });
+
     test('Semantics keeps a non-literal tap callback dynamic', () async {
       final tree = await buildTestSemanticTree(
         'Semantics(onTap: handler, child: Text(\'Activate\'))',
@@ -155,6 +165,15 @@ Semantics(link: true, child: IconButton(icon: Icon('open'), onPressed: () {}))
         tree.root.actionAvailability(SemanticActionKind.tap),
         SemanticActionAvailability.dynamic,
       );
+    });
+
+    test('Semantics keeps a dynamic enabled argument unknown', () async {
+      final tree = await buildTestSemanticTree(
+        'Semantics(enabled: enabled, child: Text(\'Activate\'))',
+        extraDeclarations: 'bool enabled = true;',
+      );
+
+      expect(tree.root.enabledState, SemanticEnabledState.unknown);
     });
 
     test('Semantics preserves dynamic action evidence from a child', () async {

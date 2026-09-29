@@ -315,6 +315,14 @@ class SemanticBuilder {
       controlKind: known.controlKind,
       isFocusable: known.isFocusable,
       isEnabled: _computeIsEnabled(widget, known),
+      enabledState: isHeuristic
+          ? SemanticEnabledState.unknown
+          : _computeEnabledState(widget, known),
+      focusableState: isHeuristic
+          ? SemanticFocusableState.unknown
+          : known.isFocusable
+              ? SemanticFocusableState.focusable
+              : SemanticFocusableState.notFocusable,
       hasTap: known.hasTap,
       hasLongPress: known.hasLongPress,
       hasIncrease: known.hasIncrease,
@@ -407,6 +415,8 @@ class SemanticBuilder {
       valueOverride: value,
       isFocusableOverride: ctx.evalBool(widget.props['focusable']),
       isEnabledOverride: ctx.evalBool(widget.props['enabled']),
+      focusableStateOverride: _semanticsFocusableState(widget, ctx),
+      enabledStateOverride: _semanticsEnabledState(widget, ctx),
       isToggledOverride: ctx.evalBool(widget.props['toggled']),
       isCheckedOverride: ctx.evalBool(widget.props['checked']),
       actionOverrides: _explicitActionOverrides(widget),
@@ -593,6 +603,8 @@ class SemanticBuilder {
     int? semanticIndex,
     bool? isFocusableOverride,
     bool? isEnabledOverride,
+    SemanticFocusableState? focusableStateOverride,
+    SemanticEnabledState? enabledStateOverride,
     bool? hasTapOverride,
     bool? hasLongPressOverride,
     bool? hasIncreaseOverride,
@@ -670,6 +682,16 @@ class SemanticBuilder {
       controlKind: controlKind,
       isFocusable: isFocusable,
       isEnabled: isEnabled,
+      focusableState: focusableStateOverride ??
+          base?.focusableState ??
+          (isFocusable
+              ? SemanticFocusableState.focusable
+              : SemanticFocusableState.notFocusable),
+      enabledState: enabledStateOverride ??
+          base?.enabledState ??
+          (isEnabled
+              ? SemanticEnabledState.enabled
+              : SemanticEnabledState.disabled),
       hasTap: hasTap,
       hasLongPress: hasLongPress,
       hasIncrease: hasIncrease,
@@ -862,6 +884,53 @@ class SemanticBuilder {
       }
     }
     return enabled;
+  }
+
+  /// Computes an exact control state only when the source fixes the callback
+  /// outcome. A non-literal callback can evaluate to null at runtime, so it
+  /// must remain unknown for conservative FAQL rules.
+  SemanticEnabledState _computeEnabledState(
+    WidgetNode widget,
+    KnownSemantics known,
+  ) {
+    final callbacks = [
+      widget.props['onPressed'],
+      widget.props['onTap'],
+      widget.props['onChanged'],
+    ];
+    for (final callback in callbacks) {
+      if (callback == null) continue;
+      if (callback is NullLiteral) return SemanticEnabledState.disabled;
+      if (callback is FunctionExpression) return SemanticEnabledState.enabled;
+      return SemanticEnabledState.unknown;
+    }
+    return known.isEnabledByDefault
+        ? SemanticEnabledState.enabled
+        : SemanticEnabledState.disabled;
+  }
+
+  SemanticEnabledState? _semanticsEnabledState(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
+    if (!widget.props.containsKey('enabled')) return null;
+    return switch (ctx.evalBool(widget.props['enabled'])) {
+      true => SemanticEnabledState.enabled,
+      false => SemanticEnabledState.disabled,
+      null => SemanticEnabledState.unknown,
+    };
+  }
+
+  SemanticFocusableState? _semanticsFocusableState(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
+    if (!widget.props.containsKey('focusable')) return null;
+    return switch (ctx.evalBool(widget.props['focusable'])) {
+      true => SemanticFocusableState.focusable,
+      false => SemanticFocusableState.notFocusable,
+      null => SemanticFocusableState.unknown,
+    };
   }
 
   /// Generic attribute resolution using the declarative schema.

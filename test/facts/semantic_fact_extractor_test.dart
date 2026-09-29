@@ -201,6 +201,21 @@ Semantics(
         typed_exposure.SemanticInclusionState.included,
       );
     });
+
+    test('keeps dynamic known-control enabled evidence unknown', () async {
+      final tree = await buildTestSemanticTree(
+        'IconButton(icon: const Icon(\'save\'), onPressed: handler)',
+        extraDeclarations: 'void Function()? handler;',
+      );
+      final facts = SemanticFactExtractor().extract(tree);
+
+      expect(facts.enabledStateFor(tree.root.id!), EnabledState.unknown);
+      expect(
+        facts.controlStateFactFor(tree.root.id!)!.enabled,
+        typed_states.EnabledState.unknown,
+      );
+    });
+
     test('distinguishes proven absence from dynamic and unknown labels', () {
       final absent = makeSemanticNode(labelGuarantee: LabelGuarantee.none);
       final dynamic = makeSemanticNode(
