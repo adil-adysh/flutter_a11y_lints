@@ -67,6 +67,34 @@ void main() {
       expect(names, contains('semanticsLabelArgumentState'));
     });
 
+    test(
+        'classifies whether a Semantics wrapper adds configuration beyond role',
+        () async {
+      final roleOnly = await buildTestSemanticTree(
+        "Semantics(button: true, child: IconButton(icon: Icon('save'), onPressed: () {}))",
+      );
+      final labeled = await buildTestSemanticTree(
+        "Semantics(button: true, label: 'Save draft', child: IconButton(icon: Icon('save'), onPressed: () {}))",
+      );
+      final dynamic = await buildTestSemanticTree(
+        'Semantics(button: true, label: semanticLabel, child: IconButton(icon: Icon("save"), onPressed: () {}))',
+        extraDeclarations: "String semanticLabel = 'Save draft';",
+      );
+
+      SemanticsConfigurationState stateFor(SemanticTree tree) =>
+          SemanticFactExtractor()
+              .extract(tree)
+              .compositionFactFor(tree.root.id!)!
+              .configuration;
+
+      expect(
+        stateFor(roleOnly),
+        SemanticsConfigurationState.noMeaningfulArguments,
+      );
+      expect(stateFor(labeled), SemanticsConfigurationState.meaningful);
+      expect(stateFor(dynamic), SemanticsConfigurationState.unknown);
+    });
+
     test('projects raw Semantics configuration with documented defaults',
         () async {
       final tree = await buildTestSemanticTree('''

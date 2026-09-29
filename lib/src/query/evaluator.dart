@@ -166,6 +166,10 @@ class Faql4Evaluator {
         composition?.descendantDisposition == DescendantDisposition.replaced,
       'blocksSemanticUserActions' =>
         composition?.blocksUserActions.state == KnownBooleanState.trueValue,
+      'hasNoMeaningfulSemanticsConfiguration' => composition?.configuration ==
+          SemanticsConfigurationState.noMeaningfulArguments,
+      'hasExplicitSemanticsButtonRole' =>
+        composition?.explicitButtonRole.state == KnownBooleanState.trueValue,
       'hasImageContent' => facts.image?.content == ImageContentState.present,
       'isKnownDecorativeAsset' => facts.image?.isKnownDecorativeAsset == true,
       'isNetworkOrFileImage' =>

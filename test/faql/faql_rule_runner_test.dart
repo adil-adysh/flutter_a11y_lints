@@ -264,4 +264,24 @@ ExcludeSemantics(
     expect(runner.run(excluded), isEmpty);
     expect(runner.run(dynamic), isEmpty);
   });
+
+  test('A05 reports a role-only Semantics wrapper around a button', () async {
+    final violation = await buildTestSemanticTree(
+      "Semantics(button: true, child: IconButton(icon: Icon('save'), onPressed: () {}))",
+    );
+    final labeled = await buildTestSemanticTree(
+      "Semantics(button: true, label: 'Save draft', child: IconButton(icon: Icon('save'), onPressed: () {}))",
+    );
+    final dynamic = await buildTestSemanticTree(
+      'Semantics(button: true, label: semanticLabel, child: IconButton(icon: Icon("save"), onPressed: () {}))',
+      extraDeclarations: "String semanticLabel = 'Save draft';",
+    );
+    final source = File('lib/rules/core/a05_no_redundant_button_semantics.faql')
+        .readAsStringSync();
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(violation), hasLength(1));
+    expect(runner.run(labeled), isEmpty);
+    expect(runner.run(dynamic), isEmpty);
+  });
 }

@@ -46,6 +46,7 @@ class Faql4StandardLibrary {
     'requiresExplicitChildNodes',
     'replacesDescendantSemantics',
     'blocksSemanticUserActions',
+    'hasNoMeaningfulSemanticsConfiguration',
   };
   static const relationshipMembers = {
     'getParent',

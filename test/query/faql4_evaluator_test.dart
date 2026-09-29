@@ -96,6 +96,16 @@ where node.hasStaticNameFrom("tooltip")
 select node, "Tooltip name"
 ''';
 
+const _roleOnlySemantics = '''
+@id example/role-only-semantics
+@rule-id role_only_semantics
+@severity warning
+@mode expanded
+from SemanticsNode wrapper
+where wrapper.hasNoMeaningfulSemanticsConfiguration()
+select wrapper, "Role-only wrapper"
+''';
+
 AccessibilityFactStore _store({required bool sameBranch}) {
   return AccessibilityFactStore.empty()
       .addNode(const FactNode(id: 1, widgetType: 'MergeSemantics'))
@@ -364,6 +374,46 @@ void main() {
     expect(
       Faql4Evaluator()
           .evaluate(Faql4Compiler().compile(_staticNameSource), store)
+          .map((hit) => hit.nodeId),
+      [1],
+    );
+  });
+
+  test('reads role-only wrapper configuration from typed composition facts',
+      () {
+    const evidence = FactEvidence(
+      provenance: FactProvenance.exact,
+      knowledge: KnowledgeState.known,
+    );
+    final store = AccessibilityFactStore.empty()
+        .addNode(const FactNode(id: 1, widgetType: 'Semantics'))
+        .addNode(const FactNode(id: 2, widgetType: 'Semantics'))
+        .addTyped(
+          1,
+          const TypedNodeFacts(
+            composition: CompositionFact(
+              nodeCreation: NodeCreationState.noNewNode,
+              descendantDisposition: DescendantDisposition.preserved,
+              configuration: SemanticsConfigurationState.noMeaningfulArguments,
+              evidence: evidence,
+            ),
+          ),
+        )
+        .addTyped(
+          2,
+          const TypedNodeFacts(
+            composition: CompositionFact(
+              nodeCreation: NodeCreationState.noNewNode,
+              descendantDisposition: DescendantDisposition.preserved,
+              configuration: SemanticsConfigurationState.meaningful,
+              evidence: evidence,
+            ),
+          ),
+        );
+
+    expect(
+      Faql4Evaluator()
+          .evaluate(Faql4Compiler().compile(_roleOnlySemantics), store)
           .map((hit) => hit.nodeId),
       [1],
     );

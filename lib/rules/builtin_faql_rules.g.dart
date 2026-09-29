@@ -51,6 +51,16 @@ where image.isDefinitelyIncludedInSemantics() and
   exists(ListTileNode tile | image = tile.getSlot("leading"))
 select image, "Informative ListTile leading images must provide semantic labels."
 '''), // flutter-a11y/a04/list-tile-image-labeled
+  Faql4Compiler().compile(r'''@id flutter-a11y/a05/redundant-button-semantics
+@rule-id a05_no_redundant_button_semantics
+@severity warning
+@mode expanded
+from SemanticsNode wrapper
+where wrapper.hasExplicitSemanticsButtonRole() and
+  wrapper.hasNoMeaningfulSemanticsConfiguration() and
+  exists(MaterialButtonControl button | button = wrapper.getAChild())
+select wrapper, "Remove the role-only Semantics wrapper around the button."
+'''), // flutter-a11y/a05/redundant-button-semantics
   Faql4Compiler().compile(r'''@id flutter-a11y/a09/numeric-names-require-units
 @rule-id a09_numeric_values_require_units
 @severity warning

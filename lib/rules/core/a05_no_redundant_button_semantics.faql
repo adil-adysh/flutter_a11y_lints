@@ -1,0 +1,9 @@
+@id flutter-a11y/a05/redundant-button-semantics
+@rule-id a05_no_redundant_button_semantics
+@severity warning
+@mode expanded
+from SemanticsNode wrapper
+where wrapper.hasExplicitSemanticsButtonRole() and
+  wrapper.hasNoMeaningfulSemanticsConfiguration() and
+  exists(MaterialButtonControl button | button = wrapper.getAChild())
+select wrapper, "Remove the role-only Semantics wrapper around the button."

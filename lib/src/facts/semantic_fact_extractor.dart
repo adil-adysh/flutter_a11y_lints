@@ -275,6 +275,12 @@ class SemanticFactExtractor {
               name: 'semanticsButtonState',
               value: _nullableBoolState(node.getAttribute('button')),
               provenance: nodeProvenance,
+            ))
+            .add(SemanticFact(
+              nodeId: id,
+              name: 'semanticsConfigurationState',
+              value: compositionFacts[id]!.configuration.name,
+              provenance: nodeProvenance,
             ));
         if (node.semanticsLabelArgumentState ==
             SemanticsLabelArgumentState.static) {
@@ -653,6 +659,27 @@ class SemanticFactExtractor {
           },
         );
 
+    KnownBooleanFact explicitBoolFact(Expression? expression) {
+      if (expression == null) {
+        return const KnownBooleanFact(
+          state: KnownBooleanState.falseValue,
+          origin: ArgumentEvidenceOrigin.defaultValue,
+        );
+      }
+      if (expression is BooleanLiteral) {
+        return KnownBooleanFact(
+          state: expression.value
+              ? KnownBooleanState.trueValue
+              : KnownBooleanState.falseValue,
+          origin: ArgumentEvidenceOrigin.literal,
+        );
+      }
+      return const KnownBooleanFact(
+        state: KnownBooleanState.dynamic,
+        origin: ArgumentEvidenceOrigin.dynamic,
+      );
+    }
+
     return CompositionFact(
       nodeCreation: switch (node.nodeCreation) {
         SemanticNodeCreation.createsNode => NodeCreationState.createsNode,
@@ -677,10 +704,12 @@ class SemanticFactExtractor {
         SemanticMergeState.merged => MergeState.merged,
         SemanticMergeState.unknown => MergeState.unknown,
       },
+      configuration: _configurationState(node),
       blocksUserActions: boolFact(
         node.semanticsConfig.blockUserActions,
         node.semanticsConfig.blockUserActionsOrigin,
       ),
+      explicitButtonRole: explicitBoolFact(node.getAttribute('button')),
       rawSemanticsConfiguration: node.widgetType == 'Semantics'
           ? RawSemanticsConfigurationFact(
               container: boolFact(
@@ -703,6 +732,100 @@ class SemanticFactExtractor {
           : null,
       evidence: evidence,
     );
+  }
+
+  SemanticsConfigurationState _configurationState(SemanticNode node) {
+    if (node.widgetType != 'Semantics') {
+      return SemanticsConfigurationState.unknown;
+    }
+    var hasMeaningfulArgument = false;
+    var hasUnknownArgument = false;
+
+    void boolConfiguration(KnownBool state) {
+      switch (state) {
+        case KnownBool.yes:
+          hasMeaningfulArgument = true;
+          break;
+        case KnownBool.unknown:
+          hasUnknownArgument = true;
+          break;
+        case KnownBool.no:
+          break;
+      }
+    }
+
+    boolConfiguration(node.semanticsConfig.container);
+    boolConfiguration(node.semanticsConfig.explicitChildNodes);
+    boolConfiguration(node.semanticsConfig.excludeSemantics);
+    boolConfiguration(node.semanticsConfig.blockUserActions);
+
+    switch (node.semanticsLabelArgumentState) {
+      case SemanticsLabelArgumentState.static:
+        hasMeaningfulArgument = true;
+        break;
+      case SemanticsLabelArgumentState.dynamic:
+        hasUnknownArgument = true;
+        break;
+      case SemanticsLabelArgumentState.absent:
+        break;
+    }
+
+    const semanticArguments = [
+      'link',
+      'image',
+      'header',
+      'toggled',
+      'checked',
+      'mixed',
+      'selected',
+      'expanded',
+      'focusable',
+      'enabled',
+      'focused',
+      'isRequired',
+      'readOnly',
+      'obscured',
+      'multiline',
+      'tooltip',
+      'value',
+      'semanticValue',
+      'semanticHint',
+      'onTap',
+      'onLongPress',
+      'onIncrease',
+      'onDecrease',
+      'onDismiss',
+      'onExpand',
+      'onCollapse',
+      'onScrollLeft',
+      'onScrollRight',
+      'onScrollUp',
+      'onScrollDown',
+      'onCopy',
+      'onCut',
+      'onPaste',
+      'onSetText',
+      'onSetSelection',
+      'onMoveCursorForwardByCharacter',
+      'onMoveCursorBackwardByCharacter',
+    ];
+    for (final name in semanticArguments) {
+      final argument = node.getAttribute(name);
+      if (argument == null || argument is NullLiteral) continue;
+      if (argument is BooleanLiteral && !argument.value) continue;
+      if (argument is BooleanLiteral ||
+          argument is SimpleStringLiteral ||
+          argument is IntegerLiteral ||
+          argument is FunctionExpression) {
+        hasMeaningfulArgument = true;
+      } else {
+        hasUnknownArgument = true;
+      }
+    }
+
+    if (hasMeaningfulArgument) return SemanticsConfigurationState.meaningful;
+    if (hasUnknownArgument) return SemanticsConfigurationState.unknown;
+    return SemanticsConfigurationState.noMeaningfulArguments;
   }
 
   typed_naming.NameFact _nameFact(
