@@ -1,9 +1,10 @@
 # Migrating to FAQL 4
 
 FAQL 4 is a breaking change. The selector-based `rule/on/when/ensure/report`
-format and its adapter-only properties will be removed at the final migration
-cutover. During migration, bundled rules still use legacy syntax and must not
-be treated as FAQL 4 queries.
+format and its adapter-only properties have no runtime compatibility layer.
+The generated bundle contains validated FAQL 4 Core queries only. Legacy
+sources remain migration reference material until each policy has a tested
+replacement or an explicit retirement decision.
 
 Rules now declare stable metadata and emit violation tuples:
 
@@ -22,6 +23,28 @@ Use `queryId` (`@id`) as the unique catalog key. Several queries may share an
 derived; use predicates such as `isDefinitelyUnlabeled()` instead of negating
 the partial `hasAccessibleLabel()` predicate. Expanded rules can consume
 heuristic facts and must be explicitly marked `@mode expanded`.
+
+## Current bundled-query status
+
+The CLI runs conservative queries by default. Expanded queries are present in
+the catalog for an explicit expanded-mode consumer, but never contribute to
+default diagnostics.
+
+| Policy | FAQL 4 status | Boundary |
+| --- | --- | --- |
+| A01 unlabeled interactive controls | conservative | Proven exposed, enabled, unlabeled controls only. |
+| A04 ListTile-leading network/file image | conservative | Exact leading slot, image source, inclusion, and effective-name evidence. |
+| A22 ListTile under `MergeSemantics` | conservative | Direct semantic child only. |
+| Multiple actions under `MergeSemantics` | conservative | Counts only branch-compatible, enabled interactive descendants. |
+| A02 redundant role words | expanded | Static names from explicit sources; visible text-child labels are excluded. |
+| A03 decorative images | expanded | Static decorative filename classification is a policy heuristic. |
+| A09 numeric names without units | expanded | Static bare numeric names only. |
+| A15 custom gesture actions | expanded | Literal `GestureDetector.onTap` with a proven absent name only. |
+| A04 CircleAvatar | candidate | Requires runtime-backed known-widget and naming semantics. |
+| A05, A06, A07, A13, A21, A99 | deferred | Their legacy conditions require additional reusable composition or source-graph facts, or policy redesign. |
+
+Do not treat a legacy source with a matching rule ID as an active query. The
+generated bundle at `lib/rules/builtin_faql_rules.g.dart` is authoritative.
 
 Legacy selectors and source-facing properties (`assetPath`, `childWidgetType`,
 `hasButtonDescendant`, and count-specific adapter fields) have no compatibility
