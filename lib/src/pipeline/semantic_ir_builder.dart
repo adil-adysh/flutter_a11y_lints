@@ -134,7 +134,11 @@ class _CustomWidgetExpander {
           !_hasCompleteStructuralChildren(implementation)) {
         return current;
       }
-      final rebased = _rebaseBranchPaths(implementation, current.branchPath);
+      final bound = _bindLiteralNamedArguments(
+        implementation,
+        _literalNamedArguments(creation),
+      );
+      final rebased = _rebaseBranchPaths(bound, current.branchPath);
       // Keep [key] in the recursion guard until the replacement subtree has
       // been completely expanded. A bare `return expand(...)` runs `finally`
       // before that Future completes and therefore permits indirect cycles.
@@ -257,6 +261,58 @@ class _CustomWidgetExpander {
     return type.element.name == 'Widget' ||
         type.allSupertypes
             .any((supertype) => supertype.element.name == 'Widget');
+  }
+
+  /// Binds only direct literal named arguments. This is intentionally narrower
+  /// than general data-flow: it lets a resolved wrapper preserve exact caller
+  /// labels and boolean configuration without treating dynamic inputs as facts.
+  Map<String, Expression> _literalNamedArguments(
+    InstanceCreationExpression creation,
+  ) {
+    final result = <String, Expression>{};
+    for (final argument in creation.argumentList.arguments) {
+      if (argument is! NamedExpression || !_isLiteral(argument.expression)) {
+        continue;
+      }
+      result[argument.name.label.name] = argument.expression;
+    }
+    return result;
+  }
+
+  bool _isLiteral(Expression expression) =>
+      expression is SimpleStringLiteral ||
+      expression is BooleanLiteral ||
+      expression is IntegerLiteral ||
+      expression is NullLiteral;
+
+  WidgetNode _bindLiteralNamedArguments(
+    WidgetNode node,
+    Map<String, Expression> bindings,
+  ) {
+    if (bindings.isEmpty) return node;
+    Expression bind(Expression expression) =>
+        expression is SimpleIdentifier && bindings.containsKey(expression.name)
+            ? bindings[expression.name]!
+            : expression;
+    return node.copyWith(
+      props: {
+        for (final entry in node.props.entries) entry.key: bind(entry.value)
+      },
+      slots: {
+        for (final entry in node.slots.entries)
+          entry.key: entry.value == null
+              ? null
+              : _bindLiteralNamedArguments(entry.value!, bindings),
+      },
+      children: [
+        for (final child in node.children)
+          _bindLiteralNamedArguments(child, bindings),
+      ],
+      branchChildren: [
+        for (final child in node.branchChildren)
+          _bindLiteralNamedArguments(child, bindings),
+      ],
+    );
   }
 
   WidgetNode _rebaseBranchPaths(WidgetNode node, BranchPath outerPath) {

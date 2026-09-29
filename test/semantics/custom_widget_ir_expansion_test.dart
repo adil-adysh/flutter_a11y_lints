@@ -73,6 +73,48 @@ Widget buildWidget(bool purchasePending) => SaveControl();
     );
   });
 
+  test('binds a literal named argument into a resolved semantic wrapper',
+      () async {
+    final tree = await _buildTree('''
+class NamedControl extends Widget {
+  const NamedControl({required this.label});
+  final String label;
+
+  Widget build() => Semantics(
+    label: label,
+    child: IconButton(icon: Icon('save'), onPressed: () {}),
+  );
+}
+
+Widget buildWidget(bool purchasePending) =>
+    const NamedControl(label: 'Save draft');
+''');
+
+    expect(tree.root.label, 'Save draft');
+    expect(tree.root.labelGuarantee, LabelGuarantee.hasStaticLabel);
+  });
+
+  test('keeps a dynamic named argument unknown in a resolved wrapper',
+      () async {
+    final tree = await _buildTree('''
+class NamedControl extends Widget {
+  const NamedControl({required this.label});
+  final String label;
+
+  Widget build() => Semantics(
+    label: label,
+    child: IconButton(icon: Icon('save'), onPressed: () {}),
+  );
+}
+
+Widget buildWidget(bool purchasePending) =>
+    NamedControl(label: purchasePending ? 'Save draft' : 'Publish');
+''');
+
+    expect(tree.root.label, isNull);
+    expect(tree.root.labelGuarantee, LabelGuarantee.hasLabelButDynamic);
+  });
+
   test('expands a resolved StatefulWidget through its State build method',
       () async {
     final tree = await _buildTree('''
