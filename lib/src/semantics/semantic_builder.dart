@@ -118,6 +118,8 @@ class SemanticBuilder {
         return _buildExposureWrapper(widget, ctx, 'offstage');
       case 'Visibility':
         return _buildExposureWrapper(widget, ctx, 'visible');
+      case 'GestureDetector':
+        return _buildGestureDetector(widget, ctx);
       default:
         return _buildStandardNode(widget, ctx);
     }
@@ -157,6 +159,33 @@ class SemanticBuilder {
       descendantReplacement: DescendantReplacementState.unknown,
       exposureState: SemanticExposureState.unknown,
       inclusionState: SemanticInclusionState.unknown,
+    );
+  }
+
+  /// Flutter's GestureDetector contributes semantic actions for supported
+  /// gestures unless [excludeFromSemantics] is true.  Its action does not
+  /// establish a role or accessible name, so those remain independent facts.
+  SemanticNode? _buildGestureDetector(
+    WidgetNode widget,
+    BuildSemanticContext ctx,
+  ) {
+    final base = _buildStandardNode(widget, ctx);
+    if (base == null) return null;
+
+    final exclusion = widget.props.containsKey('excludeFromSemantics')
+        ? ctx.evalBool(widget.props['excludeFromSemantics'])
+        : false;
+    if (exclusion == null) {
+      // A dynamic exclusion flag governs whether the framework adds gesture
+      // semantics. Preserve the source node but do not prove any semantics.
+      return base.copyWith(
+        isHeuristic: true,
+        factProvenance: FactProvenance.heuristic,
+      );
+    }
+    final tap = widget.props['onTap'];
+    return base.copyWith(
+      hasTap: !exclusion && tap != null && tap is! NullLiteral,
     );
   }
 

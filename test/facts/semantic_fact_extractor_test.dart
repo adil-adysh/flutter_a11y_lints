@@ -366,6 +366,41 @@ ExcludeSemantics(
       expect(availability(dynamic), typed_actions.ActionAvailability.dynamic);
     });
 
+    test('maps GestureDetector tap semantics only from proven source settings',
+        () async {
+      final present = await buildTestSemanticTree(
+        "GestureDetector(onTap: () {}, child: Text('Activate'))",
+      );
+      final excluded = await buildTestSemanticTree(
+        "GestureDetector(onTap: () {}, excludeFromSemantics: true, child: Text('Activate'))",
+      );
+      final dynamic = await buildTestSemanticTree(
+        "GestureDetector(onTap: handler, child: Text('Activate'))",
+        extraDeclarations: 'void Function()? handler;',
+      );
+      final dynamicExclusion = await buildTestSemanticTree(
+        "GestureDetector(onTap: () {}, excludeFromSemantics: exclude, child: Text('Activate'))",
+        extraDeclarations: 'bool exclude = false;',
+      );
+
+      typed_actions.ActionAvailability availability(SemanticTree tree) =>
+          SemanticFactExtractor()
+              .extract(tree)
+              .actionsFor(tree.root.id!)
+              .singleWhere(
+                (action) => action.kind == typed_actions.ActionKind.tap,
+              )
+              .availability;
+
+      expect(availability(present), typed_actions.ActionAvailability.present);
+      expect(availability(excluded), typed_actions.ActionAvailability.absent);
+      expect(availability(dynamic), typed_actions.ActionAvailability.dynamic);
+      expect(
+        availability(dynamicExclusion),
+        typed_actions.ActionAvailability.unknown,
+      );
+    });
+
     test('extracts literal semantic value and hint without guessing dynamics',
         () async {
       final tree = await buildTestSemanticTree('''

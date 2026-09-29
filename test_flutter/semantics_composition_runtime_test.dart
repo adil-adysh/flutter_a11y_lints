@@ -133,7 +133,8 @@ void main() {
     }
   });
 
-  testWidgets('Offstage excludes semantics in this Flutter SDK', (tester) async {
+  testWidgets('Offstage excludes semantics in this Flutter SDK',
+      (tester) async {
     // Runtime contract: this SDK's Offstage(true) omits the child from
     // simulated accessibility traversal.
     // IR mapping: known offstage true is visual hiding and semantic exclusion.
@@ -157,7 +158,8 @@ void main() {
     }
   });
 
-  testWidgets('hidden Visibility excludes semantics by default', (tester) async {
+  testWidgets('hidden Visibility excludes semantics by default',
+      (tester) async {
     // Runtime contract: Visibility(false) does not retain child semantics by
     // default.
     // IR mapping: explicit false visibility is visual hiding plus semantic
@@ -227,7 +229,8 @@ void main() {
         ),
       );
 
-      final data = tester.getSemantics(find.byType(Semantics)).getSemanticsData();
+      final data =
+          tester.getSemantics(find.byType(Semantics)).getSemanticsData();
       expect(data.identifier, 'menu-button');
       expect(data.traversalParentIdentifier, 'toolbar');
       expect(data.traversalChildIdentifier, 'overflow-menu');
@@ -257,10 +260,53 @@ void main() {
         ),
       );
 
-      final data = tester.getSemantics(find.byType(Semantics)).getSemanticsData();
+      final data =
+          tester.getSemantics(find.byType(Semantics)).getSemanticsData();
       expect(data.hasAction(SemanticsAction.scrollLeft), isTrue);
       expect(data.hasAction(SemanticsAction.copy), isTrue);
       expect(data.hasAction(SemanticsAction.expand), isTrue);
+    } finally {
+      handle.dispose();
+    }
+  });
+
+  testWidgets('GestureDetector publishes a tap action unless excluded',
+      (tester) async {
+    // Runtime contract: GestureDetector exposes onTap as SemanticsAction.tap
+    // unless excludeFromSemantics is explicitly true.
+    // IR mapping: literal onTap and exclusion values produce typed action
+    // availability and inclusion facts for this known Flutter widget.
+    // Conservative consequence: a static analyzer may recognize the action,
+    // but must not invent an accessible name or role.
+    // Deliberate unknown boundary: dynamic callbacks and exclusion values stay
+    // unknown, and custom gesture implementations are not inferred.
+    final handle = tester.ensureSemantics();
+    try {
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: GestureDetector(onTap: () {}, child: const Text('Activate')),
+        ),
+      );
+
+      final included =
+          tester.getSemantics(find.byType(GestureDetector)).getSemanticsData();
+      expect(included.hasAction(SemanticsAction.tap), isTrue);
+
+      await tester.pumpWidget(
+        Directionality(
+          textDirection: TextDirection.ltr,
+          child: GestureDetector(
+            onTap: () {},
+            excludeFromSemantics: true,
+            child: const Text('Activate'),
+          ),
+        ),
+      );
+
+      final excluded =
+          tester.getSemantics(find.byType(GestureDetector)).getSemanticsData();
+      expect(excluded.hasAction(SemanticsAction.tap), isFalse);
     } finally {
       handle.dispose();
     }

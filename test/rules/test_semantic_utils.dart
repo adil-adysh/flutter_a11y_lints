@@ -267,6 +267,14 @@ class Tooltip extends Widget {
   });
 }
 
+class GestureDetector extends Widget {
+  const GestureDetector({
+    VoidCallback? onTap,
+    bool excludeFromSemantics = false,
+    Widget? child,
+  });
+}
+
 class ListTile extends Widget {
   const ListTile({
     Widget? leading,

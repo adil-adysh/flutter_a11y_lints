@@ -124,6 +124,15 @@ Semantics(link: true, child: IconButton(icon: Icon('open'), onPressed: () {}))
       expect(tree.root.role, SemanticRole.link);
     });
 
+    test('GestureDetector maps a literal tap callback to a semantic action',
+        () async {
+      final tree = await buildTestSemanticTree(
+        "GestureDetector(onTap: () {}, child: Text('Activate'))",
+      );
+
+      expect(tree.root.hasTap, isTrue);
+    });
+
     test('Semantics replacement hides descendants without excluding wrapper',
         () async {
       final tree = await buildTestSemanticTree('''

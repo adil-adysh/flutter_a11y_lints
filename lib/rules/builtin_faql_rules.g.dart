@@ -49,6 +49,16 @@ from SemanticNode node
 where node.hasStaticNameMatching("^[ ]*[0-9]+([.][0-9]+)?[ ]*$")
 select node, "Numeric accessible names should include meaningful units."
 '''), // flutter-a11y/a09/numeric-names-require-units
+  Faql4Compiler().compile(r'''@id flutter-a11y/a15/label-custom-gesture-actions
+@rule-id a15_map_custom_gestures_to_on_tap
+@severity warning
+@mode expanded
+from InteractiveControl control
+where control.getWidgetType() = "GestureDetector" and
+  control.hasTapAction() and
+  control.isDefinitelyUnlabeled()
+select control, "Custom gesture actions should provide an accessible name."
+'''), // flutter-a11y/a15/label-custom-gesture-actions
   Faql4Compiler()
       .compile(r'''@id flutter-a11y/a22/respect-widget-semantic-boundaries
 @rule-id a22_respect_widget_semantic_boundaries

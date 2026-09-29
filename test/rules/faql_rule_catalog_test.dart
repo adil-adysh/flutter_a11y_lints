@@ -49,6 +49,16 @@ void main() {
       expect(query.ruleId, 'a02_avoid_redundant_role_words');
       expect(query.mode, FactMode.expanded);
     });
+
+    test('includes A15 as an explicitly expanded query', () {
+      final query = builtin.builtinFaqlRules.singleWhere(
+        (query) =>
+            query.queryId == 'flutter-a11y/a15/label-custom-gesture-actions',
+      );
+
+      expect(query.ruleId, 'a15_map_custom_gestures_to_on_tap');
+      expect(query.mode, FactMode.expanded);
+    });
     test('indexes a valid custom Core query', () {
       final directory = Directory.systemTemp.createTempSync('faql-catalog-');
       addTearDown(() => directory.deleteSync(recursive: true));

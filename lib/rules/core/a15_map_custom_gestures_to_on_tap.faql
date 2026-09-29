@@ -1,0 +1,9 @@
+@id flutter-a11y/a15/label-custom-gesture-actions
+@rule-id a15_map_custom_gestures_to_on_tap
+@severity warning
+@mode expanded
+from InteractiveControl control
+where control.getWidgetType() = "GestureDetector" and
+  control.hasTapAction() and
+  control.isDefinitelyUnlabeled()
+select control, "Custom gesture actions should provide an accessible name."

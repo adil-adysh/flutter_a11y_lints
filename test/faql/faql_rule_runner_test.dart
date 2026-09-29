@@ -214,4 +214,29 @@ ExcludeSemantics(
     expect(runner.run(textChild), isEmpty);
     expect(runner.run(dynamic), isEmpty);
   });
+
+  test('A15 reports only a proven unlabeled GestureDetector tap action',
+      () async {
+    final violation = await buildTestSemanticTree(
+      'GestureDetector(onTap: () {}, child: SizedBox())',
+    );
+    final labeled = await buildTestSemanticTree(
+      "GestureDetector(onTap: () {}, child: Text('Activate'))",
+    );
+    final excluded = await buildTestSemanticTree(
+      'GestureDetector(onTap: () {}, excludeFromSemantics: true, child: SizedBox())',
+    );
+    final dynamic = await buildTestSemanticTree(
+      'GestureDetector(onTap: handler, child: SizedBox())',
+      extraDeclarations: 'void Function()? handler;',
+    );
+    final source = File('lib/rules/core/a15_map_custom_gestures_to_on_tap.faql')
+        .readAsStringSync();
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(violation), hasLength(1));
+    expect(runner.run(labeled), isEmpty);
+    expect(runner.run(excluded), isEmpty);
+    expect(runner.run(dynamic), isEmpty);
+  });
 }
