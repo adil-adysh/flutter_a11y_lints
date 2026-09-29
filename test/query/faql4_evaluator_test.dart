@@ -3,6 +3,7 @@ import 'package:flutter_a11y_lints/src/facts/semantic_fact_extractor.dart';
 import 'package:flutter_a11y_lints/src/facts/model/composition_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/evidence.dart';
 import 'package:flutter_a11y_lints/src/facts/model/form_association_facts.dart';
+import 'package:flutter_a11y_lints/src/facts/model/naming_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/typed_node_facts.dart';
 import 'package:flutter_a11y_lints/src/facts/model/role_action_facts.dart';
 import 'package:flutter_a11y_lints/src/query/faql4.dart';
@@ -73,6 +74,16 @@ const _staticAssociation = '''
 from SemanticNode field
 where field.hasStaticAssociatedLabel()
 select field, "Static label association"
+''';
+
+const _staticNameMatch = r'''
+@id example/static-name-match
+@rule-id static_name_match
+@severity warning
+@mode expanded
+from SemanticNode node
+where node.hasStaticNameMatching("^[0-9]+$")
+select node, "Static numeric name"
 ''';
 
 AccessibilityFactStore _store({required bool sameBranch}) {
@@ -267,6 +278,45 @@ void main() {
         store,
       ),
       hasLength(1),
+    );
+  });
+
+  test('matches only a static accessible name against a supplied pattern', () {
+    const evidence = FactEvidence(
+      provenance: FactProvenance.exact,
+      knowledge: KnowledgeState.known,
+    );
+    final store = AccessibilityFactStore.empty()
+        .addNode(const FactNode(id: 1, widgetType: 'Text'))
+        .addNode(const FactNode(id: 2, widgetType: 'Text'))
+        .addTyped(
+          1,
+          const TypedNodeFacts(
+            name: NameFact(
+              state: NameState.static,
+              value: '72',
+              evidence: evidence,
+            ),
+          ),
+        )
+        .addTyped(
+          2,
+          const TypedNodeFacts(
+            name: NameFact(
+              state: NameState.dynamic,
+              evidence: FactEvidence(
+                provenance: FactProvenance.exact,
+                knowledge: KnowledgeState.dynamic,
+              ),
+            ),
+          ),
+        );
+
+    expect(
+      Faql4Evaluator()
+          .evaluate(Faql4Compiler().compile(_staticNameMatch), store)
+          .map((hit) => hit.nodeId),
+      [1],
     );
   });
 }

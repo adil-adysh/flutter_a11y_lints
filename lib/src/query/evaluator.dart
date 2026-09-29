@@ -125,6 +125,9 @@ class Faql4Evaluator {
       'hasAccessibleLabel' =>
         name?.state == NameState.static || name?.state == NameState.dynamic,
       'hasStaticLabel' => name?.state == NameState.static,
+      'hasStaticNameMatching' => name?.state == NameState.static &&
+          name?.value != null &&
+          RegExp(arguments.single.value as String).hasMatch(name!.value!),
       'isDefinitelyEnabled' => state?.enabled == EnabledState.enabled,
       'isDefinitelyFocusable' => state?.focusable == FocusableState.focusable,
       'isDefinitelyExposed' =>

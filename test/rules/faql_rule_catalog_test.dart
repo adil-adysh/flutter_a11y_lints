@@ -17,7 +17,10 @@ void main() {
 
     test('contains exactly the approved conservative query IDs', () {
       expect(
-        builtin.builtinFaqlRules.map((query) => query.queryId).toSet(),
+        builtin.builtinFaqlRules
+            .where((query) => query.mode == FactMode.conservative)
+            .map((query) => query.queryId)
+            .toSet(),
         {
           'flutter-a11y/a01/unlabeled-interactive',
           'flutter-a11y/a04/list-tile-image-labeled',
@@ -25,6 +28,16 @@ void main() {
           'flutter-a11y/merge/multiple-actions',
         },
       );
+    });
+
+    test('includes A09 as an explicitly expanded query', () {
+      final query = builtin.builtinFaqlRules.singleWhere(
+        (query) =>
+            query.queryId == 'flutter-a11y/a09/numeric-names-require-units',
+      );
+
+      expect(query.ruleId, 'a09_numeric_values_require_units');
+      expect(query.mode, FactMode.expanded);
     });
     test('indexes a valid custom Core query', () {
       final directory = Directory.systemTemp.createTempSync('faql-catalog-');

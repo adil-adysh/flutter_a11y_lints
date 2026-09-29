@@ -173,4 +173,24 @@ ExcludeSemantics(
     expect(runner.run(nested), isEmpty);
     expect(runner.run(nonTile), isEmpty);
   });
+
+  test('A09 reports only statically proven bare numeric names', () async {
+    final numeric = await buildTestSemanticTree(
+      "Semantics(label: '72', child: SizedBox())",
+    );
+    final unit = await buildTestSemanticTree(
+      "Semantics(label: '72 bpm', child: SizedBox())",
+    );
+    final dynamic = await buildTestSemanticTree(
+      'Semantics(label: heartRateLabel, child: SizedBox())',
+      extraDeclarations: "String heartRateLabel = '72';",
+    );
+    final source = File('lib/rules/core/a09_numeric_values_require_units.faql')
+        .readAsStringSync();
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(numeric), hasLength(1));
+    expect(runner.run(unit), isEmpty);
+    expect(runner.run(dynamic), isEmpty);
+  });
 }

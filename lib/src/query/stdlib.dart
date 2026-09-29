@@ -23,6 +23,7 @@ class Faql4StandardLibrary {
     'isDefinitelyEffectivelyUnlabeled',
     'hasAccessibleLabel',
     'hasStaticLabel',
+    'hasStaticNameMatching',
     'hasTapAction',
     'hasLongPressAction',
     'mergesDescendants',
@@ -65,15 +66,29 @@ class Faql4StandardLibrary {
               ? FaqlType.string
               : null;
   static bool validArguments(String member, List<LiteralAst> arguments) =>
-      member == 'hasAction'
+      member == 'hasStaticNameMatching'
           ? arguments.length == 1 &&
               arguments.single.value is String &&
-              ActionKind.values.any(
-                (kind) => kind.name == arguments.single.value,
-              )
-          : member == 'getSlot'
-              ? arguments.length == 1 && arguments.single.value is String
-              : arguments.isEmpty;
+              _isValidPattern(arguments.single.value as String)
+          : member == 'hasAction'
+              ? arguments.length == 1 &&
+                  arguments.single.value is String &&
+                  ActionKind.values.any(
+                    (kind) => kind.name == arguments.single.value,
+                  )
+              : member == 'getSlot'
+                  ? arguments.length == 1 && arguments.single.value is String
+                  : arguments.isEmpty;
+
+  static bool _isValidPattern(String pattern) {
+    try {
+      RegExp(pattern);
+      return true;
+    } on FormatException {
+      return false;
+    }
+  }
+
   static bool matchesView(String view, FactNode node, FactStoreView facts) {
     final typed = facts.typedFactsFor(node.id);
     return switch (view) {

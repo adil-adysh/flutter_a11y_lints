@@ -27,6 +27,14 @@ where image.isDefinitelyIncludedInSemantics() and
   exists(ListTileNode tile | image = tile.getSlot("leading"))
 select image, "Informative ListTile leading images must provide semantic labels."
 '''), // flutter-a11y/a04/list-tile-image-labeled
+  Faql4Compiler().compile(r'''@id flutter-a11y/a09/numeric-names-require-units
+@rule-id a09_numeric_values_require_units
+@severity warning
+@mode expanded
+from SemanticNode node
+where node.hasStaticNameMatching("^[ ]*[0-9]+([.][0-9]+)?[ ]*$")
+select node, "Numeric accessible names should include meaningful units."
+'''), // flutter-a11y/a09/numeric-names-require-units
   Faql4Compiler()
       .compile(r'''@id flutter-a11y/a22/respect-widget-semantic-boundaries
 @rule-id a22_respect_widget_semantic_boundaries
