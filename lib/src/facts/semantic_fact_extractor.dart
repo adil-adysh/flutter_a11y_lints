@@ -876,12 +876,19 @@ class SemanticFactExtractor {
     FactEvidence evidence,
   ) {
     typed_actions.ActionAvailability availability(
-      bool knownAction,
+      SemanticActionAvailability knownAction,
       List<String> callbackNames,
     ) {
       if (node.isHeuristic) return typed_actions.ActionAvailability.unknown;
+      if (knownAction == SemanticActionAvailability.unknown) {
+        return typed_actions.ActionAvailability.unknown;
+      }
+      if (knownAction == SemanticActionAvailability.dynamic) {
+        return typed_actions.ActionAvailability.dynamic;
+      }
       final isExplicitSemantics = node.widgetType == 'Semantics';
-      if (!knownAction && !isExplicitSemantics) {
+      if (knownAction == SemanticActionAvailability.absent &&
+          !isExplicitSemantics) {
         return typed_actions.ActionAvailability.absent;
       }
       Expression? callback;
@@ -903,7 +910,8 @@ class SemanticFactExtractor {
     return [
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.tap,
-        availability: availability(node.hasTap, const [
+        availability: availability(
+            node.actionAvailability(SemanticActionKind.tap), const [
           'onTap',
           'onPressed',
           'onChanged',
@@ -912,89 +920,108 @@ class SemanticFactExtractor {
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.longPress,
-        availability: availability(node.hasLongPress, const ['onLongPress']),
+        availability: availability(
+            node.actionAvailability(SemanticActionKind.longPress),
+            const ['onLongPress']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.increase,
-        availability: availability(node.hasIncrease, const ['onIncrease']),
+        availability: availability(
+            node.actionAvailability(SemanticActionKind.increase),
+            const ['onIncrease']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.decrease,
-        availability: availability(node.hasDecrease, const ['onDecrease']),
+        availability: availability(
+            node.actionAvailability(SemanticActionKind.decrease),
+            const ['onDecrease']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.dismiss,
-        availability: availability(node.hasDismiss, const ['onDismiss']),
+        availability: availability(
+            node.actionAvailability(SemanticActionKind.dismiss),
+            const ['onDismiss']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.scrollLeft,
-        availability: availability(false, const ['onScrollLeft']),
+        availability: availability(
+            SemanticActionAvailability.absent, const ['onScrollLeft']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.scrollRight,
-        availability: availability(false, const ['onScrollRight']),
+        availability: availability(
+            SemanticActionAvailability.absent, const ['onScrollRight']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.scrollUp,
-        availability: availability(false, const ['onScrollUp']),
+        availability: availability(
+            SemanticActionAvailability.absent, const ['onScrollUp']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.scrollDown,
-        availability: availability(false, const ['onScrollDown']),
+        availability: availability(
+            SemanticActionAvailability.absent, const ['onScrollDown']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.copy,
-        availability: availability(false, const ['onCopy']),
+        availability:
+            availability(SemanticActionAvailability.absent, const ['onCopy']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.cut,
-        availability: availability(false, const ['onCut']),
+        availability:
+            availability(SemanticActionAvailability.absent, const ['onCut']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.paste,
-        availability: availability(false, const ['onPaste']),
+        availability:
+            availability(SemanticActionAvailability.absent, const ['onPaste']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.expand,
-        availability: availability(false, const ['onExpand']),
+        availability:
+            availability(SemanticActionAvailability.absent, const ['onExpand']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.collapse,
-        availability: availability(false, const ['onCollapse']),
+        availability: availability(
+            SemanticActionAvailability.absent, const ['onCollapse']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.setText,
-        availability: availability(false, const ['onSetText']),
+        availability: availability(
+            SemanticActionAvailability.absent, const ['onSetText']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.setSelection,
-        availability: availability(false, const ['onSetSelection']),
+        availability: availability(
+            SemanticActionAvailability.absent, const ['onSetSelection']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.moveCursorForwardByCharacter,
-        availability:
-            availability(false, const ['onMoveCursorForwardByCharacter']),
+        availability: availability(SemanticActionAvailability.absent,
+            const ['onMoveCursorForwardByCharacter']),
         evidence: evidence,
       ),
       typed_actions.SemanticActionFact(
         kind: typed_actions.ActionKind.moveCursorBackwardByCharacter,
-        availability:
-            availability(false, const ['onMoveCursorBackwardByCharacter']),
+        availability: availability(SemanticActionAvailability.absent,
+            const ['onMoveCursorBackwardByCharacter']),
         evidence: evidence,
       ),
     ];
