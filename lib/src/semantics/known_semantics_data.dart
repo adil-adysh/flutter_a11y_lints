@@ -359,6 +359,11 @@ const Map<String, Map<String, Object>> rawKnownSemanticsV26 = {
     'blocksBehind': false,
     'isPureContainer': false,
     'slotTraversalOrder': [],
+    'schema': {
+      'label': [
+        {'type': 'prop', 'name': 'semanticLabel'},
+      ],
+    },
   },
   'Icon': {
     'role': 'unknown',

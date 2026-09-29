@@ -59,6 +59,16 @@ void main() {
       expect(query.ruleId, 'a15_map_custom_gestures_to_on_tap');
       expect(query.mode, FactMode.expanded);
     });
+
+    test('includes A03 as an explicitly expanded query', () {
+      final query = builtin.builtinFaqlRules.singleWhere(
+        (query) =>
+            query.queryId == 'flutter-a11y/a03/decorative-images-excluded',
+      );
+
+      expect(query.ruleId, 'a03_decorative_images_excluded');
+      expect(query.mode, FactMode.expanded);
+    });
     test('indexes a valid custom Core query', () {
       final directory = Directory.systemTemp.createTempSync('faql-catalog-');
       addTearDown(() => directory.deleteSync(recursive: true));

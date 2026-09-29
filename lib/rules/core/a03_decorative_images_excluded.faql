@@ -3,5 +3,7 @@
 @severity warning
 @mode expanded
 from ImageNode image
-where image.isKnownDecorativeAsset() and image.isDefinitelyUnlabeled() and image.isDefinitelyNotExcludedFromSemantics()
+where image.isKnownDecorativeAsset() and
+  image.isDefinitelyUnlabeled() and
+  image.isDefinitelyNotExcludedFromSemantics()
 select image, "Exclude purely decorative images from semantics."

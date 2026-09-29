@@ -239,4 +239,29 @@ ExcludeSemantics(
     expect(runner.run(excluded), isEmpty);
     expect(runner.run(dynamic), isEmpty);
   });
+
+  test('A03 reports only a static unexcluded decorative asset', () async {
+    final violation = await buildTestSemanticTree(
+      "Image.asset('assets/decorative_background.png')",
+    );
+    final labeled = await buildTestSemanticTree(
+      "Image.asset('assets/decorative_background.png', semanticLabel: 'Sky')",
+    );
+    final excluded = await buildTestSemanticTree(
+      "Image.asset('assets/decorative_background.png', excludeFromSemantics: true)",
+    );
+    final dynamic = await buildTestSemanticTree(
+      'Image.asset(assetPath)',
+      extraDeclarations:
+          "String assetPath = 'assets/decorative_background.png';",
+    );
+    final source = File('lib/rules/core/a03_decorative_images_excluded.faql')
+        .readAsStringSync();
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(violation), hasLength(1));
+    expect(runner.run(labeled), isEmpty);
+    expect(runner.run(excluded), isEmpty);
+    expect(runner.run(dynamic), isEmpty);
+  });
 }

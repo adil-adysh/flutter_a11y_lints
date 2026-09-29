@@ -29,6 +29,16 @@ where (control.hasStaticNameFrom("tooltip") or
   control.hasStaticNameMatching("(^|[^a-z])(button|btn|icon|image|link|checkbox|radio|switch|selected|checked|toggle)($|[^a-z])", false)
 select control, "Accessible names should not repeat their semantic role."
 '''), // flutter-a11y/a02/avoid-redundant-role-words
+  Faql4Compiler().compile(r'''@id flutter-a11y/a03/decorative-images-excluded
+@rule-id a03_decorative_images_excluded
+@severity warning
+@mode expanded
+from ImageNode image
+where image.isKnownDecorativeAsset() and
+  image.isDefinitelyUnlabeled() and
+  image.isDefinitelyNotExcludedFromSemantics()
+select image, "Exclude purely decorative images from semantics."
+'''), // flutter-a11y/a03/decorative-images-excluded
   Faql4Compiler().compile(r'''@id flutter-a11y/a04/list-tile-image-labeled
 @rule-id a04_informative_images_labeled
 @severity warning
