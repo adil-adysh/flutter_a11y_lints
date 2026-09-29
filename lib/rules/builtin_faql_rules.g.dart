@@ -15,6 +15,20 @@ where control.isDefinitelyExposed() and
   control.isDefinitelyUnlabeled()
 select control, "Interactive control must have an accessible label."
 '''), // flutter-a11y/a01/unlabeled-interactive
+  Faql4Compiler().compile(r'''@id flutter-a11y/a02/avoid-redundant-role-words
+@rule-id a02_avoid_redundant_role_words
+@severity warning
+@mode expanded
+from InteractiveControl control
+where (control.hasStaticNameFrom("tooltip") or
+  control.hasStaticNameFrom("semanticsLabel") or
+  control.hasStaticNameFrom("widgetLabel") or
+  control.hasStaticNameFrom("inputDecoration") or
+  control.hasStaticNameFrom("customWidgetDerived") or
+  control.hasStaticNameFrom("frameworkDerived")) and
+  control.hasStaticNameMatching("(^|[^a-z])(button|btn|icon|image|link|checkbox|radio|switch|selected|checked|toggle)($|[^a-z])", false)
+select control, "Accessible names should not repeat their semantic role."
+'''), // flutter-a11y/a02/avoid-redundant-role-words
   Faql4Compiler().compile(r'''@id flutter-a11y/a04/list-tile-image-labeled
 @rule-id a04_informative_images_labeled
 @severity warning

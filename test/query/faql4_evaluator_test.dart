@@ -86,6 +86,16 @@ where node.hasStaticNameMatching("^[0-9]+$")
 select node, "Static numeric name"
 ''';
 
+const _staticNameSource = '''
+@id example/static-name-source
+@rule-id static_name_source
+@severity warning
+@mode expanded
+from SemanticNode node
+where node.hasStaticNameFrom("tooltip")
+select node, "Tooltip name"
+''';
+
 AccessibilityFactStore _store({required bool sameBranch}) {
   return AccessibilityFactStore.empty()
       .addNode(const FactNode(id: 1, widgetType: 'MergeSemantics'))
@@ -315,6 +325,45 @@ void main() {
     expect(
       Faql4Evaluator()
           .evaluate(Faql4Compiler().compile(_staticNameMatch), store)
+          .map((hit) => hit.nodeId),
+      [1],
+    );
+  });
+
+  test('matches only a static accessible name from the requested source', () {
+    const evidence = FactEvidence(
+      provenance: FactProvenance.exact,
+      knowledge: KnowledgeState.known,
+    );
+    final store = AccessibilityFactStore.empty()
+        .addNode(const FactNode(id: 1, widgetType: 'IconButton'))
+        .addNode(const FactNode(id: 2, widgetType: 'TextButton'))
+        .addTyped(
+          1,
+          const TypedNodeFacts(
+            name: NameFact(
+              state: NameState.static,
+              source: NameSource.tooltip,
+              value: 'Delete button',
+              evidence: evidence,
+            ),
+          ),
+        )
+        .addTyped(
+          2,
+          const TypedNodeFacts(
+            name: NameFact(
+              state: NameState.static,
+              source: NameSource.textChild,
+              value: 'Delete button',
+              evidence: evidence,
+            ),
+          ),
+        );
+
+    expect(
+      Faql4Evaluator()
+          .evaluate(Faql4Compiler().compile(_staticNameSource), store)
           .map((hit) => hit.nodeId),
       [1],
     );

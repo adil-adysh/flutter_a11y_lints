@@ -127,7 +127,13 @@ class Faql4Evaluator {
       'hasStaticLabel' => name?.state == NameState.static,
       'hasStaticNameMatching' => name?.state == NameState.static &&
           name?.value != null &&
-          RegExp(arguments.single.value as String).hasMatch(name!.value!),
+          RegExp(
+            arguments.first.value as String,
+            caseSensitive:
+                arguments.length == 1 ? true : arguments[1].value as bool,
+          ).hasMatch(name!.value!),
+      'hasStaticNameFrom' => name?.state == NameState.static &&
+          name?.source?.name == arguments.single.value,
       'isDefinitelyEnabled' => state?.enabled == EnabledState.enabled,
       'isDefinitelyFocusable' => state?.focusable == FocusableState.focusable,
       'isDefinitelyExposed' =>

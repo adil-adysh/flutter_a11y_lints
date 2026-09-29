@@ -39,6 +39,16 @@ void main() {
       expect(query.ruleId, 'a09_numeric_values_require_units');
       expect(query.mode, FactMode.expanded);
     });
+
+    test('includes A02 as an explicitly expanded query', () {
+      final query = builtin.builtinFaqlRules.singleWhere(
+        (query) =>
+            query.queryId == 'flutter-a11y/a02/avoid-redundant-role-words',
+      );
+
+      expect(query.ruleId, 'a02_avoid_redundant_role_words');
+      expect(query.mode, FactMode.expanded);
+    });
     test('indexes a valid custom Core query', () {
       final directory = Directory.systemTemp.createTempSync('faql-catalog-');
       addTearDown(() => directory.deleteSync(recursive: true));

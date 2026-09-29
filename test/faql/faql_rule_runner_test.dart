@@ -193,4 +193,25 @@ ExcludeSemantics(
     expect(runner.run(unit), isEmpty);
     expect(runner.run(dynamic), isEmpty);
   });
+
+  test('A02 reports redundant role words only from static explicit names',
+      () async {
+    final redundant = await buildTestSemanticTree(
+      "IconButton(icon: Icon('delete'), tooltip: 'Delete button', onPressed: () {})",
+    );
+    final textChild = await buildTestSemanticTree(
+      "TextButton(child: Text('Delete button'), onPressed: () {})",
+    );
+    final dynamic = await buildTestSemanticTree(
+      "IconButton(icon: Icon('delete'), tooltip: actionLabel, onPressed: () {})",
+      extraDeclarations: "String actionLabel = 'Delete button';",
+    );
+    final source = File('lib/rules/core/a02_avoid_redundant_role_words.faql')
+        .readAsStringSync();
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(redundant), hasLength(1));
+    expect(runner.run(textChild), isEmpty);
+    expect(runner.run(dynamic), isEmpty);
+  });
 }

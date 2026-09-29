@@ -1,4 +1,5 @@
 import '../facts/fact_store.dart';
+import '../facts/model/naming_facts.dart';
 import '../facts/model/role_action_facts.dart';
 import 'ast.dart';
 
@@ -24,6 +25,7 @@ class Faql4StandardLibrary {
     'hasAccessibleLabel',
     'hasStaticLabel',
     'hasStaticNameMatching',
+    'hasStaticNameFrom',
     'hasTapAction',
     'hasLongPressAction',
     'mergesDescendants',
@@ -67,18 +69,23 @@ class Faql4StandardLibrary {
               : null;
   static bool validArguments(String member, List<LiteralAst> arguments) =>
       member == 'hasStaticNameMatching'
-          ? arguments.length == 1 &&
-              arguments.single.value is String &&
-              _isValidPattern(arguments.single.value as String)
-          : member == 'hasAction'
+          ? _hasValidNamePatternArguments(arguments)
+          : member == 'hasStaticNameFrom'
               ? arguments.length == 1 &&
                   arguments.single.value is String &&
-                  ActionKind.values.any(
-                    (kind) => kind.name == arguments.single.value,
+                  NameSource.values.any(
+                    (source) => source.name == arguments.single.value,
                   )
-              : member == 'getSlot'
-                  ? arguments.length == 1 && arguments.single.value is String
-                  : arguments.isEmpty;
+              : member == 'hasAction'
+                  ? arguments.length == 1 &&
+                      arguments.single.value is String &&
+                      ActionKind.values.any(
+                        (kind) => kind.name == arguments.single.value,
+                      )
+                  : member == 'getSlot'
+                      ? arguments.length == 1 &&
+                          arguments.single.value is String
+                      : arguments.isEmpty;
 
   static bool _isValidPattern(String pattern) {
     try {
@@ -88,6 +95,12 @@ class Faql4StandardLibrary {
       return false;
     }
   }
+
+  static bool _hasValidNamePatternArguments(List<LiteralAst> arguments) =>
+      (arguments.length == 1 || arguments.length == 2) &&
+      arguments.first.value is String &&
+      (arguments.length == 1 || arguments[1].value is bool) &&
+      _isValidPattern(arguments.first.value as String);
 
   static bool matchesView(String view, FactNode node, FactStoreView facts) {
     final typed = facts.typedFactsFor(node.id);
