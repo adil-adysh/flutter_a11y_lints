@@ -1,0 +1,10 @@
+@id flutter-a11y/a06/merge-multi-part-concept
+@rule-id a06_merge_multi_part_single_concept
+@severity warning
+@mode expanded
+from InteractiveControl control
+where control.hasAction(tap) and
+  not control.mergesDescendants() and
+  count(SemanticNode part |
+    part = control.getADescendant() and part.hasStaticLabel()) >= 2
+select control, "Merge multiple named semantic parts into one action when they express one concept."

@@ -284,4 +284,24 @@ ExcludeSemantics(
     expect(runner.run(labeled), isEmpty);
     expect(runner.run(dynamic), isEmpty);
   });
+
+  test('A06 reports a non-merging action with two static named descendants',
+      () async {
+    final violation = await buildTestSemanticTree('''
+GestureDetector(
+  onTap: () {},
+  child: Column(children: [Text('Price'), Text('Discount')]),
+)
+''');
+    final oneName = await buildTestSemanticTree(
+      "GestureDetector(onTap: () {}, child: Text('Price'))",
+    );
+    final source =
+        File('lib/rules/core/a06_merge_multi_part_single_concept.faql')
+            .readAsStringSync();
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(violation), hasLength(1));
+    expect(runner.run(oneName), isEmpty);
+  });
 }

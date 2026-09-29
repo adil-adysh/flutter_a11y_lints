@@ -61,6 +61,17 @@ where wrapper.hasExplicitSemanticsButtonRole() and
   exists(MaterialButtonControl button | button = wrapper.getAChild())
 select wrapper, "Remove the role-only Semantics wrapper around the button."
 '''), // flutter-a11y/a05/redundant-button-semantics
+  Faql4Compiler().compile(r'''@id flutter-a11y/a06/merge-multi-part-concept
+@rule-id a06_merge_multi_part_single_concept
+@severity warning
+@mode expanded
+from InteractiveControl control
+where control.hasAction(tap) and
+  not control.mergesDescendants() and
+  count(SemanticNode part |
+    part = control.getADescendant() and part.hasStaticLabel()) >= 2
+select control, "Merge multiple named semantic parts into one action when they express one concept."
+'''), // flutter-a11y/a06/merge-multi-part-concept
   Faql4Compiler().compile(r'''@id flutter-a11y/a09/numeric-names-require-units
 @rule-id a09_numeric_values_require_units
 @severity warning
