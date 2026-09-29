@@ -2,9 +2,11 @@
 
 FAQL 4 is a breaking change. The selector-based `rule/on/when/ensure/report`
 format and its adapter-only properties have no runtime compatibility layer.
-The generated bundle contains validated FAQL 4 Core queries only. Legacy
-sources remain migration reference material until each policy has a tested
-replacement or an explicit retirement decision.
+The generated bundle contains validated FAQL 4 Core queries only. Retain a
+legacy source only while its policy is deferred and has neither a tested Core
+replacement nor an explicit retirement decision. Candidate Core sources are
+the policy reference for candidates; they do not need a duplicate legacy
+source.
 
 Rules now declare stable metadata and emit violation tuples:
 

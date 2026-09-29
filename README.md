@@ -272,8 +272,8 @@ The analyzer works in several phases:
 3. **Semantic Tree Building**: Converts to `SemanticNode` tree using KnownSemantics metadata (v2.6)
 4. **Fact Extraction**: Materializes typed structural and semantic facts with
    explicit provenance and unknown states
-5. **Rule Execution**: Runs the current rule catalog; FAQL 4 Core query
-   execution is in migration and bundled rules remain legacy sources
+5. **Rule Execution**: Runs the generated FAQL 4 Core catalog. Conservative
+   queries run by default; expanded queries require an explicit consumer.
 6. **Reporting**: Outputs violations with file locations
 
 ### Key Components
@@ -281,7 +281,8 @@ The analyzer works in several phases:
 - **KnownSemantics**: JSON metadata defining Flutter widget semantics (v2.6)
 - **WidgetTreeBuilder**: Builds widget tree from expressions
 - **SemanticBuilder**: Derives semantic properties and labels
-- **SemanticTree**: Final IR with accessibility-focusable nodes
+- **SemanticTree**: Annotated semantic-composition forest with a conservative
+  accessibility projection; it does not infer screen-reader traversal order
 - **Facts and FAQL 4**: Typed facts, standard-library views, and declarative
   accessibility queries
 

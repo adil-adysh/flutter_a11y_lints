@@ -12,7 +12,8 @@ This is a Dart static analyzer for Flutter accessibility. The current pipeline p
 - `test/faql/`, `test/semantics/`, `test/rules/`: focused tests.
 - `test_flutter/`: focused runtime contract fixtures against Flutter's real
   semantics tree.
-- `doc/docs/faql4_core_design.md`: target architecture and migration contract. Some facts and Core compiler pieces are implemented; bundled rules are not yet migrated.
+- `doc/docs/faql4_core_design.md`: target architecture and migration contract.
+  Core facts/compiler and a curated set of migrated rules are implemented.
 - Other files in `doc/docs/` may describe earlier designs. Resolve conflicts against the current code and the explicit proposal above; flag material uncertainty.
 
 ## Design constraints
@@ -150,11 +151,12 @@ and relevant unknown and branch cases.
   Source-derived `BranchPath` propagation is proven through WidgetTree,
   Semantic IR, fact graphs, relationships, `exists`, and `count`.
 - `lib/rules/builtin_faql_rules.g.dart` is the canonical generated Core bundle.
-  It contains only the approved migrated conservative queries. Legacy `.faql`
-  files remain parity references for rules not yet replaced.
-- Do not regenerate from legacy sources, delete legacy rule sources before
-  each replacement rule has passing proof fixtures, or claim branch safety
-  from scalar `branchGroupId`/`branchValue` metadata.
+  It contains approved conservative and explicitly expanded queries; the
+  default catalog exposes conservative queries only. Legacy `.faql` files are
+  retained solely where a candidate or deferred policy has no Core replacement.
+- Do not regenerate from legacy sources, delete a retained legacy source
+  before its replacement rule has passing proof fixtures, or claim branch
+  safety from scalar `branchGroupId`/`branchValue` metadata.
 
 ## Verification
 

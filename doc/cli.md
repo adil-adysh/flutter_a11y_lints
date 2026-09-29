@@ -27,15 +27,15 @@ a11y --help
 ## Embedding FAQL rules
 
 When building or compiling the CLI to a single binary, the analyzer needs the
-FAQL rule sources embedded into the package. Use the generator to embed every
-`.faql` file from `lib/rules` into the canonical
+FAQL 4 Core rule sources embedded into the package. Use the generator to
+compile every validated `.faql` file from `lib/rules/core` into the canonical
 `lib/rules/builtin_faql_rules.g.dart` bundle.
 
 ### Generate embedded rules
 
 ```powershell
-# Ensure you have rules in lib\rules (create if needed)
-mkdir -Force lib\rules
+# Core sources live in lib\rules\core.
+mkdir -Force lib\rules\core
 
 # Optional: add a FAQL 4 sample rule after the built-in rule migration
 @'
@@ -46,17 +46,15 @@ mkdir -Force lib\rules
 from InteractiveControl control
 where control.isDefinitelyEnabled() and control.isDefinitelyUnlabeled()
 select control, "Interactive control must have an accessible label."
-'@ | Set-Content -Path lib\rules\sample.faql -NoNewline
+'@ | Set-Content -Path lib\rules\core\example_unlabeled_control.faql -NoNewline
 
 # Run the generator
 dart run tool\generate_rules.dart
 ```
 
 This creates or overwrites `lib/rules/builtin_faql_rules.g.dart`, containing a
-`const Map<String, String> builtinFaqlRules` mapping filenames to rule source.
-The current built-in sources are legacy syntax; do not regenerate this bundle
-as part of FAQL 4 work until replacement FAQL 4 sources and fixture tests are
-ready. Do not edit the generated file manually.
+read-only `List<CompiledQuery> builtinFaqlRules`. The generator rejects legacy
+selector/`ensure` sources. Do not edit the generated file manually.
 
 ## Notes
 
@@ -67,8 +65,10 @@ ready. Do not edit the generated file manually.
 
 ## Troubleshooting
 
-- If the generator reports `Rules directory not found`, ensure `lib/rules` exists and contains `.faql` files.
-- If your CLI code references FAQL files from the file system at runtime, prefer using `builtinFaqlRules` to avoid runtime FS dependencies when compiled as a binary.
+- If the generator reports `Rules directory not found`, ensure
+  `lib/rules/core` exists and contains validated Core `.faql` files.
+- The generated `builtinFaqlRules` artifact avoids runtime file-system
+  dependencies when the CLI is compiled as a binary.
 
 ---
 
