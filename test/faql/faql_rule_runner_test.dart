@@ -304,4 +304,28 @@ GestureDetector(
     expect(runner.run(violation), hasLength(1));
     expect(runner.run(oneName), isEmpty);
   });
+
+  test('A07 reports a replacement that discards a child tap action', () async {
+    final missingAction = await buildTestSemanticTree('''
+Semantics(
+  excludeSemantics: true,
+  label: 'Delete item',
+  child: IconButton(icon: Icon('delete'), onPressed: () {}),
+)
+''');
+    final replacementAction = await buildTestSemanticTree('''
+Semantics(
+  excludeSemantics: true,
+  label: 'Delete item',
+  onTap: () {},
+  child: IconButton(icon: Icon('delete'), onPressed: () {}),
+)
+''');
+    final source = File('lib/rules/core/a07_replace_semantics_cleanly.faql')
+        .readAsStringSync();
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(missingAction), hasLength(1));
+    expect(runner.run(replacementAction), isEmpty);
+  });
 }

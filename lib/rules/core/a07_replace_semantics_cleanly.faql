@@ -1,0 +1,10 @@
+@id flutter-a11y/a07/replacement-retains-action
+@rule-id a07_replace_semantics_cleanly
+@severity warning
+@mode expanded
+from SemanticsNode wrapper
+where wrapper.replacesDescendantSemantics() and
+  wrapper.hasStaticLabel() and
+  not wrapper.hasAction(tap) and
+  exists(InteractiveControl child | child = wrapper.getAChild())
+select wrapper, "A semantics replacement for an actionable child should provide a replacement tap action."

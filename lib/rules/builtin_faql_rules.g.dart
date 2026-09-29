@@ -72,6 +72,17 @@ where control.hasAction(tap) and
     part = control.getADescendant() and part.hasStaticLabel()) >= 2
 select control, "Merge multiple named semantic parts into one action when they express one concept."
 '''), // flutter-a11y/a06/merge-multi-part-concept
+  Faql4Compiler().compile(r'''@id flutter-a11y/a07/replacement-retains-action
+@rule-id a07_replace_semantics_cleanly
+@severity warning
+@mode expanded
+from SemanticsNode wrapper
+where wrapper.replacesDescendantSemantics() and
+  wrapper.hasStaticLabel() and
+  not wrapper.hasAction(tap) and
+  exists(InteractiveControl child | child = wrapper.getAChild())
+select wrapper, "A semantics replacement for an actionable child should provide a replacement tap action."
+'''), // flutter-a11y/a07/replacement-retains-action
   Faql4Compiler().compile(r'''@id flutter-a11y/a09/numeric-names-require-units
 @rule-id a09_numeric_values_require_units
 @severity warning

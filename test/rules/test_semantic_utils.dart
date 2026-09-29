@@ -339,6 +339,7 @@ class Semantics extends Widget {
     bool? readOnly,
     bool? obscured,
     bool? multiline,
+    VoidCallback? onTap,
     VoidCallback? onScrollLeft,
     VoidCallback? onScrollRight,
     VoidCallback? onScrollUp,
