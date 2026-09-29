@@ -38,10 +38,13 @@ default diagnostics.
 | Multiple actions under `MergeSemantics` | conservative | Counts only branch-compatible, enabled interactive descendants. |
 | A02 redundant role words | expanded | Static names from explicit sources; visible text-child labels are excluded. |
 | A03 decorative images | expanded | Static decorative filename classification is a policy heuristic. |
+| A05 redundant button semantics | expanded | Explicit `button: true` plus a direct material button and no other proven wrapper configuration. |
+| A06 multi-part concept | expanded | Proven tap action, no proven merge, and two static-name descendants. |
+| A07 replacement action | expanded | A replacement label must retain a tap action when it discards an actionable child. |
 | A09 numeric names without units | expanded | Static bare numeric names only. |
 | A15 custom gesture actions | expanded | Literal `GestureDetector.onTap` with a proven absent name only. |
 | A04 CircleAvatar | candidate | Requires runtime-backed known-widget and naming semantics. |
-| A05, A06, A07, A13, A21, A99 | deferred | Their legacy conditions require additional reusable composition or source-graph facts, or policy redesign. |
+| A13, A21, A99 | deferred | Their legacy conditions require additional reusable composite-role or source-graph facts, or a retirement decision. |
 
 Do not treat a legacy source with a matching rule ID as an active query. The
 generated bundle at `lib/rules/builtin_faql_rules.g.dart` is authoritative.
