@@ -60,16 +60,6 @@ void main() {
     expect(before.map((s) => s.widgetType).toList(), ['A', 'B']);
     expect(after.map((s) => s.widgetType).toList(), ['B', 'C']);
 
-    // sameLayoutGroup / sameListItemGroup: set ids manually
-    final g1 = makeSemanticNode(widgetType: 'X', layoutGroupId: 7);
-    final g2 = makeSemanticNode(widgetType: 'Y', layoutGroupId: 7);
-    final gRoot = makeSemanticNode(widgetType: 'Groot', children: [g1, g2]);
-    final gTree = buildManualTree(gRoot);
-    final gNb = SemanticNeighborhood(gTree);
-    final gNode = gTree.physicalNodes.firstWhere((n) => n.widgetType == 'X');
-    expect(gNb.sameLayoutGroup(gNode).map((n) => n.widgetType).toList(),
-        ['X', 'Y']);
-
     // mutually exclusive
     final m1 =
         makeSemanticNode(widgetType: 'M1', branchGroupId: 3, branchValue: 0);

@@ -165,89 +165,9 @@ class SemanticTree {
     for (var i = 0; i < roots.length; i++) {
       annotatedRoots.add(annotate(roots[i], siblingIndex: i));
     }
-    // Second pass: assign layout and list grouping ids using conservative
-    // heuristics. This allows neighborhood queries to reason about siblings
-    // that participate in the same visual row/column or represent list
-    // items. We produce new `SemanticNode` instances via `copyWith` while
-    // preserving ids and focus indices assigned above.
-    var nextLayoutGroupId = 0;
-    var nextListItemGroupId = 0;
-
-    bool _isListLikeItem(SemanticNode node) {
-      return node.widgetType == 'ListTile' ||
-          node.controlKind == ControlKind.listTile ||
-          node.semanticIndex != null;
-    }
-
-    SemanticNode processNode(SemanticNode node) {
-      // Process children first
-      final processedChildren = node.children.map(processNode).toList();
-
-      var updatedChildren = processedChildren;
-
-      // Layout grouping heuristic: when a node is a known layout container
-      // (Row/Column/Stack) or a pure container with multiple children, assign
-      // a layoutGroupId to its immediate children so rules can consider them
-      // as visually grouped.
-      // Expand recognized layout container widget names to include Flex and
-      // common scrolling/list containers so grouping heuristics apply to them.
-      final layoutContainers = {
-        'Row',
-        'Column',
-        'Stack',
-        'Wrap',
-        'Flex',
-        'ListView',
-        'CustomScrollView',
-        'SingleChildScrollView',
-        'ScrollView',
-      };
-
-      if ((layoutContainers.contains(node.widgetType) ||
-              node.isPureContainer) &&
-          processedChildren.length > 1) {
-        final layoutId = nextLayoutGroupId++;
-        updatedChildren = processedChildren
-            .map((c) => c.copyWith(layoutGroupId: layoutId))
-            .toList(growable: false);
-      }
-
-      // List-item grouping heuristic: if a parent contains contiguous
-      // children that look like list items (ListTile, have semanticIndex,
-      // or listTile controlKind), assign a listItemGroupId for that run and
-      // mark the first child as primary in the group.
-      final children = updatedChildren;
-      var i = 0;
-      final newChildren = <SemanticNode>[];
-      while (i < children.length) {
-        if (_isListLikeItem(children[i])) {
-          final groupId = nextListItemGroupId++;
-          var j = i;
-          var primarySet = false;
-          while (j < children.length && _isListLikeItem(children[j])) {
-            final isPrimary = !primarySet;
-            var child = children[j].copyWith(listItemGroupId: groupId);
-            if (isPrimary) {
-              child = child.copyWith(isPrimaryInGroup: true);
-              primarySet = true;
-            }
-            newChildren.add(child);
-            j++;
-          }
-          i = j;
-          continue;
-        }
-        newChildren.add(children[i]);
-        i++;
-      }
-
-      // Return a copy of the node with updated children and preserve other
-      // annotated metadata.
-      return node.copyWith(children: newChildren);
-    }
-
-    final processedRoots =
-        annotatedRoots.map(processNode).toList(growable: false);
+    // Widget source structure cannot prove rendered geometry, list position,
+    // or visual grouping. Preserve only source/composition relationships.
+    final processedRoots = List<SemanticNode>.unmodifiable(annotatedRoots);
 
     // Rebuild physical and conservative accessibility projection lists, as
     // well as the `byId` map, to reference the processed nodes.

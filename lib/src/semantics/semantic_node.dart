@@ -127,9 +127,6 @@ class SemanticNode {
     this.siblingIndex = 0,
     this.depth = 0,
     this.preOrderIndex,
-    this.layoutGroupId,
-    this.listItemGroupId,
-    this.isPrimaryInGroup = false,
     this.tooltip,
     this.value,
     this.semanticIndex,
@@ -251,10 +248,6 @@ class SemanticNode {
   /// Depth-first order index assigned during tree annotation.
   final int? preOrderIndex;
 
-  final int? layoutGroupId;
-  final int? listItemGroupId;
-  final bool isPrimaryInGroup;
-
   /// Whether this node establishes a semantic boundary (e.g. Semantics widget).
   final bool isSemanticBoundary;
 
@@ -343,9 +336,6 @@ class SemanticNode {
     int? siblingIndex,
     int? depth,
     int? preOrderIndex,
-    int? layoutGroupId,
-    int? listItemGroupId,
-    bool? isPrimaryInGroup,
     String? tooltip,
     String? value,
     int? semanticIndex,
@@ -400,9 +390,6 @@ class SemanticNode {
       siblingIndex: siblingIndex ?? this.siblingIndex,
       depth: depth ?? this.depth,
       preOrderIndex: preOrderIndex ?? this.preOrderIndex,
-      layoutGroupId: layoutGroupId ?? this.layoutGroupId,
-      listItemGroupId: listItemGroupId ?? this.listItemGroupId,
-      isPrimaryInGroup: isPrimaryInGroup ?? this.isPrimaryInGroup,
       tooltip: tooltip ?? this.tooltip,
       value: value ?? this.value,
       semanticIndex: semanticIndex ?? this.semanticIndex,

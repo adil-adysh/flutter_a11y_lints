@@ -86,26 +86,6 @@ class SemanticNeighborhood {
     }
   }
 
-  Iterable<SemanticNode> sameLayoutGroup(SemanticNode node) sync* {
-    final groupId = node.layoutGroupId;
-    if (groupId == null) return;
-    for (final candidate in tree.physicalNodes) {
-      if (candidate.layoutGroupId == groupId) {
-        yield candidate;
-      }
-    }
-  }
-
-  Iterable<SemanticNode> sameListItemGroup(SemanticNode node) sync* {
-    final groupId = node.listItemGroupId;
-    if (groupId == null) return;
-    for (final candidate in tree.physicalNodes) {
-      if (candidate.listItemGroupId == groupId) {
-        yield candidate;
-      }
-    }
-  }
-
   /// Returns true when [a] and [b] assign different values to any shared
   /// unresolved conditional. Complete paths are required: scalar branch
   /// metadata is used only as a derived compatibility path for manually
