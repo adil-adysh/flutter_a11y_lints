@@ -109,14 +109,19 @@ class SemanticFactExtractor {
       labelStates[id] = labelState;
       enabledStates[id] = node.isHeuristic
           ? EnabledState.unknown
-          : node.isEnabled
-              ? EnabledState.enabled
-              : EnabledState.disabled;
+          : switch (node.enabledState) {
+              SemanticEnabledState.enabled => EnabledState.enabled,
+              SemanticEnabledState.disabled => EnabledState.disabled,
+              SemanticEnabledState.unknown => EnabledState.unknown,
+            };
       focusableStates[id] = node.isHeuristic
           ? FocusableState.unknown
-          : node.isFocusable
-              ? FocusableState.focusable
-              : FocusableState.notFocusable;
+          : switch (node.focusableState) {
+              SemanticFocusableState.focusable => FocusableState.focusable,
+              SemanticFocusableState.notFocusable =>
+                FocusableState.notFocusable,
+              SemanticFocusableState.unknown => FocusableState.unknown,
+            };
       exposureStates[id] = node.exposureState;
       inclusionStates[id] = node.inclusionState;
       store = store

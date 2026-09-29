@@ -27,6 +27,13 @@ void main() {
         SemanticActionAvailability.absent);
   });
 
+  test('projects legacy control inputs into typed state', () {
+    final node = makeSemanticNode(isEnabled: false, isFocusable: true);
+
+    expect(node.enabledState, SemanticEnabledState.disabled);
+    expect(node.focusableState, SemanticFocusableState.focusable);
+  });
+
   group('SemanticTree.fromRoots', () {
     test('retains every conditional root alternative', () {
       final firstAlternative = makeSemanticNode(

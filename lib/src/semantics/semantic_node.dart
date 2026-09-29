@@ -91,6 +91,10 @@ enum SemanticActionKind { tap, longPress, increase, decrease, dismiss }
 /// Keeps present, absent, dynamic, and unresolved action evidence distinct.
 enum SemanticActionAvailability { unknown, present, absent, dynamic }
 
+enum SemanticEnabledState { unknown, enabled, disabled }
+
+enum SemanticFocusableState { unknown, focusable, notFocusable }
+
 /// Simplified semantic IR node used by rules and the tree annotator.
 ///
 /// `SemanticNode` intentionally stores both raw discovery data (e.g. the
@@ -116,6 +120,8 @@ class SemanticNode {
     required this.hasDecrease,
     required this.isToggled,
     required this.isChecked,
+    SemanticEnabledState? enabledState,
+    SemanticFocusableState? focusableState,
     bool? mergesDescendants,
     bool? excludesDescendants,
     required this.blocksBehind,
@@ -155,6 +161,14 @@ class SemanticNode {
     SemanticExposureState? exposureState,
     SemanticInclusionState? inclusionState,
   })  : nodeCreation = nodeCreation ?? SemanticNodeCreation.unknown,
+        enabledState = enabledState ??
+            (isEnabled
+                ? SemanticEnabledState.enabled
+                : SemanticEnabledState.disabled),
+        focusableState = focusableState ??
+            (isFocusable
+                ? SemanticFocusableState.focusable
+                : SemanticFocusableState.notFocusable),
         childContribution =
             childContribution ?? ChildContributionPolicy.unknown,
         descendantReplacement = descendantReplacement ??
@@ -198,6 +212,11 @@ class SemanticNode {
   final bool hasDecrease;
   final bool isToggled;
   final bool isChecked;
+
+  /// Typed control state. Scalar inputs remain compatibility-only during
+  /// synthesis migration.
+  final SemanticEnabledState enabledState;
+  final SemanticFocusableState focusableState;
 
   /// Typed action evidence. Scalar action booleans remain temporary
   /// compatibility inputs while builders are migrated.
@@ -353,6 +372,8 @@ class SemanticNode {
     bool? hasDecrease,
     bool? isToggled,
     bool? isChecked,
+    SemanticEnabledState? enabledState,
+    SemanticFocusableState? focusableState,
     bool? mergesDescendants,
     bool? excludesDescendants,
     bool? blocksBehind,
@@ -408,6 +429,8 @@ class SemanticNode {
       hasDecrease: hasDecrease ?? this.hasDecrease,
       isToggled: isToggled ?? this.isToggled,
       isChecked: isChecked ?? this.isChecked,
+      enabledState: enabledState ?? this.enabledState,
+      focusableState: focusableState ?? this.focusableState,
       mergesDescendants: mergesDescendants ?? this.mergesDescendants,
       excludesDescendants: excludesDescendants ?? this.excludesDescendants,
       blocksBehind: blocksBehind ?? this.blocksBehind,
