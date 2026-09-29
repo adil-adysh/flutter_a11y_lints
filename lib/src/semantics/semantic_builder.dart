@@ -409,6 +409,7 @@ class SemanticBuilder {
       isEnabledOverride: ctx.evalBool(widget.props['enabled']),
       isToggledOverride: ctx.evalBool(widget.props['toggled']),
       isCheckedOverride: ctx.evalBool(widget.props['checked']),
+      actionOverrides: _explicitActionOverrides(widget),
       roleOverride: roleOverride,
       semanticsConfig: config,
       semanticsLabelArgumentState:
@@ -548,6 +549,32 @@ class SemanticBuilder {
     );
   }
 
+  Map<SemanticActionKind, SemanticActionAvailability> _explicitActionOverrides(
+      WidgetNode widget) {
+    SemanticActionAvailability availability(String property) {
+      final expression = widget.props[property];
+      if (expression == null || expression is NullLiteral) {
+        return SemanticActionAvailability.absent;
+      }
+      return expression is FunctionExpression
+          ? SemanticActionAvailability.present
+          : SemanticActionAvailability.dynamic;
+    }
+
+    const properties = <SemanticActionKind, String>{
+      SemanticActionKind.tap: 'onTap',
+      SemanticActionKind.longPress: 'onLongPress',
+      SemanticActionKind.increase: 'onIncrease',
+      SemanticActionKind.decrease: 'onDecrease',
+      SemanticActionKind.dismiss: 'onDismiss',
+    };
+    return {
+      for (final entry in properties.entries)
+        if (widget.props.containsKey(entry.value))
+          entry.key: availability(entry.value),
+    };
+  }
+
   SemanticNode _wrapWithInheritedSemantics({
     required WidgetNode widget,
     required List<SemanticNode> children,
@@ -577,6 +604,7 @@ class SemanticBuilder {
     bool? isInMutuallyExclusiveGroupOverride,
     bool? hasScrollOverride,
     bool? hasDismissOverride,
+    Map<SemanticActionKind, SemanticActionAvailability>? actionOverrides,
     ControlKind? controlKindOverride,
     SemanticRole? roleOverride,
     SemanticsCompositionConfig semanticsConfig =
@@ -679,6 +707,7 @@ class SemanticBuilder {
       isInMutuallyExclusiveGroup: isInMutuallyExclusiveGroup,
       hasScroll: hasScroll,
       hasDismiss: hasDismiss,
+      actions: actionOverrides ?? base?.actions,
       rawAttributes: widget.props,
       isHeuristic: base?.isHeuristic ?? false,
       factProvenance: base?.isHeuristic == true

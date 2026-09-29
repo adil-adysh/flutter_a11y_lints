@@ -145,6 +145,18 @@ Semantics(link: true, child: IconButton(icon: Icon('open'), onPressed: () {}))
       );
     });
 
+    test('Semantics keeps a non-literal tap callback dynamic', () async {
+      final tree = await buildTestSemanticTree(
+        'Semantics(onTap: handler, child: Text(\'Activate\'))',
+        extraDeclarations: 'void Function()? handler;',
+      );
+
+      expect(
+        tree.root.actionAvailability(SemanticActionKind.tap),
+        SemanticActionAvailability.dynamic,
+      );
+    });
+
     test('Semantics replacement hides descendants without excluding wrapper',
         () async {
       final tree = await buildTestSemanticTree('''
