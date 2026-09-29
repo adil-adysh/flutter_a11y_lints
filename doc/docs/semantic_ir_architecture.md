@@ -1,4 +1,10 @@
-# flutter_a11y_lints – Semantic IR Design Spec v2.5
+# Historical Semantic IR Design Spec v2.5
+
+> Historical reference only. This document predates the FAQL 4 migration and
+> is not an implementation contract. In particular, the `SemanticSummary`,
+> inferred reading/focus order, and layout-group proposals below were retired.
+> The current source of truth is `AGENTS.md` together with
+> `doc/docs/faql4_core_design.md` and the implementation.
 
 ## 0. Goal & Philosophy
 

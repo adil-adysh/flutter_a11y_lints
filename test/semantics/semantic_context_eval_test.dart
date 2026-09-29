@@ -34,7 +34,6 @@ int ifn() => 7;
       final global = GlobalSemanticContext(
         knownSemantics: KnownSemanticsRepository(),
         typeProvider: result.typeProvider,
-        resolver: null,
       );
 
       // Find top-level variable initializers

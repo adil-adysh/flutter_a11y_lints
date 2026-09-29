@@ -1,5 +1,4 @@
 import 'semantic_node.dart';
-import 'known_semantics.dart';
 
 /// Annotated semantic-composition forest with a conservative accessibility
 /// projection.

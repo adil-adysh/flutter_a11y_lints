@@ -17,20 +17,6 @@ class SemanticIrBuilder {
   }) : _globalContext = GlobalSemanticContext(
           knownSemantics: knownSemantics,
           typeProvider: unit.typeProvider,
-          // Provide a resolver that can map an `InterfaceType` back to the
-          // `ResolvedUnitResult` that defines the type. This lets the
-          // `GlobalSemanticContext` fetch and analyze the widget's
-          // `build()` implementation when available.
-          resolver: (InterfaceType? t) async {
-            try {
-              final path = _sourcePathFor(t);
-              if (path == null) return null;
-              final resolved = await unit.session.getResolvedUnit(path);
-              return resolved as ResolvedUnitResult;
-            } catch (_) {
-              return null;
-            }
-          },
         );
 
   // Note: `SemanticIrBuilder` is a thin orchestration layer used by the
@@ -40,8 +26,7 @@ class SemanticIrBuilder {
   //
   // Important behaviours to be aware of:
   // - A single `GlobalSemanticContext` is created per `SemanticIrBuilder`
-  //   instance; it caches `SemanticSummary`s for custom widgets which
-  //   prevents re-analysis and protects against recursive widget graphs.
+  //   instance for deterministic literal and constant evaluation.
   // - The builder assumes `unit` is a resolved `ResolvedUnitResult` and
   //   therefore relies on `unit.typeProvider` for type resolution.
 
