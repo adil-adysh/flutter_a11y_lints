@@ -106,6 +106,7 @@ SemanticNode makeSemanticNode({
   bool isInMutuallyExclusiveGroup = false,
   bool hasScroll = false,
   bool hasDismiss = false,
+  Map<SemanticActionKind, SemanticActionAvailability>? actions,
 }) {
   final nodeAst = astNode ?? _dummyAstNode;
   return SemanticNode(
@@ -143,6 +144,7 @@ SemanticNode makeSemanticNode({
     isInMutuallyExclusiveGroup: isInMutuallyExclusiveGroup,
     hasScroll: hasScroll,
     hasDismiss: hasDismiss,
+    actions: actions,
   );
 }
 

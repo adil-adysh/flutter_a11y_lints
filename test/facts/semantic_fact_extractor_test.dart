@@ -27,6 +27,23 @@ import '../rules/test_semantic_utils.dart';
 
 void main() {
   group('SemanticFactExtractor', () {
+    test('preserves typed dynamic action evidence', () {
+      final tree = buildManualTree(
+        makeSemanticNode(
+          actions: const {
+            SemanticActionKind.tap: SemanticActionAvailability.dynamic,
+          },
+        ),
+      );
+
+      final action = SemanticFactExtractor()
+          .extract(tree)
+          .actionsFor(tree.root.id!)
+          .singleWhere((fact) => fact.kind == typed_actions.ActionKind.tap);
+
+      expect(action.availability, typed_actions.ActionAvailability.dynamic);
+    });
+
     test('does not treat a non-replacing Semantics label as a child name',
         () async {
       final tree = await buildTestSemanticTree(
