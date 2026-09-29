@@ -32,7 +32,10 @@ Widget buildWidget(bool purchasePending) => DeleteControl();
       DescendantReplacementState.replaced,
     );
     expect(tree.root.children.single.widgetType, 'IconButton');
-    expect(tree.root.children.single.focusOrderIndex, isNull);
+    expect(
+      tree.provenAccessibilityNodes,
+      isNot(contains(tree.root.children.single)),
+    );
   });
 
   test('marks facts from expanded custom-widget source as derived', () async {

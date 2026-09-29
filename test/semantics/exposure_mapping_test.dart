@@ -4,7 +4,25 @@ import 'package:test/test.dart';
 import '../rules/test_semantic_utils.dart';
 
 void main() {
-  test('known Offstage and hidden Visibility map visual and semantic states separately',
+  test('Offstage does not model visual hiding as semantic replacement',
+      () async {
+    final tree = await buildTestSemanticTree('''
+Offstage(
+  offstage: true,
+  child: IconButton(icon: Icon('delete'), onPressed: () {}),
+)
+''');
+
+    final button = tree.root.children.single;
+    expect(
+        tree.root.descendantReplacement, DescendantReplacementState.preserved);
+    expect(button.isFocusable, isTrue);
+    expect(button.isEnabled, isTrue);
+    expect(tree.provenAccessibilityNodes, isNot(contains(button)));
+  });
+
+  test(
+      'known Offstage and hidden Visibility map visual and semantic states separately',
       () async {
     final offstage = await buildTestSemanticTree(
       "Offstage(offstage: true, child: Text('Hidden'))",

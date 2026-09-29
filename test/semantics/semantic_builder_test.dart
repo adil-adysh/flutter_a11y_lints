@@ -80,7 +80,7 @@ Semantics(
       expect(root.nodeCreation, SemanticNodeCreation.createsNode);
       expect(root.mergeState, SemanticMergeState.notMerged);
       expect(root.mergesDescendants, isFalse);
-      expect(root.children.single.focusOrderIndex, isNotNull);
+      expect(tree.provenAccessibilityNodes, contains(root.children.single));
     });
 
     test('a static Semantics identifier creates a semantic node', () async {
@@ -150,7 +150,10 @@ Semantics(
       expect(
           tree.root.descendantReplacement, DescendantReplacementState.replaced);
       expect(tree.root.excludesDescendants, isFalse);
-      expect(tree.root.children.single.focusOrderIndex, isNull);
+      expect(
+        tree.provenAccessibilityNodes,
+        isNot(contains(tree.root.children.single)),
+      );
     });
 
     test('Semantics replacement does not inherit discarded child actions',
@@ -229,7 +232,8 @@ class CustomAccessibilityWrapper extends Widget {
       );
     });
 
-    test('ExcludeSemantics suppresses descendant focus nodes', () async {
+    test('ExcludeSemantics suppresses independent descendant projection',
+        () async {
       final tree = await buildTestSemanticTree('''
 ExcludeSemantics(
   child: IconButton(
@@ -246,7 +250,7 @@ ExcludeSemantics(
       expect(tree.accessibilityFocusNodes, isEmpty);
     });
 
-    test('non-excluding ExcludeSemantics preserves descendant focus nodes',
+    test('non-excluding ExcludeSemantics preserves descendant projection',
         () async {
       final tree = await buildTestSemanticTree('''
 ExcludeSemantics(
@@ -261,7 +265,10 @@ ExcludeSemantics(
 
       expect(tree.root.descendantReplacement,
           DescendantReplacementState.preserved);
-      expect(tree.root.children.single.focusOrderIndex, isNotNull);
+      expect(
+        tree.provenAccessibilityNodes,
+        contains(tree.root.children.single),
+      );
     });
 
     test('dynamic ExcludeSemantics leaves descendant exposure unknown',
@@ -281,7 +288,10 @@ ExcludeSemantics(
         tree.root.descendantReplacement,
         DescendantReplacementState.unknown,
       );
-      expect(tree.root.children.single.focusOrderIndex, isNull);
+      expect(
+        tree.provenAccessibilityNodes,
+        isNot(contains(tree.root.children.single)),
+      );
       expect(tree.accessibilityFocusNodes, isEmpty);
     });
 

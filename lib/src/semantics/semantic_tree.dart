@@ -1,15 +1,17 @@
 import 'semantic_node.dart';
 import 'known_semantics.dart';
 
-/// Annotated semantic tree with physical and accessibility-focused views.
+/// Annotated semantic-composition forest with a conservative accessibility
+/// projection.
 ///
 /// This module transforms a raw `SemanticNode` tree into an annotated
 /// `SemanticTree` that includes:
 /// - `physicalNodes`: the full DFS-ordered list of nodes (including merged
 ///    descendants). `preOrderIndex` corresponds to this ordering.
-/// - `accessibilityFocusNodes`: nodes proven to be accessibility focus targets.
-///    Unknown composition is deliberately omitted rather than treated as
-///    exposed. This is not proof that an omitted node is hidden.
+/// - `provenAccessibilityNodes`: nodes proven to participate independently in
+///    the accessibility approximation. This collection is deliberately not an
+///    accessibility traversal order; source order cannot prove runtime focus
+///    order.
 /// - `byId`: lookup table used by rules to find annotated nodes quickly.
 ///
 /// Important behaviour:
@@ -22,7 +24,7 @@ class SemanticTree {
     required this.root,
     required this.roots,
     required this.physicalNodes,
-    required this.accessibilityFocusNodes,
+    required this.provenAccessibilityNodes,
     required this.byId,
   });
 
@@ -35,7 +37,23 @@ class SemanticTree {
   /// single-root callers; analysis must use the forest views below.
   final List<SemanticNode> roots;
   final List<SemanticNode> physicalNodes;
-  final List<SemanticNode> accessibilityFocusNodes;
+
+  /// Independently exposed nodes. Iteration order is an implementation detail
+  /// for deterministic diagnostics, never a screen-reader traversal claim.
+  final List<SemanticNode> provenAccessibilityNodes;
+
+  /// Compatibility view for older callers that selected focusable exposed
+  /// nodes. It does not encode next/previous accessibility traversal.
+  @Deprecated('Use provenAccessibilityNodes and explicit traversal facts.')
+  List<SemanticNode> get accessibilityFocusNodes => List.unmodifiable(
+        provenAccessibilityNodes.where(
+          (node) => node.isFocusable && node.isEnabled,
+        ),
+      );
+
+  /// Semantic-tree construction never invents traversal order. Explicit
+  /// traversal relationships are extracted into [AccessibilityFactGraph].
+  Iterable<SemanticNode> get explicitTraversalNodes => const [];
   final Map<int, SemanticNode> byId;
 
   static SemanticTree fromRoot(SemanticNode root) => fromRoots([root]);
@@ -47,11 +65,9 @@ class SemanticTree {
       throw ArgumentError.value(roots, 'roots', 'must not be empty');
     }
     final physical = <SemanticNode>[];
-    final focusable = <SemanticNode>[];
     final byId = <int, SemanticNode>{};
 
     var nextId = 0;
-    var nextFocusOrder = 0;
 
     SemanticNode annotate(
       SemanticNode node, {
@@ -90,22 +106,6 @@ class SemanticTree {
         SemanticInclusionState.included => annotated.inclusionState,
       };
       annotated = annotated.copyWith(inclusionState: inclusionState);
-
-      int? focusInsertIndex;
-      // Decide whether this node itself should be included in the
-      // `accessibilityFocusNodes` list. If any ancestor blocks focus (for
-      // example a BlockSemantics overlay) or the node is not focusable or not
-      // enabled, it shouldn't be added. Note: nodes that merge or exclude
-      // descendants still can be focus targets themselves — children are the
-      // ones that get skipped from the accessibility list.
-      if (!ancestorBlocksFocus &&
-          annotated.exposureState == SemanticExposureState.exposed &&
-          annotated.isFocusable &&
-          annotated.isEnabled) {
-        annotated = annotated.copyWith(focusOrderIndex: nextFocusOrder++);
-        focusInsertIndex = focusable.length;
-        focusable.add(annotated);
-      }
 
       final childNodes = <SemanticNode>[];
       // Descendants remain physical nodes regardless of composition. Only
@@ -156,10 +156,6 @@ class SemanticTree {
       }
       annotated =
           annotated.copyWith(children: childNodes, slots: annotatedSlots);
-      if (focusInsertIndex != null) {
-        focusable[focusInsertIndex] = annotated;
-      }
-
       physical[preOrderIndex] = annotated;
       byId[id] = annotated;
       return annotated;
@@ -253,16 +249,19 @@ class SemanticTree {
     final processedRoots =
         annotatedRoots.map(processNode).toList(growable: false);
 
-    // Rebuild `physical` and `focusable` lists as well as the `byId` map to
-    // reference the processed nodes.
+    // Rebuild physical and conservative accessibility projection lists, as
+    // well as the `byId` map, to reference the processed nodes.
     final newPhysical = <SemanticNode>[];
     final newById = <int, SemanticNode>{};
-    final newFocusable = <SemanticNode>[];
+    final newProvenAccessibility = <SemanticNode>[];
 
     void collect(SemanticNode n) {
       newPhysical.add(n);
       if (n.id != null) newById[n.id!] = n;
-      if (n.focusOrderIndex != null) newFocusable.add(n);
+      if (n.exposureState == SemanticExposureState.exposed &&
+          n.inclusionState == SemanticInclusionState.included) {
+        newProvenAccessibility.add(n);
+      }
       for (final c in n.children) {
         collect(c);
       }
@@ -276,32 +275,8 @@ class SemanticTree {
       root: processedRoots.first,
       roots: processedRoots,
       physicalNodes: newPhysical,
-      accessibilityFocusNodes: newFocusable,
+      provenAccessibilityNodes: newProvenAccessibility,
       byId: newById,
     );
-  }
-
-  /// Returns the next accessibility focusable node after [node], or `null`
-  /// if [node] has no follow-up focus target.
-  SemanticNode? nextFocusable(SemanticNode node) {
-    final idx = node.focusOrderIndex;
-    if (idx == null) return null;
-    final next = idx + 1;
-    if (next < accessibilityFocusNodes.length) {
-      return accessibilityFocusNodes[next];
-    }
-    return null;
-  }
-
-  /// Returns the previous accessibility focusable node before [node], or
-  /// `null` if [node] has no previous focus target.
-  SemanticNode? previousFocusable(SemanticNode node) {
-    final idx = node.focusOrderIndex;
-    if (idx == null) return null;
-    final prev = idx - 1;
-    if (prev >= 0 && prev < accessibilityFocusNodes.length) {
-      return accessibilityFocusNodes[prev];
-    }
-    return null;
   }
 }

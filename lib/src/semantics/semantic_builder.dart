@@ -141,6 +141,18 @@ class SemanticBuilder {
     final maintainSemantics = widget.widgetType == 'Visibility'
         ? ctx.evalBool(widget.props['maintainSemantics'])
         : false;
+    // Offstage is a rendering/hit-test wrapper, not a Semantics replacement.
+    // Flutter can omit its subtree from the semantics tree in this SDK, but
+    // the child remains active and can receive keyboard focus. Preserve the
+    // composition relationship so source facts such as enabled/focusable are
+    // not rewritten as though ExcludeSemantics had discarded the child.
+    if (widget.widgetType == 'Offstage' && hidden) {
+      return base.copyWith(
+        descendantReplacement: DescendantReplacementState.preserved,
+        exposureState: SemanticExposureState.hidden,
+        inclusionState: SemanticInclusionState.excluded,
+      );
+    }
     if (hidden && maintainSemantics != true) {
       return base.copyWith(
         descendantReplacement: DescendantReplacementState.excluded,

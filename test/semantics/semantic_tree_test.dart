@@ -1,15 +1,15 @@
 import 'package:flutter_a11y_lints/src/semantics/semantic_neighborhood.dart';
 import 'package:flutter_a11y_lints/src/facts/fact_store.dart';
-// Tests for `SemanticTree` annotation and focus node extraction.
+// Tests for `SemanticTree` annotation and conservative accessibility
+// projection.
 //
 // `SemanticTree` contains both a `physicalNodes` view (full DFS walk of the
-// semantic IR) and an `accessibilityFocusNodes` view (the nodes assistive
-// technology would iterate). These tests ensure the two views stay consistent
-// and that focus ordering and exclusion rules are respected.
+// semantic IR) and a `provenAccessibilityNodes` view (independently exposed
+// nodes). These tests ensure the two views stay consistent without treating
+// source order as assistive-technology traversal order.
 //
-// When adding tests, prefer asserting on the `accessibilityFocusNodes` where
-// possible as that represents actual runtime behavior users of the analyzer
-// rely on.
+// When adding tests, use explicit traversal relationships for any ordering
+// claim. `provenAccessibilityNodes` proves exposure only.
 
 import 'package:flutter_a11y_lints/src/semantics/semantic_tree.dart';
 import 'package:test/test.dart';
@@ -48,6 +48,21 @@ void main() {
   });
 
   group('SemanticTree.fromRoot', () {
+    test('collects exposed controls without inventing traversal order', () {
+      final first = makeSemanticNode(widgetType: 'First', isFocusable: true);
+      final second = makeSemanticNode(widgetType: 'Second', isFocusable: true);
+
+      final tree = SemanticTree.fromRoot(
+        makeSemanticNode(widgetType: 'Root', children: [first, second]),
+      );
+
+      expect(
+        tree.provenAccessibilityNodes.map((node) => node.widgetType),
+        containsAll(['First', 'Second']),
+      );
+      expect(tree.explicitTraversalNodes, isEmpty);
+    });
+
     test('annotates traversal metadata', () {
       final childA = makeSemanticNode(widgetType: 'A');
       final grandChild = makeSemanticNode(widgetType: 'C', isFocusable: true);
@@ -78,7 +93,8 @@ void main() {
       expect(focusableLabels, contains('C'));
     });
 
-    test('skips descendants of merged/excluded nodes from focus order', () {
+    test('omits merged and excluded descendants from independent projection',
+        () {
       final mergedChild = makeSemanticNode(
         widgetType: 'Merged',
         mergesDescendants: true,
@@ -107,9 +123,11 @@ void main() {
       expect(focusWidgets, containsAll(['Root', 'Parent']));
       expect(focusWidgets, isNot(contains('Merged')));
       expect(focusWidgets, isNot(contains('HiddenFocus')));
-      final parentNode = tree.accessibilityFocusNodes
-          .firstWhere((node) => node.widgetType == 'Parent');
-      expect(parentNode.focusOrderIndex, 1);
+      expect(
+        tree.explicitTraversalNodes,
+        isEmpty,
+        reason: 'Widget order does not prove accessibility traversal order.',
+      );
     });
   });
 
@@ -171,10 +189,10 @@ void main() {
           neighborhood.siblingsOf(rightNode).map((node) => node.widgetType);
       expect(siblingNames, containsAll(['Left', 'Right']));
 
-      final previous = neighborhood.previousInReadingOrder(rightNode);
+      final previous = neighborhood.previousInSourceOrder(rightNode);
       expect(previous?.widgetType, 'Left');
 
-      final next = neighborhood.nextInReadingOrder(rightNode);
+      final next = neighborhood.nextInSourceOrder(rightNode);
       expect(next, isNull);
 
       expect(

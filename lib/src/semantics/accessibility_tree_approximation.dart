@@ -12,7 +12,6 @@ class AccessibilityApproximationNode {
     required this.inclusion,
     required this.exposure,
     this.parentId,
-    this.focusOrderIndex,
   });
 
   final int id;
@@ -20,7 +19,6 @@ class AccessibilityApproximationNode {
   final SemanticInclusionState inclusion;
   final SemanticExposureState exposure;
   final int? parentId;
-  final int? focusOrderIndex;
 }
 
 /// Immutable accessibility projection. Unknown composition never becomes an
@@ -33,9 +31,6 @@ class AccessibilityTreeApproximation {
 
   AccessibilityApproximationNode? forSemanticNode(int semanticNodeId) =>
       _bySemanticNodeId[semanticNodeId];
-
-  Iterable<AccessibilityApproximationNode> get focusable =>
-      nodes.where((node) => node.focusOrderIndex != null);
 
   static AccessibilityTreeApproximation fromSemanticTree(SemanticTree tree) {
     final nodes = <AccessibilityApproximationNode>[];
@@ -55,7 +50,6 @@ class AccessibilityTreeApproximation {
         inclusion: semantic.inclusionState,
         exposure: semantic.exposureState,
         parentId: parent?.id,
-        focusOrderIndex: semantic.focusOrderIndex,
       );
       nodes.add(node);
       bySemanticNodeId[id] = node;

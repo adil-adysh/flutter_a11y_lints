@@ -137,9 +137,10 @@ void main() {
       (tester) async {
     // Runtime contract: this SDK's Offstage(true) omits the child from
     // simulated accessibility traversal.
-    // IR mapping: known offstage true is visual hiding and semantic exclusion.
+    // IR mapping: visual/hit-test hiding and semantic inclusion are separate;
+    // Offstage is not modeled as a semantic descendant replacement.
     // Conservative consequence: no independent child accessibility node.
-    // Deliberate unknown boundary: runtime focus changes remain unknown.
+    // Deliberate unknown boundary: runtime focus order remains unknown.
     final handle = tester.ensureSemantics();
     try {
       await tester.pumpWidget(

@@ -1,11 +1,12 @@
 import 'semantic_node.dart';
 import 'semantic_tree.dart';
+import '../facts/fact_store.dart' show Branch, BranchPath;
 
 /// Utility helpers for reasoning about nearby semantic nodes.
 ///
 /// `SemanticNeighborhood` is a convenience wrapper around `SemanticTree` to
-/// provide common queries used by heuristic rules (nearby siblings, previous
-/// and next in reading order, layout groups, etc.). Important: callers must
+/// provide common source/composition queries used by heuristic rules (nearby
+/// siblings and source order, for example). Important: callers must
 /// consider `areMutuallyExclusive` when using nearby nodes — widgets produced
 /// by different branches of the same conditional may look adjacent in the
 /// IR but cannot co-occur at runtime.
@@ -26,38 +27,22 @@ class SemanticNeighborhood {
     return parent.children;
   }
 
-  SemanticNode? previousInReadingOrder(SemanticNode node) {
+  /// The preceding node in deterministic source/composition order. This is
+  /// not a rendered or accessibility traversal order.
+  SemanticNode? previousInSourceOrder(SemanticNode node) {
     final index = node.preOrderIndex;
     if (index == null || index <= 0) return null;
     if (index - 1 >= tree.physicalNodes.length) return null;
     return tree.physicalNodes[index - 1];
   }
 
-  SemanticNode? nextInReadingOrder(SemanticNode node) {
+  /// The following node in deterministic source/composition order. This is
+  /// not a rendered or accessibility traversal order.
+  SemanticNode? nextInSourceOrder(SemanticNode node) {
     final index = node.preOrderIndex;
     if (index == null) return null;
     if (index + 1 >= tree.physicalNodes.length) return null;
     return tree.physicalNodes[index + 1];
-  }
-
-  /// Returns the next node that would receive accessibility focus.
-  /// Uses `SemanticTree.accessibilityFocusNodes` and the node's
-  /// `focusOrderIndex` assigned during annotation.
-  SemanticNode? nextFocusable(SemanticNode node) {
-    final idx = node.focusOrderIndex;
-    if (idx == null) return null;
-    final next = idx + 1;
-    if (next < 0 || next >= tree.accessibilityFocusNodes.length) return null;
-    return tree.accessibilityFocusNodes[next];
-  }
-
-  /// Returns the previous node that would receive accessibility focus.
-  SemanticNode? previousFocusable(SemanticNode node) {
-    final idx = node.focusOrderIndex;
-    if (idx == null) return null;
-    final prev = idx - 1;
-    if (prev < 0 || prev >= tree.accessibilityFocusNodes.length) return null;
-    return tree.accessibilityFocusNodes[prev];
   }
 
   /// Returns true only when the model explicitly proves semantic exposure is
@@ -67,7 +52,9 @@ class SemanticNeighborhood {
   bool isHidden(SemanticNode node) =>
       node.exposureState == SemanticExposureState.hidden;
 
-  Iterable<SemanticNode> neighborsInReadingOrder(
+  /// Nearby nodes in deterministic source/composition order, not visual or
+  /// accessibility traversal order.
+  Iterable<SemanticNode> neighborsInSourceOrder(
     SemanticNode node, {
     int radius = 3,
   }) sync* {
@@ -119,15 +106,18 @@ class SemanticNeighborhood {
     }
   }
 
-  /// Returns true when `a` and `b` are known to originate from different
-  /// branches of the same conditional (`if`/`else` or `?:`) and therefore
-  /// cannot both be present at runtime. This is important to avoid heuristics
-  /// that look for 'nearby' labels accidentally using text that only appears
-  /// in an alternate branch.
-  bool areMutuallyExclusive(SemanticNode a, SemanticNode b) {
-    if (a.branchGroupId == null || b.branchGroupId == null) return false;
-    if (a.branchGroupId != b.branchGroupId) return false;
-    if (a.branchValue == null || b.branchValue == null) return false;
-    return a.branchValue != b.branchValue;
+  /// Returns true when [a] and [b] assign different values to any shared
+  /// unresolved conditional. Complete paths are required: scalar branch
+  /// metadata is used only as a derived compatibility path for manually
+  /// constructed legacy nodes.
+  bool areMutuallyExclusive(SemanticNode a, SemanticNode b) =>
+      !_effectivePath(a).compatibleWith(_effectivePath(b));
+
+  BranchPath _effectivePath(SemanticNode node) {
+    if (node.branchPath.constraints.isNotEmpty) return node.branchPath;
+    if (node.branchGroupId != null && node.branchValue != null) {
+      return BranchPath([Branch(node.branchGroupId!, node.branchValue!)]);
+    }
+    return const BranchPath([]);
   }
 }

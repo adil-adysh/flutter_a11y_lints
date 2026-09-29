@@ -48,7 +48,7 @@ VisibilityState = unknown | visible | hidden
 
 The exact enum/API names may change, but their meanings must not. A dynamic label means a label-producing expression is present and its runtime value cannot be resolved; it does **not** prove that the resulting string is nonempty. A known unlabeled control has `LabelState.absent` only after its relevant known widget semantics, merge/exclude context, and alternate label sources have been examined. Unresolved custom widget behavior is `unknown`.
 
-Use `isDefinitelyUnlabeled()` for a conservative finding, never `not hasAccessibleLabel()` where label knowledge is partial. Apply the same rule to enabled, interactive, visibility, and focusability claims. A node without an accessibility focus index is not thereby hidden.
+Use `isDefinitelyUnlabeled()` for a conservative finding, never `not hasAccessibleLabel()` where label knowledge is partial. Apply the same rule to enabled, interactive, visibility, and focusability claims. A node absent from the independent accessibility projection is not thereby hidden, and source order never establishes accessibility traversal order.
 
 ## 4. Core fact vocabulary
 

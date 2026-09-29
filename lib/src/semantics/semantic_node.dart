@@ -127,7 +127,6 @@ class SemanticNode {
     this.siblingIndex = 0,
     this.depth = 0,
     this.preOrderIndex,
-    this.focusOrderIndex,
     this.layoutGroupId,
     this.listItemGroupId,
     this.isPrimaryInGroup = false,
@@ -252,9 +251,6 @@ class SemanticNode {
   /// Depth-first order index assigned during tree annotation.
   final int? preOrderIndex;
 
-  /// Order in which assistive technologies would focus this node.
-  final int? focusOrderIndex;
-
   final int? layoutGroupId;
   final int? listItemGroupId;
   final bool isPrimaryInGroup;
@@ -347,7 +343,6 @@ class SemanticNode {
     int? siblingIndex,
     int? depth,
     int? preOrderIndex,
-    int? focusOrderIndex,
     int? layoutGroupId,
     int? listItemGroupId,
     bool? isPrimaryInGroup,
@@ -405,7 +400,6 @@ class SemanticNode {
       siblingIndex: siblingIndex ?? this.siblingIndex,
       depth: depth ?? this.depth,
       preOrderIndex: preOrderIndex ?? this.preOrderIndex,
-      focusOrderIndex: focusOrderIndex ?? this.focusOrderIndex,
       layoutGroupId: layoutGroupId ?? this.layoutGroupId,
       listItemGroupId: listItemGroupId ?? this.listItemGroupId,
       isPrimaryInGroup: isPrimaryInGroup ?? this.isPrimaryInGroup,
