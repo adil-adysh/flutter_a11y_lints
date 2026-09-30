@@ -101,6 +101,22 @@ where control.getWidgetType() = "GestureDetector" and
   control.isDefinitelyUnlabeled()
 select control, "Custom gesture actions should provide an accessible name."
 '''), // flutter-a11y/a15/label-custom-gesture-actions
+  Faql4Compiler().compile(r'''@id flutter-a11y/a21/use-iconbutton-tooltip
+@rule-id a21_use_iconbutton_tooltip
+@severity warning
+@mode expanded
+from SemanticNode tooltip
+where tooltip.getWidgetType() = "Tooltip" and
+  exists(MaterialButtonControl button |
+    button = tooltip.getAChild() and
+    (button.isDefinitelyUnlabeled() or
+      button.hasStaticNameFrom("semanticsLabel") or
+      button.hasStaticNameFrom("widgetLabel") or
+      button.hasStaticNameFrom("inputDecoration") or
+      button.hasStaticNameFrom("customWidgetDerived") or
+      button.hasStaticNameFrom("frameworkDerived")))
+select tooltip, "Use IconButton.tooltip instead of wrapping an IconButton with Tooltip."
+'''), // flutter-a11y/a21/use-iconbutton-tooltip
   Faql4Compiler()
       .compile(r'''@id flutter-a11y/a22/respect-widget-semantic-boundaries
 @rule-id a22_respect_widget_semantic_boundaries

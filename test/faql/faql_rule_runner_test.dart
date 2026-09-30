@@ -234,6 +234,31 @@ ExcludeSemantics(
     expect(runner.run(dynamic), isEmpty);
   });
 
+  test('A21 reports only direct Tooltip-wrapped IconButtons with known names',
+      () async {
+    final violation = await buildTestSemanticTree(
+      "Tooltip(message: 'Delete', child: IconButton(icon: Icon('delete'), onPressed: () {}))",
+    );
+    final directTooltip = await buildTestSemanticTree(
+      "Tooltip(message: 'Delete', child: IconButton(icon: Icon('delete'), tooltip: 'Delete', onPressed: () {}))",
+    );
+    final nested = await buildTestSemanticTree(
+      "Tooltip(message: 'Delete', child: SizedBox(child: IconButton(icon: Icon('delete'), onPressed: () {})))",
+    );
+    final dynamic = await buildTestSemanticTree(
+      "Tooltip(message: 'Delete', child: IconButton(icon: Icon('delete'), tooltip: actionLabel, onPressed: () {}))",
+      extraDeclarations: "String actionLabel = 'Delete';",
+    );
+    final source = File('lib/rules/core/a21_use_iconbutton_tooltip.faql')
+        .readAsStringSync();
+    final runner = FaqlRuleRunner(rules: [Faql4Compiler().compile(source)]);
+
+    expect(runner.run(violation), hasLength(1));
+    expect(runner.run(directTooltip), isEmpty);
+    expect(runner.run(nested), isEmpty);
+    expect(runner.run(dynamic), isEmpty);
+  });
+
   test('A15 reports only a proven unlabeled GestureDetector tap action',
       () async {
     final violation = await buildTestSemanticTree(

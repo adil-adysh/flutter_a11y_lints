@@ -60,6 +60,15 @@ void main() {
       expect(query.mode, FactMode.expanded);
     });
 
+    test('includes A21 as an explicitly expanded query', () {
+      final query = builtin.builtinFaqlRules.singleWhere(
+        (query) => query.queryId == 'flutter-a11y/a21/use-iconbutton-tooltip',
+      );
+
+      expect(query.ruleId, 'a21_use_iconbutton_tooltip');
+      expect(query.mode, FactMode.expanded);
+    });
+
     test('includes A03 as an explicitly expanded query', () {
       final query = builtin.builtinFaqlRules.singleWhere(
         (query) =>
